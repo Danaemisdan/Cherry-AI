@@ -64,7 +64,7 @@ async function runProperTest() {
 
       // Get list of contacts from left rail
       console.log('\n  Looking for contacts...');
-      const contacts = await page.locator('div[role="listitem"], div[role="row"]').slice(0, 5).all();
+      const contacts = (await page.locator('div[role="listitem"], div[role="row"]').all()).slice(0, 5);
       console.log(`  Found ${contacts.length} contacts in list`);
 
       if (contacts.length > 0) {
@@ -172,7 +172,7 @@ async function runProperTest() {
       await page.waitForTimeout(3000);
 
       // Check for conversations
-      const conversations = await page.locator('div[role="listitem"], a[href*="/direct/t/"]').slice(0, 3).all();
+      const conversations = (await page.locator('div[role="listitem"], a[href*="/direct/t/"]').all()).slice(0, 3);
       console.log(`  Found ${conversations.length} conversations`);
 
       if (conversations.length > 0) {
