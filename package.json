@@ -1,0 +1,19 @@
+{
+  "name": "cherry-ai-platform",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @cherry/web",
+    "dev:backend": "npm run dev -w @cherry/backend",
+    "dev:agent": "npm run dev -w @cherry/agent",
+    "dev:agent:profile": "node scripts/dev-agent-profile.mjs",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "package:release": "node scripts/package-release.mjs"
+  }
+}

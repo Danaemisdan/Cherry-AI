@@ -1,0 +1,22 @@
+{
+  "name": "@cherry/agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "node -e \"console.log('agent build skipped')\""
+  },
+  "dependencies": {
+    "@cherry/artifacts": "0.1.0",
+    "@cherry/browser-attached": "0.1.0",
+    "@cherry/browser-managed": "0.1.0",
+    "@cherry/campaign-engine": "0.1.0",
+    "@cherry/planner": "0.1.0",
+    "@cherry/platform-skills": "0.1.0",
+    "@cherry/shared": "0.1.0",
+    "nanoid": "^5.1.5",
+    "playwright": "^1.52.0",
+    "ws": "^8.18.2"
+  }
+}

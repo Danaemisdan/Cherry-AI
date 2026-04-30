@@ -1,0 +1,244 @@
+import {
+  PLATFORM_URLS,
+  buildPlatformSearchUrl,
+  clickByText,
+  composeComment,
+  composePost,
+  ensurePlatformReady,
+  fillEditable,
+  generateOutreachMessage,
+  openAttachedPage,
+  openSearchSurface,
+  openTargetPage,
+  pageSnapshot,
+  reviewQueue,
+  runBatchAction,
+  scrapeGoogleResults,
+  scrapePlatformProfiles,
+  submitComposer,
+  summarizeAction,
+  tryClick,
+  waitForAppShell,
+} from './common.js';
+import { checkLoginState } from './state-checker.js';
+import { extractChatContext } from './chat-context.js';
+
+export function createSocialHandler(platform, config) {
+  async function draftOrSendMessage(attachedBrowser, step, usernameOverride, providedChatContext = null) {
+    // Check login state first
+    const page = attachedBrowser?.page;
+    if (page) {
+      const state = await checkLoginState(page, platform);
+      if (!state.ready) {
+        return {
+          success: false,
+          needsAuth: true,
+          message: state.message || `Please log in to ${platform}`,
+        };
+      }
+    }
+
+    // Extract chat context if not provided (for all platforms)
+    let chatContext = providedChatContext;
+    if (!chatContext && page && (step.action === 'send_message' || step.action === 'draft_message')) {
+      chatContext = await extractChatContext(page, platform, 8);
+    }
+    const username = usernameOverride || step.args.username;
+
+    // Open the target conversation page
+    const targetPage = await openTargetPage(attachedBrowser, { platform, username });
+
+    const message = await generateOutreachMessage({
+      username,
+      goal: step.args.messageGoal,
+      tone: step.args.tone,
+      query: step.args.query,
+      platform,
+      chatContext,
+    });
+
+    if (config.openMessage) {
+      await config.openMessage(targetPage, username);
+    }
+
+    const filled = await fillEditable(targetPage, config.messageComposerSelectors, config.messageLengthLimit ? message.slice(0, config.messageLengthLimit) : message);
+    if (!filled.ok) {
+      throw new Error(`Could not open the ${platform} message composer for "${username}"`);
+    }
+
+    if (!step.args.requireManualReview) {
+      if (config.sendMessage) {
+        await config.sendMessage(targetPage);
+      } else {
+        await submitComposer(targetPage, config.sendMessageSelectors || [], config.sendMessageLabels || []);
+      }
+    }
+
+    return { page: targetPage, message, sent: !step.args.requireManualReview };
+  }
+
+  async function followUser(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    const clicked =
+      (await clickByText(page, config.followSelectors || ['button', 'div[role="button"]', 'a'], config.followLabels || ['Follow', 'Connect'])) ||
+      (await tryClick(page, config.followClickSelectors || []));
+
+    if (!clicked) {
+      throw new Error(`Could not find a follow/connect action for "${username}" on ${platform}`);
+    }
+
+    return { page, clicked };
+  }
+
+  async function engagePost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    const comment = composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+
+    if (config.openLatestPost) {
+      await config.openLatestPost(page);
+    }
+    if (config.likePost) {
+      await config.likePost(page);
+    }
+
+    const filled = await fillEditable(page, config.commentSelectors || [], comment);
+    if (!filled.ok) {
+      throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
+    }
+
+    if (!step.args.requireManualReview) {
+      if (config.sendComment) {
+        await config.sendComment(page);
+      } else {
+        await submitComposer(page, config.commentSubmitSelectors || [], config.commentSubmitLabels || ['Post', 'Reply']);
+      }
+    }
+
+    return { page, comment, sent: !step.args.requireManualReview };
+  }
+
+  async function composeOrPublishPost(attachedBrowser, step) {
+    const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+    const postText = composePost({ platform, goal: step.args.messageGoal, tone: step.args.tone, query: step.args.query });
+
+    if (config.openPostComposer) {
+      await config.openPostComposer(page);
+    }
+
+    const filled = await fillEditable(page, config.postComposerSelectors || [], postText);
+    if (!filled.ok) {
+      throw new Error(`Could not open the ${platform} post composer`);
+    }
+
+    if (step.action === 'publish_post' && !step.args.requireManualReview) {
+      if (config.publishPost) {
+        await config.publishPost(page);
+      } else {
+        await submitComposer(page, config.publishPostSelectors || [], config.publishPostLabels || ['Post']);
+      }
+    }
+
+    return { page, postText, sent: step.action === 'publish_post' && !step.args.requireManualReview };
+  }
+
+  return {
+    platform,
+    async execute({ step, attachedBrowser }) {
+      if (step.action === 'open_workspace') {
+        const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+        return { status: 'ready', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      if (step.action === 'search') {
+        const page = await openSearchSurface(await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform }), platform, step.args.query || step.args.prompt);
+        return { status: 'ready', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      if (step.action === 'scrape_results') {
+        if (['find_leads', 'lead_and_message', 'execute_deep_scrape'].includes(step.args.operation)) {
+          const { page, results } = await scrapeGoogleResults(attachedBrowser, {
+            query: step.args.query || step.args.prompt,
+            platform,
+            maxResults: step.args.maxResults,
+          });
+          return { status: 'completed', summary: summarizeAction(platform, step), data: { page: await pageSnapshot(page), results } };
+        }
+
+        const page = await openSearchSurface(await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform }), platform, step.args.query || step.args.prompt);
+        const results = await scrapePlatformProfiles(page, platform, step.args.maxResults);
+        return { status: 'completed', summary: summarizeAction(platform, step), data: { page: await pageSnapshot(page), results } };
+      }
+
+      if (step.action === 'open_target') {
+        const page = await openTargetPage(attachedBrowser, { platform, username: step.args.username });
+        if (config.afterOpenTarget) {
+          await config.afterOpenTarget(page, step.args.username);
+        }
+        return { status: 'ready', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      if (step.action === 'draft_message') {
+        return {
+          status: 'ready',
+          summary: summarizeAction(platform, step),
+          data: {
+            preview: await generateOutreachMessage({
+              username: step.args.username,
+              goal: step.args.messageGoal,
+              tone: step.args.tone,
+              query: step.args.query,
+              platform,
+              chatContext: [],
+            }),
+          },
+        };
+      }
+
+      if (step.action === 'send_message') {
+        const result = await draftOrSendMessage(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), message: result.message, sent: result.sent } };
+      }
+
+      if (step.action === 'message_batch') {
+        const outputs = await runBatchAction(step, async (username) => draftOrSendMessage(attachedBrowser, step, username));
+        return { status: 'completed', summary: summarizeAction(platform, step, { sent: !step.args.requireManualReview }), data: outputs.map((item) => ({ url: item.page.url(), message: item.message, sent: item.sent })) };
+      }
+
+      if (step.action === 'follow_user') {
+        const result = await followUser(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), clicked: result.clicked } };
+      }
+
+      if (step.action === 'engage_post') {
+        const result = await engagePost(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), comment: result.comment, sent: result.sent } };
+      }
+
+      if (step.action === 'engage_batch' || step.action === 'follow_batch') {
+        const outputs = await runBatchAction(step, async (username) => (
+          step.action === 'engage_batch' ? engagePost(attachedBrowser, step, username) : followUser(attachedBrowser, step, username)
+        ));
+        return { status: 'completed', summary: summarizeAction(platform, step), data: outputs.map((item) => ({ url: item.page.url(), sent: item.sent, clicked: item.clicked })) };
+      }
+
+      if (step.action === 'compose_post' || step.action === 'publish_post') {
+        const result = await composeOrPublishPost(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), postText: result.postText, sent: result.sent } };
+      }
+
+      if (step.action === 'review_queue' || step.action === 'continue_outreach') {
+        const { page } = await reviewQueue(attachedBrowser, platform);
+        return { status: 'ready', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      if (step.action === 'extract_context' || step.action === 'export_artifact') {
+        const page = await openAttachedPage(attachedBrowser, buildPlatformSearchUrl(platform, step.args.query || step.args.prompt), { platform, forceNavigate: true });
+        return { status: 'completed', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      throw new Error(`${platform} does not support the "${step.action}" action in Cherry yet`);
+    },
+  };
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@cherry/artifacts",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@cherry/shared": "0.1.0"
+  }
+}

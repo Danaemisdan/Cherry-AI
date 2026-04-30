@@ -1,0 +1,17 @@
+{
+  "name": "@cherry/backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "build": "node -e \"console.log('backend build skipped')\""
+  },
+  "dependencies": {
+    "@cherry/shared": "0.1.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "nanoid": "^5.1.5",
+    "ws": "^8.18.2"
+  }
+}

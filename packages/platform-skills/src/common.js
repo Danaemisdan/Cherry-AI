@@ -1,0 +1,816 @@
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const PLATFORM_URLS = {
+  instagram: 'https://www.instagram.com/',
+  twitter: 'https://x.com/home',
+  linkedin: 'https://www.linkedin.com/feed/',
+  facebook: 'https://www.facebook.com/',
+  gmail: 'https://mail.google.com/mail/u/0/#inbox',
+  whatsapp: 'https://web.whatsapp.com/',
+};
+
+const PLATFORM_DOMAINS = {
+  instagram: ['instagram.com'],
+  twitter: ['x.com', 'twitter.com'],
+  linkedin: ['linkedin.com'],
+  facebook: ['facebook.com'],
+  gmail: ['mail.google.com'],
+  whatsapp: ['web.whatsapp.com'],
+};
+
+const SEARCH_SELECTORS = {
+  instagram: ['input[placeholder="Search"]', 'input[aria-label*="Search"]', 'input[type="text"]'],
+  twitter: ['input[data-testid="SearchBox_Search_Input"]', 'input[placeholder="Search"]'],
+  linkedin: ['input.search-global-typeahead__input', 'input[placeholder="Search"]', 'input[role="combobox"]'],
+  facebook: ['input[aria-label="Search Facebook"]', 'input[placeholder="Search Facebook"]', 'input[type="search"]'],
+  gmail: ['input[placeholder*="Search mail"]', 'input[aria-label*="Search mail"]'],
+  whatsapp: ['div[contenteditable="true"][data-tab="3"]', 'div[role="textbox"][contenteditable="true"]'],
+};
+
+const READY_SELECTORS = {
+  instagram: ['nav', 'svg[aria-label="Home"]', 'a[href="/direct/inbox/"]'],
+  twitter: ['a[data-testid="SideNav_NewTweet_Button"]', 'div[data-testid="primaryColumn"]', 'article[data-testid="tweet"]'],
+  linkedin: ['input.search-global-typeahead__input', '.global-nav', '.scaffold-layout'],
+  facebook: ['div[role="feed"]', 'input[aria-label="Search Facebook"]', '[aria-label="Facebook"]'],
+  gmail: ['div[role="main"]', 'input[placeholder*="Search mail"]', 'div[gh="cm"]'],
+  whatsapp: ['div[data-testid="chat-list"]', 'div[role="grid"]', 'footer div[contenteditable="true"]'],
+};
+
+const LOGIN_SELECTORS = {
+  instagram: ['input[name="username"]', 'form button[type="submit"]'],
+  twitter: ['input[autocomplete="username"]', 'input[name="text"]'],
+  linkedin: ['input#username', 'input#password', 'button[type="submit"]'],
+  facebook: ['input[name="email"]', 'input[name="pass"]'],
+  gmail: ['input[type="email"]', 'input[type="password"]', '#identifierId'],
+  whatsapp: ['canvas[aria-label*="Scan"]', 'div[data-ref] canvas'],
+};
+
+const LOGGED_OUT_TEXT = {
+  instagram: ['log in', 'login'],
+  twitter: ['sign in', 'log in'],
+  linkedin: ['sign in', 'forgot password'],
+  facebook: ['log in', 'password'],
+  gmail: ['sign in', 'to continue to gmail'],
+  whatsapp: ['scan to log in', 'log in with phone number'],
+};
+
+export function normalizeUsername(username = '') {
+  return String(username).trim().replace(/^@+/, '');
+}
+
+export function uniq(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+export function unsupported(platform, action) {
+  throw new Error(`${platform} does not support the "${action}" action in Cherry yet`);
+}
+
+export function buildSearchUrl(query, engine = 'google', domains = []) {
+  const scopedQuery = domains.length ? `${query} ${domains.map((domain) => `site:${domain}`).join(' OR ')}` : query;
+  if (engine === 'duckduckgo') {
+    return `https://duckduckgo.com/?q=${encodeURIComponent(scopedQuery)}`;
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(scopedQuery)}`;
+}
+
+export function buildPlatformTargetUrl(platform, username) {
+  const handle = normalizeUsername(username);
+  if (!handle) return PLATFORM_URLS[platform];
+
+  if (platform === 'instagram') return `https://www.instagram.com/${handle}/`;
+  if (platform === 'twitter') return `https://x.com/${handle}`;
+  if (platform === 'linkedin') return handle.includes('linkedin.com') ? handle : `https://www.linkedin.com/in/${handle}/`;
+  if (platform === 'facebook') return handle.startsWith('http') ? handle : `https://www.facebook.com/${handle}`;
+  if (platform === 'gmail') return PLATFORM_URLS.gmail;
+  if (platform === 'whatsapp') {
+    const digits = handle.replace(/\D/g, '');
+    return digits ? `https://web.whatsapp.com/send?phone=${digits}` : PLATFORM_URLS.whatsapp;
+  }
+  return PLATFORM_URLS[platform];
+}
+
+export function buildPlatformSearchUrl(platform, query) {
+  if (!query) return PLATFORM_URLS[platform];
+  if (platform === 'instagram') return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(query)}`;
+  if (platform === 'twitter') return `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query`;
+  if (platform === 'linkedin') return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
+  if (platform === 'facebook') return `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}`;
+  if (platform === 'gmail') return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(query)}`;
+  if (platform === 'whatsapp') return PLATFORM_URLS.whatsapp;
+  return PLATFORM_URLS[platform];
+}
+
+export function composeOutreachMessage({ username, goal, tone, query, chatContext = [] }) {
+  const recipient = normalizeUsername(username);
+  const objective = String(goal || 'start a useful conversation').trim();
+  const context = String(query || '').trim();
+  const style = String(tone || 'Casual and brief').trim().toLowerCase();
+  const lowerObjective = objective.toLowerCase();
+
+  // Helper functions
+  const joinMessage = (...parts) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  const chooseGreeting = () => {
+    if (!recipient) {
+      if (style.includes('formal') || style.includes('professional')) return 'Hi,';
+      return 'Hey,';
+    }
+    if (style.includes('formal') || style.includes('professional')) return `Hi ${recipient},`;
+    return `Hey ${recipient},`;
+  };
+
+  // Check for blocked content
+  if (isBlockedOutreachGoal(`${objective} ${context}`)) {
+    throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
+  }
+
+  const greeting = chooseGreeting();
+  const lastMessage = chatContext.length > 0 ? chatContext[chatContext.length - 1] : null;
+  const isReplying = lastMessage && lastMessage.role !== 'me';
+
+  // Smart message templates based on goal intent (NOT copying the goal text)
+  const getMeetingRequestText = () => {
+    const specificContext = context && !/customer follow up|founders? in/i.test(context.toLowerCase())
+      ? ` about ${context}`
+      : '';
+    if (isReplying) {
+      return `Would you be open to a quick call${specificContext}?`;
+    }
+    return `Open to a quick chat${specificContext}?`;
+  };
+
+  const getFollowUpText = () => {
+    const specificContext = context && !/^(update|follow up|status)$/i.test(context)
+      ? ` on ${context}`
+      : '';
+    return `Any update${specificContext}?`;
+  };
+
+  const getSalesOutreachText = () => {
+    if (context && context.length > 10) {
+      // Use the context as a hook, not the goal
+      const hook = context.slice(0, 60);
+      return `Saw your work on ${hook}. Curious if you're open to exploring how we might collaborate?`;
+    }
+    if (isReplying) {
+      return 'Thanks for getting back! Would love to jump on a quick call to share more.';
+    }
+    return 'Came across your profile and thought we should connect. Interested in a quick chat?';
+  };
+
+  const getNetworkingText = () => {
+    if (context) {
+      return `Noticed you're working on ${context.slice(0, 40)}. Would love to connect and learn more.`;
+    }
+    return 'Would love to connect and swap ideas sometime.';
+  };
+
+  const getCheckInText = () => {
+    if (isReplying && lastMessage) {
+      // Reference their last message briefly
+      const theirMsg = lastMessage.text.slice(0, 40);
+      return `Thanks for sharing about ${theirMsg || 'that'}. Wanted to follow up.`;
+    }
+    return 'Just checking in. How are things going?';
+  };
+
+  // Determine message type from goal intent (not copying the goal)
+  const isMeetingRequest = /\b(meeting|call|jump on|chat|talk|connect|sync|15 min|quick call|zoom|calendly)\b/i.test(lowerObjective);
+  const isFollowUp = /\b(update|follow up|status|progress|where are we|any news|check in)\b/i.test(lowerObjective);
+  const isSales = /\b(sales|pitch|demo|product|service|offer|deal|partnership|collaborate|work together)\b/i.test(lowerObjective);
+  const isNetworking = /\b(network|connect|founder|fintech|introduce|introduction|meet)\b/i.test(lowerObjective);
+
+  let messageBody = '';
+
+  if (isFollowUp) {
+    messageBody = getFollowUpText();
+  } else if (isMeetingRequest) {
+    messageBody = getMeetingRequestText();
+  } else if (isSales) {
+    messageBody = getSalesOutreachText();
+  } else if (isNetworking) {
+    messageBody = getNetworkingText();
+  } else {
+    messageBody = getCheckInText();
+  }
+
+  // Handle "tell him about X" / "ask him Y" instruction patterns by converting to sales/networking intent
+  const normalizedInstruction = objective
+    .replace(/^(i want you to|can you|could you|please|kindly|just)\s+/i, '')
+    .trim();
+
+  // If it's a "tell" instruction with product/company mention, treat as sales outreach
+  if (/^(say|tell)\s+/i.test(normalizedInstruction)) {
+    const content = normalizedInstruction.replace(/^(say|tell)\s+(him|her|them|the recipient)\s+(about|to|that)?\s*/i, '').trim();
+
+    // Extract product/company name if present
+    const productMatch = content.match(/(?:about|our)\s+([A-Z][A-Za-z0-9\s]+?)(?:\s+(?:product|app|platform|tool|service|company|startup)|[,.;]|\s+(?:and|to|for|with)\s+)/i);
+    const productName = productMatch ? productMatch[1].trim() : (content.split(/\s+(?:and|to|for|with)\s+/)[0] || '').slice(0, 40);
+
+    if (content.toLowerCase().includes('customer') || content.toLowerCase().includes('bring') || content.toLowerCase().includes('refer')) {
+      messageBody = productName
+        ? `I wanted to reach out about ${productName}. We're looking for partners who can help us connect with potential customers - would love to hear your thoughts!`
+        : `I wanted to reach out about a product we're building. We're looking for partners who can help connect us with potential customers - would love to hear your thoughts!`;
+    } else if (productName) {
+      messageBody = `Quick note - wanted to share ${productName}. Curious to get your take on it!`;
+    }
+    // If no product detected, let the intent-based templates handle it below
+  }
+
+  // Handle "ask him about Y" instructions
+  if (/^(ask|check)\s+/i.test(normalizedInstruction) && !messageBody) {
+    const content = normalizedInstruction.replace(/^(ask|check)\s+(him|her|them|the recipient)\s+(if|whether|about)?\s*/i, '').trim();
+    const cleanQuestion = content
+      .replace(/\b(him|her|them|the recipient)\b/gi, 'you')
+      .replace(/\b(he|she|they)\s+(has|is|can|could|would|will)\b/gi, 'you $2')
+      .replace(/\b(his|her|their)\b/gi, 'your');
+    messageBody = cleanQuestion.charAt(0).toUpperCase() + cleanQuestion.slice(1);
+    if (!/\?$/.test(messageBody)) messageBody = messageBody.replace(/[.!]+$/, '') + '?';
+  }
+
+  return joinMessage(greeting, messageBody);
+}
+
+function isBlockedOutreachGoal(value) {
+  const normalized = String(value || '').toLowerCase();
+  return /\b(kill yourself|go die)\b/.test(normalized);
+}
+
+const nativeHostPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../native-host/llm-host.py');
+let llmHostPromise = null;
+let llmHost = null;
+let llmMessageId = 0;
+
+function buildOutreachPrompt({ username, goal, tone, query, platform, chatContext = [] }) {
+  const recipient = normalizeUsername(username) || 'the recipient';
+  const objective = String(goal || 'start a useful conversation').trim();
+  const context = String(query || '').trim();
+  const style = String(tone || 'Casual and brief').trim() || 'Casual and brief';
+
+  // Build conversation history section
+  const chatHistorySection = chatContext.length > 0
+    ? `\nPrevious conversation history (read this to understand the context, but do NOT copy these messages verbatim):\n${chatContext.slice(-5).map((msg, i) => `${i + 1}. ${msg.role === 'me' ? 'Me' : 'Them'}: ${msg.text.slice(0, 200)}${msg.text.length > 200 ? '...' : ''}`).join('\n')}`
+    : '';
+
+  return `You are writing a natural, human-like ${platform} message to ${recipient}.
+
+YOUR TASK: Write ONE direct message that achieves this goal: "${objective}"
+
+IMPORTANT - HOW TO WRITE THE MESSAGE:
+- The "Goal" above is your INTENT, not the message text. DO NOT copy it word-for-word.
+- Instead, interpret the goal naturally and write a conversational message.
+- Use the conversation history below to understand context and reply appropriately.
+- Write as if you're texting a friend or colleague - casual, natural, conversational.
+- 1-2 short sentences maximum. Be brief.
+- Sound like a real person, not a sales bot or template.
+
+TONE TO USE: ${style}
+${context ? `KEYWORDS/CONTEXT TO INCLUDE: ${context}` : ''}${chatHistorySection}
+
+STRICT RULES:
+- Return ONLY the final message text - no labels, no quotes around it, no "Final message:" prefix
+- DO NOT copy the goal text directly into the message
+- DO NOT start with fragments like "Him about" or "Her to" or "Tell him" - write complete sentences
+- DO NOT use words like "u" instead of "you" or "r" instead of "are" - write proper English
+- DO NOT write "Sender's reply" or roleplay scenarios
+- DO NOT invent facts about the recipient you don't know
+- DO NOT use multiple emojis (0-1 max if natural)
+- DO NOT add hashtags
+- DO NOT write multiple versions or alternatives
+- If the goal is sales/outreach, be genuine and specific - not generic fluff
+- Respond naturally to the conversation flow if there's chat history above
+
+Write the message now:`;
+}
+
+function sanitizeGeneratedMessage(rawText) {
+  let text = String(rawText || '').replace(/\r/g, '').trim();
+  if (!text) return '';
+
+  const finalMarker = text.match(/(?:^|\n)(?:final message|dm)\s*:\s*([\s\S]*)$/i);
+  if (finalMarker?.[1]) {
+    text = finalMarker[1].trim();
+  }
+
+  text = text
+    .replace(/<\|[^>]+?\|>/g, ' ')
+    .replace(/<start_of_turn>|<end_of_turn>/g, ' ')
+    .replace(/\b(user|assistant|model)\s*:/gi, ' ')
+    .replace(/\bsender'?s reply\s*:/gi, ' ')
+    .replace(/\breply\s*:/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const badFragments = [
+    'return only the final message text',
+    'write exactly one',
+    'goal from the ui:',
+    'tone from the ui:',
+    'extra context from the ui:',
+    'rules:',
+    'final message:',
+  ];
+
+  const filtered = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !badFragments.some((fragment) => line.toLowerCase().includes(fragment)))
+    .filter((line) => !line.startsWith('-'))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const firstChunk = filtered
+    .split(/(?:sender'?s reply:|reply:)/i)[0]
+    .split(/(?:\s{2,}|\n)/)[0]
+    .trim();
+
+  return firstChunk.replace(/^['"\s]+|['"\s]+$/g, '').trim();
+}
+
+function looksLikePromptLeak(text) {
+  const normalized = String(text || '').toLowerCase();
+  if (!normalized) return true;
+  return [
+    'goal from the ui:',
+    'tone from the ui:',
+    'rules:',
+    'write exactly one',
+    'final message:',
+    'return only the final message text',
+    "sender's reply",
+    'reply:',
+  ].some((fragment) => normalized.includes(fragment));
+}
+
+function isLowQualityOutreachMessage(text) {
+  const value = String(text || '').trim();
+  if (!value) return true;
+
+  const emojiMatches = value.match(/[\p{Extended_Pictographic}]/gu) || [];
+  const hashtagMatches = value.match(/#[\p{L}\p{N}_]+/gu) || [];
+  const sentenceParts = value
+    .split(/[.!?]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (value.length > 220) return true;
+  if (sentenceParts.length > 2) return true;
+  if (emojiMatches.length > 1) return true;
+  if (hashtagMatches.length > 0) return true;
+  if (/(.)\1{4,}/.test(value)) return true;
+  if (/\b(sender'?s reply|reply)\b/i.test(value)) return true;
+  if (/\b(let'?s go check it out together|we'?re all ears|stay tuned)\b/i.test(value)) return true;
+
+  return false;
+}
+
+async function connectLocalLlmHost() {
+  if (llmHost) return llmHost;
+  if (llmHostPromise) return llmHostPromise;
+
+  llmHostPromise = new Promise((resolve, reject) => {
+    const child = spawn('python3', [nativeHostPath], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: process.env,
+    });
+
+    let stdoutBuffer = Buffer.alloc(0);
+    let stderrBuffer = '';
+    const callbacks = new Map();
+
+    const failAll = (error) => {
+      for (const callback of callbacks.values()) {
+        callback.reject(error);
+      }
+      callbacks.clear();
+    };
+
+    child.stdout.on('data', (chunk) => {
+      stdoutBuffer = Buffer.concat([stdoutBuffer, chunk]);
+      while (stdoutBuffer.length >= 4) {
+        const messageLength = stdoutBuffer.readUInt32LE(0);
+        if (stdoutBuffer.length < 4 + messageLength) break;
+        const raw = stdoutBuffer.slice(4, 4 + messageLength).toString('utf8');
+        stdoutBuffer = stdoutBuffer.slice(4 + messageLength);
+
+        let message = null;
+        try {
+          message = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+
+        const pending = callbacks.get(message.id);
+        if (!pending) continue;
+        callbacks.delete(message.id);
+
+        if (message.error) {
+          pending.reject(new Error(message.error));
+        } else {
+          pending.resolve(String(message.text || ''));
+        }
+      }
+    });
+
+    child.stderr.on('data', (chunk) => {
+      stderrBuffer += chunk.toString('utf8');
+    });
+
+    child.once('spawn', () => {
+      llmHost = {
+        child,
+        async generate(prompt, maxTokens = 120, temperature = 0.75) {
+          const id = String(++llmMessageId);
+          const payload = Buffer.from(JSON.stringify({
+            id,
+            prompt,
+            max_tokens: maxTokens,
+            temperature,
+            stop_words: ['</s>', '<|user|>', '<|assistant|>', '<start_of_turn>', '<end_of_turn>', 'Final message:'],
+          }), 'utf8');
+          const header = Buffer.alloc(4);
+          header.writeUInt32LE(payload.length, 0);
+
+          return new Promise((resolveMessage, rejectMessage) => {
+            const timeout = setTimeout(() => {
+              callbacks.delete(id);
+              rejectMessage(new Error('Local LLM timed out'));
+            }, 20000);
+
+            callbacks.set(id, {
+              resolve: (value) => {
+                clearTimeout(timeout);
+                resolveMessage(value);
+              },
+              reject: (error) => {
+                clearTimeout(timeout);
+                rejectMessage(error);
+              },
+            });
+
+            child.stdin.write(Buffer.concat([header, payload]));
+          });
+        },
+      };
+
+      resolve(llmHost);
+    });
+
+    child.once('error', (error) => {
+      llmHost = null;
+      llmHostPromise = null;
+      reject(error);
+    });
+
+    child.once('exit', () => {
+      const error = new Error(stderrBuffer.trim() || 'Local LLM host exited');
+      failAll(error);
+      llmHost = null;
+      llmHostPromise = null;
+    });
+  });
+
+  return llmHostPromise;
+}
+
+export async function generateOutreachMessage({ username, goal, tone, query, platform = 'social', chatContext = [] }) {
+  if (isBlockedOutreachGoal(`${goal || ''} ${query || ''}`)) {
+    throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
+  }
+
+  const fallback = composeOutreachMessage({ username, goal, tone, query, chatContext });
+  const prompt = buildOutreachPrompt({ username, goal, tone, query, platform, chatContext });
+
+  try {
+    const host = await connectLocalLlmHost();
+    const generated = sanitizeGeneratedMessage(await host.generate(prompt, 120, 0.8));
+    if (!generated || looksLikePromptLeak(generated) || isLowQualityOutreachMessage(generated)) {
+      return fallback;
+    }
+    return generated;
+  } catch {
+    return fallback;
+  }
+}
+
+export function composeComment({ tone, goal }) {
+  const style = String(tone || 'Casual and brief').trim().toLowerCase();
+  const objective = String(goal || 'start a conversation').trim();
+  if (style.includes('brief')) return `Sharp post. ${objective}.`;
+  return `This is well put together. ${objective}.`;
+}
+
+export function composePost({ platform, goal, tone, query }) {
+  const objective = String(goal || `share an update on ${platform}`).trim();
+  const prompt = String(query || '').trim();
+  const style = String(tone || 'Clear and concise').trim();
+  return `${objective}${prompt ? `\n\nContext: ${prompt}` : ''}\n\nTone: ${style}`;
+}
+
+function normalizeComparableUrl(url = '') {
+  return String(url).replace(/\/+$/, '');
+}
+
+function currentHostname(url = '') {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
+function pageMatchesPlatform(url, platform) {
+  const hostname = currentHostname(url);
+  return (PLATFORM_DOMAINS[platform] || []).some((domain) => hostname.includes(domain));
+}
+
+export async function waitForAppShell(page) {
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+}
+
+export async function bodyText(page) {
+  return page.locator('body').innerText().catch(() => '');
+}
+
+export async function pageSnapshot(page) {
+  return {
+    title: await page.title().catch(() => ''),
+    url: page.url(),
+    text: (await bodyText(page)).slice(0, 12000),
+  };
+}
+
+export async function firstVisibleLocator(page, selectors = []) {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if (await locator.isVisible().catch(() => false)) return locator;
+  }
+  return null;
+}
+
+export async function firstWorkingLocator(page, selectors = []) {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if (await locator.count().catch(() => 0)) return locator;
+  }
+  return null;
+}
+
+async function detectPlatformLoginState(page, platform) {
+  const loginLocator = await firstVisibleLocator(page, LOGIN_SELECTORS[platform] || []);
+  if (loginLocator) {
+    return { loggedIn: false, reason: `${platform} requires login in this Cherry browser profile` };
+  }
+
+  const body = (await bodyText(page)).toLowerCase();
+  const loggedOutText = (LOGGED_OUT_TEXT[platform] || []).find((snippet) => body.includes(snippet));
+  if (loggedOutText) {
+    return { loggedIn: false, reason: `${platform} requires login in this Cherry browser profile` };
+  }
+
+  const readyLocator = await firstVisibleLocator(page, READY_SELECTORS[platform] || []);
+  if (readyLocator) {
+    return { loggedIn: true, reason: '' };
+  }
+
+  return { loggedIn: true, reason: '' };
+}
+
+export async function ensurePlatformReady(page, platform) {
+  await waitForAppShell(page);
+  const loginState = await detectPlatformLoginState(page, platform);
+  if (!loginState.loggedIn) {
+    throw new Error(`${loginState.reason}. Sign in once inside the Cherry debug profile, then retry.`);
+  }
+
+  const readySelectors = READY_SELECTORS[platform] || [];
+  if (!readySelectors.length) return;
+
+  const ready = await firstVisibleLocator(page, readySelectors);
+  if (ready) return;
+
+  for (const selector of readySelectors) {
+    const locator = page.locator(selector).first();
+    const visible = await locator.waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
+    if (visible) return;
+  }
+}
+
+export async function navigate(page, url, platform) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  if (platform) {
+    await ensurePlatformReady(page, platform);
+  } else {
+    await waitForAppShell(page);
+  }
+}
+
+export async function tryClick(page, selectors = []) {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if (await locator.count().catch(() => 0)) {
+      await locator.click({ timeout: 3000 }).catch(() => {});
+      return true;
+    }
+  }
+  return false;
+}
+
+export async function clickByText(page, selectors, labels = []) {
+  for (const selector of selectors) {
+    for (const label of labels) {
+      const locator = page.locator(selector, { hasText: label }).first();
+      if (await locator.count().catch(() => 0)) {
+        await locator.click({ timeout: 3000 }).catch(() => {});
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export async function fillEditable(page, selectors = [], value = '') {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).first();
+    if (await locator.count().catch(() => 0)) {
+      await locator.click({ timeout: 3000 }).catch(() => {});
+      const tagName = await locator.evaluate((element) => element.tagName.toLowerCase()).catch(() => '');
+      const isInputLike = tagName === 'input' || tagName === 'textarea';
+      const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+
+      if (isInputLike) {
+        await locator.fill('').catch(() => {});
+        await locator.fill(value).catch(() => {});
+      } else {
+        await page.keyboard.press(`${modifier}+a`).catch(() => {});
+        await page.keyboard.press('Backspace').catch(() => {});
+        await locator.evaluate((element) => {
+          if (element.isContentEditable) {
+            element.textContent = '';
+          }
+        }).catch(() => {});
+        await locator.type(value, { delay: 18 }).catch(() => {});
+      }
+      return { ok: true, selector };
+    }
+  }
+  return { ok: false, selector: '' };
+}
+
+export async function submitComposer(page, selectors = [], labels = []) {
+  if (await tryClick(page, selectors)) return true;
+  return clickByText(page, ['button', 'div[role="button"]', 'span'], labels);
+}
+
+export async function openAttachedPage(attachedBrowser, url, { platform, forceNavigate = false } = {}) {
+  let page = null;
+  if (platform) {
+    page = await attachedBrowser.findPage((candidate) => pageMatchesPlatform(candidate.url(), platform));
+  }
+
+  if (!page) {
+    page = await attachedBrowser.getOrCreatePage({ url });
+  }
+
+  await page.bringToFront().catch(() => {});
+
+  const currentUrl = normalizeComparableUrl(page.url());
+  const targetUrl = normalizeComparableUrl(url);
+  if (forceNavigate || !currentUrl || currentUrl !== targetUrl) {
+    await navigate(page, url, platform);
+  } else if (platform) {
+    await ensurePlatformReady(page, platform);
+  }
+
+  return page;
+}
+
+export async function openSearchSurface(page, platform, query) {
+  await navigate(page, buildPlatformSearchUrl(platform, query), platform);
+  const searchBox = await firstWorkingLocator(page, SEARCH_SELECTORS[platform] || []);
+  if (searchBox && platform !== 'instagram' && platform !== 'gmail') {
+    await searchBox.click({ timeout: 3000 }).catch(() => {});
+  }
+  return page;
+}
+
+export async function scrapeGoogleResults(attachedBrowser, { query, platform, maxResults }) {
+  const url = buildSearchUrl(query || 'lead generation', 'google', platform === 'research' ? [] : (PLATFORM_DOMAINS[platform] || []));
+  const page = await openAttachedPage(attachedBrowser, url, { forceNavigate: true });
+  await waitForAppShell(page);
+
+  const results = await page.evaluate((limit) => {
+    const cards = Array.from(document.querySelectorAll('a[href]'));
+    const items = [];
+    for (const link of cards) {
+      const titleNode = link.querySelector('h3') || link;
+      const title = titleNode.textContent?.trim();
+      const href = link.href;
+      if (!title || !href || href.startsWith('javascript:')) continue;
+      const container = link.closest('div');
+      const snippet = container?.innerText?.trim() || '';
+      items.push({ title, url: href, snippet: snippet.slice(0, 400) });
+      if (items.length >= limit) break;
+    }
+    return items;
+  }, Math.max(1, Math.min(Number(maxResults) || 10, 25)));
+
+  return {
+    page,
+    results: uniq(results.map((item) => JSON.stringify(item))).map((item) => JSON.parse(item)),
+  };
+}
+
+export async function scrapePlatformProfiles(page, platform, maxResults) {
+  await ensurePlatformReady(page, platform);
+  return page.evaluate(({ currentPlatform, limit }) => {
+    const clean = (value) => String(value || '').trim();
+    const addUnique = (list, next) => {
+      if (!next?.url) return;
+      if (list.some((item) => item.url === next.url)) return;
+      list.push(next);
+    };
+
+    const output = [];
+    const anchors = Array.from(document.querySelectorAll('a[href]'));
+
+    for (const anchor of anchors) {
+      const href = anchor.href;
+      const text = clean(anchor.textContent);
+      if (!href || !text) continue;
+
+      if (currentPlatform === 'instagram' && /instagram\.com\/[^/]+\/?$/.test(href) && !href.includes('/explore/')) addUnique(output, { title: text, url: href, snippet: text });
+      if (currentPlatform === 'twitter' && /x\.com\/[^/]+\/?$/.test(href) && !href.includes('/search')) addUnique(output, { title: text, url: href, snippet: text });
+      if (currentPlatform === 'linkedin' && href.includes('/in/')) addUnique(output, { title: text, url: href.split('?')[0], snippet: text });
+      if (currentPlatform === 'facebook' && href.includes('facebook.com') && !href.includes('/share')) addUnique(output, { title: text, url: href, snippet: text });
+      if (currentPlatform === 'gmail' && anchor.closest('[role="main"]')) addUnique(output, { title: text, url: href, snippet: anchor.closest('[role="main"]')?.innerText?.slice(0, 400) || text });
+      if (currentPlatform === 'whatsapp' && anchor.closest('[role="grid"]')) addUnique(output, { title: text, url: href, snippet: anchor.closest('[role="grid"]')?.innerText?.slice(0, 400) || text });
+      if (output.length >= limit) break;
+    }
+
+    return output;
+  }, { currentPlatform: platform, limit: Math.max(1, Math.min(Number(maxResults) || 10, 25)) });
+}
+
+export async function openTargetPage(attachedBrowser, { platform, username }) {
+  return openAttachedPage(attachedBrowser, buildPlatformTargetUrl(platform, username), { platform, forceNavigate: true });
+}
+
+export async function reviewQueue(attachedBrowser, platform) {
+  const url = platform === 'gmail'
+    ? PLATFORM_URLS.gmail
+    : platform === 'whatsapp'
+      ? PLATFORM_URLS.whatsapp
+      : buildPlatformSearchUrl(platform, 'inbox');
+  return { page: await openAttachedPage(attachedBrowser, url, { platform }) };
+}
+
+export async function runBatchAction(step, handler) {
+  const usernames = uniq(step.args.usernames || []).slice(0, Math.max(1, Math.min(Number(step.args.maxResults) || 15, 25)));
+  const outputs = [];
+  for (const username of usernames) {
+    outputs.push(await handler(username));
+  }
+  return outputs;
+}
+
+export function summarizeAction(platform, step, detail = {}) {
+  const query = step.args.query || step.args.prompt || '';
+  const username = step.args.username ? ` @${normalizeUsername(step.args.username)}` : '';
+  const count = Array.isArray(step.args.usernames) ? step.args.usernames.length : 0;
+
+  if (step.action === 'open_workspace') return `Opened ${platform} workspace`;
+  if (step.action === 'search') return `Opened ${platform} search for "${query}"`;
+  if (step.action === 'scrape_results') return `Collected visible ${platform} search results for "${query}"`;
+  if (step.action === 'open_target') return `Opened${username} on ${platform}`;
+  if (step.action === 'draft_message') return `Prepared message draft${username} on ${platform}`;
+  if (step.action === 'send_message') return detail.sent ? `Sent message${username} on ${platform}` : `Drafted message${username} on ${platform}`;
+  if (step.action === 'message_batch') return `${detail.sent ? 'Processed' : 'Prepared'} ${count} ${platform} message targets one by one`;
+  if (step.action === 'engage_post') return detail.sent ? `Engaged with latest post${username} on ${platform}` : `Drafted engagement${username} on ${platform}`;
+  if (step.action === 'follow_user') return detail.clicked ? `Triggered follow/connect${username} on ${platform}` : `Could not find follow control${username} on ${platform}`;
+  if (step.action === 'engage_batch') return `Processed ${count} ${platform} engagement targets`;
+  if (step.action === 'follow_batch') return `Processed ${count} ${platform} follow targets`;
+  if (step.action === 'compose_post') return `Opened ${platform} composer`;
+  if (step.action === 'publish_post') return detail.sent ? `Submitted ${platform} post` : `Drafted ${platform} post`;
+  if (step.action === 'review_queue') return `Opened ${platform} queue`;
+  if (step.action === 'continue_outreach') return `Opened ${platform} outreach surface`;
+  if (step.action === 'open_result') return `Opened search results for "${query}"`;
+  if (step.action === 'extract_context') return `Captured page context for "${query}"`;
+  if (step.action === 'export_artifact') return `Prepared artifact output`;
+  return `Completed ${platform}:${step.action}`;
+}
+
+export { PLATFORM_URLS, PLATFORM_DOMAINS, SEARCH_SELECTORS, READY_SELECTORS };
+
+// Re-export new capabilities
+export { checkLoginState, ensurePlatformReadyWithState } from './state-checker.js';
+export { extractChatContext } from './chat-context.js';
+export { createLinkedInPost, searchLinkedInJobs, applyToLinkedInJob, searchLinkedInCompanies, extractLinkedInCompanyDetails, advancedLinkedInSearch } from './expanded-linkedin.js';
+export { extractContactInfo, bulkExtractContacts } from './lead-extractor.js';
+export { createPost, createStory, schedulePost } from './content-poster.js';
+export { MultiTabController, BackgroundScheduler } from './multi-tab.js';

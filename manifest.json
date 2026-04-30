@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Cherry AI",
+  "version": "1.0.0",
+  "description": "Stealth Social Scraper & Automation",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsvQGdTvPrWBpq0/jyACAU+A0qzscteCIB9ZK3oC5Qms+dX4Tx5t9Su5894V34sZ09dJkqAROLNZGJVSx9SqXn+BF2QT9vFXtCA796FDC3EaItXf3n1jFsoeUwVO+wUdnGc3Nay1tvaXAcpQ1u3mAjEy1o9842uMRrZDgxvLqm77vyYdBZPZX/waXwmHtgusERxcaJHr7iE/JMY3SUdMC5d5hOzGA8B1V13Zvt5W03YBuTGYwXs5oIpz1FHUjiM2zxW6q+hX11y56Dm+hEwD7s+RpSifrUTotcTty1LninGI6Gl5ATRwFevZ1JYJ07fy3zx9pfr7eDM2Cytrufmn4TwIDAQAB",
+  "icons": {
+    "16": "public/icon16.png",
+    "48": "public/icon48.png",
+    "128": "public/icon128.png"
+  },
+  "permissions": [
+    "debugger",
+    "tabs",
+    "storage",
+    "scripting",
+    "nativeMessaging",
+    "sidePanel",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "https://www.linkedin.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://mail.google.com/*",
+    "https://html.duckduckgo.com/*",
+    "https://www.facebook.com/*",
+    "https://docs.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Open Cherry AI"
+  }
+}
