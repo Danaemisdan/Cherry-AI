@@ -15,6 +15,7 @@ import {
   waitForAppShell,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
+import { extractChatContext } from '../chat-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Instagram DM Helper Functions
@@ -51,11 +52,112 @@ async function checkInstagramFollowStatus(page) {
   };
 }
 
+async function openInstagramMessageFromInbox(page, username) {
+  // Primary method for private accounts: Go to inbox and search for user
+  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
+  await waitForAppShell(page);
+  await page.waitForTimeout(1500);
+
+  // Look for the "New message" or search button first
+  const newMessageSelectors = [
+    'button:has-text("New message")',
+    'a[href="/direct/inbox/new/"]',
+    'svg[aria-label="New message"]',
+    'button[aria-label="New message"]',
+    'div[role="button"]:has-text("New")',
+  ];
+
+  let openedSearch = await tryClick(page, newMessageSelectors);
+
+  if (!openedSearch) {
+    // Try clicking by text
+    openedSearch = await clickByText(page, ['button', 'a', 'div[role="button"]'], ['New message', 'New']);
+  }
+
+  if (openedSearch) {
+    await waitForAppShell(page);
+    await page.waitForTimeout(1000);
+  }
+
+  // Look for search input (to: field)
+  const searchBox = await firstVisibleLocator(page, [
+    'input[placeholder*="Search"]',
+    'input[aria-label*="Search"]',
+    'input[placeholder*="To:"]',
+    'input[name="queryBox"]',
+    'input[type="text"]',
+    'textarea[placeholder*="Search"]',
+  ]);
+
+  if (!searchBox) {
+    return false;
+  }
+
+  // Click and type username
+  await searchBox.click({ timeout: 3000 }).catch(() => {});
+  await searchBox.fill('').catch(() => {});
+  await searchBox.type(username, { delay: 30 }).catch(() => {});
+  await page.waitForTimeout(2000);
+
+  // Try to find and click on the user in search results
+  // Instagram shows results as clickable divs with the username
+  const userResultSelectors = [
+    `div[role="button"]:has-text("${username}")`,
+    `div:has-text("${username}"):has(div)`,
+    'div[role="dialog"] div[role="button"]',
+    'div.x1n2onr6 div[role="button"]',
+    'div._ab8w',
+    'div._aacl._aaco',
+  ];
+
+  for (const selector of userResultSelectors) {
+    const result = page.locator(selector).first();
+    if (await result.isVisible().catch(() => false)) {
+      await result.click().catch(() => {});
+
+      // Wait to see if a conversation opened
+      await page.waitForTimeout(1500);
+
+      // Check if composer appeared
+      const composer = await firstVisibleLocator(page, [
+        'textarea',
+        'div[contenteditable="true"]',
+        'div[role="textbox"]',
+        'input[placeholder*="Message"]',
+      ]);
+
+      if (composer) {
+        return true;
+      }
+    }
+  }
+
+  // Try finding by text with partial match
+  const results = await page.locator('div[role="button"], div[role="dialog"] div').all();
+  for (const result of results) {
+    const text = await result.textContent().catch(() => '');
+    if (text.toLowerCase().includes(username.toLowerCase())) {
+      await result.click().catch(() => {});
+      await page.waitForTimeout(1500);
+
+      const composer = await firstVisibleLocator(page, [
+        'textarea',
+        'div[contenteditable="true"]',
+        'div[role="textbox"]',
+      ]);
+
+      if (composer) return true;
+    }
+  }
+
+  return false;
+}
+
 async function openInstagramMessage(page, username) {
   // Instagram DM rules:
-  // 1. Public accounts: Message button available directly
-  // 2. Private accounts you follow: Message button available
-  // 3. Private accounts you don't follow: Must request to follow first, then message once accepted
+  // 1. Public accounts: Can message directly from profile
+  // 2. Private accounts you follow: Can message directly from profile
+  // 3. Private accounts you DON'T follow: MUST go through inbox search
   // 4. Your own profile: Cannot message yourself
 
   const followStatus = await checkInstagramFollowStatus(page);
@@ -64,7 +166,44 @@ async function openInstagramMessage(page, username) {
     throw new Error(`Cannot message yourself (@${username})`);
   }
 
-  // Try multiple selectors for the Message button
+  // For private accounts we don't follow - go straight to inbox method
+  if (followStatus.isPrivate && !followStatus.isFollowing) {
+    // Try inbox method first (this sends a message request to private accounts)
+    const inboxOpened = await openInstagramMessageFromInbox(page, username);
+
+    if (inboxOpened) {
+      await waitForAppShell(page);
+      await page.waitForTimeout(1000);
+
+      // Verify composer is available
+      const composer = await firstVisibleLocator(page, [
+        'textarea',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"]',
+        'div[role="textbox"]',
+      ]);
+
+      if (composer) {
+        return {
+          type: 'message_request',
+          canSend: true,
+          isFollowing: false,
+          isPrivate: true,
+          method: 'inbox_search',
+        };
+      }
+    }
+
+    // If inbox method failed, offer to follow them
+    // Note: For private accounts, you can send a message request via inbox
+    // even without following - but if inbox search didn't work, suggest following
+    throw new Error(
+      `Cannot message @${username}. This is a private account. ` +
+      `Try following them first, or search for them directly in your Instagram inbox.`
+    );
+  }
+
+  // For public accounts or accounts we follow - try profile Message button first
   const messageSelectors = [
     'button:has-text("Message")',
     'div[role="button"]:has-text("Message")',
@@ -76,105 +215,39 @@ async function openInstagramMessage(page, username) {
     'button._abl-',
   ];
 
-  // First try clicking Message button on profile
   let clicked = await tryClick(page, messageSelectors);
 
   if (!clicked) {
-    // Try finding by text content with broader selectors
     clicked = await clickByText(page, ['button', 'div[role="button"]', 'a', 'span'], ['Message', 'Message ']);
   }
 
-  if (!clicked && followStatus.requestPending) {
-    // Already sent follow request, still can't message
-    throw new Error(`Cannot message @${username}. Follow request already pending. You'll be able to message once they accept.`);
-  }
-
-  if (!clicked && followStatus.canFollow && followStatus.isPrivate) {
-    // Private account - need to follow first
-    const followSelectors = [
-      'button:has-text("Follow")',
-      'div[role="button"]:has-text("Follow")',
-      'button._acan._ap30',
-    ];
-
-    const followed = await tryClick(page, followSelectors);
-
-    if (followed) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1500);
-
-      // Re-check status after following
-      const newStatus = await checkInstagramFollowStatus(page);
-
-      if (newStatus.requestPending) {
-        // Follow request sent - can't message until accepted
-        throw new Error(`Cannot message @${username}. Private account - follow request sent. You'll be able to message once they accept.`);
-      }
-
-      if (newStatus.isFollowing) {
-        // Try Message button again after following
-        clicked = await tryClick(page, messageSelectors);
-      }
+  // If profile method failed, try inbox method as fallback
+  if (!clicked) {
+    const inboxOpened = await openInstagramMessageFromInbox(page, username);
+    if (inboxOpened) {
+      clicked = true;
     }
-  }
-
-  if (!clicked && followStatus.isPrivate && !followStatus.isFollowing) {
-    throw new Error(`Cannot message @${username}. This is a private account and you need to follow them first.`);
   }
 
   if (!clicked) {
-    // Last resort - navigate to direct inbox and search for user
-    await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
-    await waitForAppShell(page);
-
-    // Look for search in inbox with multiple selectors
-    const searchBox = await firstVisibleLocator(page, [
-      'input[placeholder*="Search"]',
-      'input[aria-label*="Search"]',
-      'input[name="queryBox"]',
-      'div[role="textbox"]',
-      'input[type="text"]',
-    ]);
-
-    if (searchBox && username) {
-      await searchBox.click({ timeout: 3000 }).catch(() => {});
-      await searchBox.fill('').catch(() => {});
-      await searchBox.type(username.slice(0, 20), { delay: 50 }).catch(() => {});
-      await page.waitForTimeout(2000);
-
-      // Try multiple search result selectors
-      const searchResultSelectors = [
-        'div[role="button"]',
-        'a[href*="/direct/t/"]',
-        'div._ab8w',
-        'div._aacl',
-      ];
-
-      for (const selector of searchResultSelectors) {
-        const results = page.locator(selector).filter({ hasText: new RegExp(username, 'i') }).first();
-        if (await results.isVisible().catch(() => false)) {
-          await results.click().catch(() => {});
-          clicked = true;
-          break;
-        }
-      }
-    }
+    throw new Error(`Could not open Instagram message for "${username}". Message button not found.`);
   }
 
   await waitForAppShell(page);
   await page.waitForTimeout(1500);
 
-  // Verify message composer is available with multiple selectors
+  // Verify composer is available
   const composer = await firstVisibleLocator(page, [
     'textarea',
     'div[contenteditable="true"][role="textbox"]',
     'div[contenteditable="true"]',
     'div._abl-',
     'div[aria-label="Message"]',
+    'div[role="textbox"]',
   ]);
 
   if (!composer) {
-    throw new Error(`Could not open Instagram message composer for "${username}". They may have restricted messaging.`);
+    throw new Error(`Could not open Instagram message composer for "${username}".`);
   }
 
   return {
@@ -256,6 +329,7 @@ export const instagramHandler = {
         query,
         platform: 'instagram',
         chatContext: [],
+        profileInfo: {},
       });
 
       return {
@@ -273,14 +347,18 @@ export const instagramHandler = {
       await navigateToProfile(page, username);
       await openInstagramMessage(page, username);
 
-      // Generate message
+      // Extract chat context from the conversation
+      const chatContext = await extractChatContext(page, 'instagram', 8);
+
+      // Generate message with context awareness
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
         tone,
         query,
         platform: 'instagram',
-        chatContext: [],
+        chatContext,
+        profileInfo: {},
       });
 
       // Fill composer

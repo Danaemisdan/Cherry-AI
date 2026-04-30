@@ -14,6 +14,7 @@ import {
   waitForAppShell,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
+import { extractChatContext } from '../chat-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // LinkedIn DM Helper Functions
@@ -276,6 +277,7 @@ export const linkedinHandler = {
         query,
         platform: 'linkedin',
         chatContext: [],
+        profileInfo: {},
       });
 
       return {
@@ -295,6 +297,9 @@ export const linkedinHandler = {
       // Open message/connection dialog
       const messageType = await openLinkedInMessage(page, username);
 
+      // Extract chat context if available
+      const chatContext = await extractChatContext(page, 'linkedin', 6);
+
       // Generate message (shorter for LinkedIn)
       const message = await generateOutreachMessage({
         username,
@@ -302,7 +307,8 @@ export const linkedinHandler = {
         tone,
         query,
         platform: 'linkedin',
-        chatContext: [],
+        chatContext,
+        profileInfo: {},
       });
 
       // Truncate for LinkedIn limits

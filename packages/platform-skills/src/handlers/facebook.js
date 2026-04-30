@@ -14,6 +14,7 @@ import {
   waitForAppShell,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
+import { extractChatContext } from '../chat-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Facebook DM Helper Functions
@@ -269,6 +270,7 @@ export const facebookHandler = {
         query,
         platform: 'facebook',
         chatContext: [],
+        profileInfo: {},
       });
 
       return {
@@ -288,14 +290,18 @@ export const facebookHandler = {
       // Open message
       const messageStatus = await openFacebookMessage(page, username);
 
-      // Generate message
+      // Extract chat context
+      const chatContext = await extractChatContext(page, 'facebook', 6);
+
+      // Generate message with context
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
         tone,
         query,
         platform: 'facebook',
-        chatContext: [],
+        chatContext,
+        profileInfo: {},
       });
 
       // Fill composer - Facebook uses contenteditable divs

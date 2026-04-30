@@ -8,7 +8,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 1,
+      "tabs": 2,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -8040,6 +8040,1395 @@
         }
       ],
       "createdAt": "2026-04-30T18:46:01.219Z"
+    },
+    {
+      "id": "task_5r47zws1",
+      "status": "failed",
+      "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Danaemisdan",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_dbnyq06y",
+          "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_5r47zws1",
+            "objective": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_qy1p6qbz",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_rh5r0hdc",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_alfssxdq",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_22ad3dmy",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_qy1p6qbz",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_qy1p6qbz",
+          "message": "Opened instagram workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_rh5r0hdc",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_rh5r0hdc",
+          "message": "Opened @Danaemisdan on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_alfssxdq",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_alfssxdq",
+          "message": "Prepared message draft @Danaemisdan on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_22ad3dmy",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_3_22ad3dmy",
+          "error": "Could not open Instagram message composer for \"Danaemisdan\". They may have restricted messaging.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not open Instagram message composer for \"Danaemisdan\". They may have restricted messaging."
+        }
+      ],
+      "createdAt": "2026-04-30T22:05:49.028Z"
+    },
+    {
+      "id": "task_fenkryh7",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Greet and talk to him",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_f3dy5jik",
+          "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_fenkryh7",
+            "objective": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_6sky05cr",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_eyumpwpm",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_d9ndspc3",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_9wiotn6m",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_6sky05cr",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_6sky05cr",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_eyumpwpm",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_1_eyumpwpm",
+          "error": "Please log in to LinkedIn",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Please log in to LinkedIn"
+        }
+      ],
+      "createdAt": "2026-04-30T22:08:22.312Z"
+    },
+    {
+      "id": "task_qubf8jne",
+      "status": "failed",
+      "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "@Danaemisdan",
+        "usernames": [],
+        "messageGoal": "Greet and talk to him",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_vn6at02r",
+          "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_qubf8jne",
+            "objective": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_27wytinv",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "@Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_fk903cb5",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "@Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_t7gt3fw1",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "@Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_x6w1gqjf",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to @Danaemisdan on Instagram. Goal: Greet and talk to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "@Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Greet and talk to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_27wytinv",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_27wytinv",
+          "message": "Opened instagram workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_fk903cb5",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_fk903cb5",
+          "message": "Opened @Danaemisdan on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_t7gt3fw1",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_t7gt3fw1",
+          "message": "Prepared message draft @Danaemisdan on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_x6w1gqjf",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_3_x6w1gqjf",
+          "error": "Could not open message composer for @@Danaemisdan. They may have restricted messaging.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not open message composer for @@Danaemisdan. They may have restricted messaging."
+        }
+      ],
+      "createdAt": "2026-04-30T22:16:02.849Z"
+    },
+    {
+      "id": "task_nm532hxl",
+      "status": "dispatched",
+      "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Danaemisdan",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_70blx4f8",
+          "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_nm532hxl",
+            "objective": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_yle0wfz3",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_h5ouh6y8",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_vi3mmqq2",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_kspdlzux",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_yle0wfz3",
+          "label": "instagram:open_workspace"
+        }
+      ],
+      "createdAt": "2026-04-30T22:22:48.934Z"
+    },
+    {
+      "id": "task_c8gv72ej",
+      "status": "dispatched",
+      "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "twitter",
+        "operation": "auto_dm",
+        "query": "fintech founders",
+        "username": "@FanaticElon",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_y0c6d8x6",
+          "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_c8gv72ej",
+            "objective": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "twitter"
+            ],
+            "steps": [
+              {
+                "id": "twitter_0_eaoym9q6",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_1_gmvk8uxa",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_2_z4phfxd9",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_3_rl4iqlqm",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_0_eaoym9q6",
+          "label": "twitter:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "twitter_0_eaoym9q6",
+          "message": "Opened twitter workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_1_gmvk8uxa",
+          "label": "twitter:open_target"
+        }
+      ],
+      "createdAt": "2026-04-30T22:24:29.065Z"
+    },
+    {
+      "id": "task_0umy7dhs",
+      "status": "completed",
+      "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "jagadeesh_1415",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_jfw9duk9",
+          "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_0umy7dhs",
+            "objective": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_cjzlri0h",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "jagadeesh_1415",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_q0vvdrt1",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "jagadeesh_1415",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_7pz6htg1",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "jagadeesh_1415",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_7bslcbnk",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to jagadeesh_1415 on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "jagadeesh_1415",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_cjzlri0h",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_cjzlri0h",
+          "message": "Opened instagram workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_q0vvdrt1",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_q0vvdrt1",
+          "message": "Opened @jagadeesh_1415 on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_7pz6htg1",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_7pz6htg1",
+          "message": "Prepared message draft @jagadeesh_1415 on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_7bslcbnk",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_7bslcbnk",
+          "message": "Sent message @jagadeesh_1415 on instagram"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_dzuh5v8a",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_dzuh5v8a.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-04-30T22:27:43.194Z"
+    },
+    {
+      "id": "task_mcbp4agu",
+      "status": "completed",
+      "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "tushikhagoswami",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_rc1vdubz",
+          "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_mcbp4agu",
+            "objective": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_r25q2ony",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_em7kqa0e",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_u4s0qndr",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_q3qw278e",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to tushikhagoswami on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_r25q2ony",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_r25q2ony",
+          "message": "Opened instagram workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_em7kqa0e",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_em7kqa0e",
+          "message": "Opened @tushikhagoswami on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_u4s0qndr",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_u4s0qndr",
+          "message": "Prepared message draft @tushikhagoswami on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_q3qw278e",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_q3qw278e",
+          "message": "Sent message @tushikhagoswami on instagram"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_pxagsasm",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_pxagsasm.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-04-30T22:29:59.592Z"
+    },
+    {
+      "id": "task_9ie7wv01",
+      "status": "completed",
+      "prompt": "Follow tushikhagoswami on Instagram.",
+      "context": {
+        "platform": "instagram",
+        "operation": "follow_user",
+        "query": "founders in fintech",
+        "username": "tushikhagoswami",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_ywfhush8",
+          "prompt": "Follow tushikhagoswami on Instagram."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_9ie7wv01",
+            "objective": "Follow tushikhagoswami on Instagram.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_gsrjw8bh",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Follow tushikhagoswami on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_a0e1wdb7",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Follow tushikhagoswami on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_t5c9umgt",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "follow_user",
+                "args": {
+                  "prompt": "Follow tushikhagoswami on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "tushikhagoswami",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete follow_user on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_gsrjw8bh",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_gsrjw8bh",
+          "message": "Opened instagram workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_a0e1wdb7",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_a0e1wdb7",
+          "message": "Opened @tushikhagoswami on instagram"
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_t5c9umgt",
+          "label": "instagram:follow_user"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_t5c9umgt",
+          "message": "Triggered follow/connect @tushikhagoswami on instagram"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_n3g2dsoo",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_n3g2dsoo.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 3 steps"
+        }
+      ],
+      "createdAt": "2026-04-30T22:31:34.627Z"
     }
   ],
   "campaigns": [],

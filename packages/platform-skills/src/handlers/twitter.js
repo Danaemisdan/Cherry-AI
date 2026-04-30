@@ -14,6 +14,7 @@ import {
   waitForAppShell,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
+import { extractChatContext } from '../chat-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Twitter DM Helper Functions
@@ -200,6 +201,7 @@ export const twitterHandler = {
         query,
         platform: 'twitter',
         chatContext: [],
+        profileInfo: {},
       });
 
       return {
@@ -219,14 +221,18 @@ export const twitterHandler = {
       // Open message
       const messageStatus = await openTwitterMessage(page, username);
 
-      // Generate message
+      // Extract chat context
+      const chatContext = await extractChatContext(page, 'twitter', 6);
+
+      // Generate message with context
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
         tone,
         query,
         platform: 'twitter',
-        chatContext: [],
+        chatContext,
+        profileInfo: {},
       });
 
       // Fill composer

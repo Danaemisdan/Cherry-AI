@@ -103,134 +103,143 @@ export function buildPlatformSearchUrl(platform, query) {
   return PLATFORM_URLS[platform];
 }
 
-export function composeOutreachMessage({ username, goal, tone, query, chatContext = [] }) {
+// Message variety helpers to prevent repetition
+const VARIETY_TEMPLATES = {
+  greetings: {
+    casual: ['Hey', 'Hi', 'Hello', 'Hey there'],
+    professional: ['Hi', 'Hello', 'Good to connect'],
+    friendly: ['Hey', 'Hi there', 'Hey!'],
+  },
+  openingLines: {
+    firstTime: [
+      "Came across your profile and wanted to reach out",
+      "Noticed your work and thought I'd connect",
+      "Your profile caught my eye",
+      "Found you through mutual interests",
+      "Stumbled on your work and wanted to say hi",
+    ],
+    contextBased: [
+      "Saw you're working on {context}",
+      "Noticed your focus on {context}",
+      "Your work in {context} stood out",
+      "Interesting background in {context}",
+    ],
+  },
+  followUp: [
+    "Any thoughts on this?",
+    "What do you think?",
+    "Curious to hear your perspective",
+    "Would love your take on this",
+  ],
+  meetingRequest: [
+    "Open to a quick chat?",
+    "Worth a brief conversation?",
+    "Could be good to connect briefly",
+    "Interested in a short call?",
+  ],
+  closings: {
+    casual: ['', 'Thanks!', 'Chat soon', 'Talk soon'],
+    professional: ['Best', 'Thanks', 'Looking forward to hearing from you'],
+  },
+};
+
+// Random selection helper
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Generate a unique message signature based on timestamp and content hash
+function getMessageSeed(username, goal) {
+  const now = Date.now();
+  const dayOfWeek = new Date().getDay();
+  const hourOfDay = new Date().getHours();
+  // Use time + username to create variety throughout the day
+  return `${username}-${dayOfWeek}-${Math.floor(hourOfDay / 4)}-${Math.floor(now / 3600000)}`;
+}
+
+export function composeOutreachMessage({ username, goal, tone, query, chatContext = [], profileInfo = {} }) {
   const recipient = normalizeUsername(username);
   const objective = String(goal || 'start a useful conversation').trim();
   const context = String(query || '').trim();
   const style = String(tone || 'Casual and brief').trim().toLowerCase();
   const lowerObjective = objective.toLowerCase();
-
-  // Helper functions
-  const joinMessage = (...parts) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-  const chooseGreeting = () => {
-    if (!recipient) {
-      if (style.includes('formal') || style.includes('professional')) return 'Hi,';
-      return 'Hey,';
-    }
-    if (style.includes('formal') || style.includes('professional')) return `Hi ${recipient},`;
-    return `Hey ${recipient},`;
-  };
+  const seed = getMessageSeed(username || '', goal || '');
 
   // Check for blocked content
   if (isBlockedOutreachGoal(`${objective} ${context}`)) {
     throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
   }
 
-  const greeting = chooseGreeting();
   const lastMessage = chatContext.length > 0 ? chatContext[chatContext.length - 1] : null;
   const isReplying = lastMessage && lastMessage.role !== 'me';
+  const isFirstTime = chatContext.length === 0;
+  const hasContext = context && context.length > 5;
+  const hasProfileInfo = profileInfo && (profileInfo.bio || profileInfo.recentPost);
 
-  // Smart message templates based on goal intent (NOT copying the goal text)
-  const getMeetingRequestText = () => {
-    const specificContext = context && !/customer follow up|founders? in/i.test(context.toLowerCase())
-      ? ` about ${context}`
-      : '';
-    if (isReplying) {
-      return `Would you be open to a quick call${specificContext}?`;
-    }
-    return `Open to a quick chat${specificContext}?`;
-  };
-
-  const getFollowUpText = () => {
-    const specificContext = context && !/^(update|follow up|status)$/i.test(context)
-      ? ` on ${context}`
-      : '';
-    return `Any update${specificContext}?`;
-  };
-
-  const getSalesOutreachText = () => {
-    if (context && context.length > 10) {
-      // Use the context as a hook, not the goal
-      const hook = context.slice(0, 60);
-      return `Saw your work on ${hook}. Curious if you're open to exploring how we might collaborate?`;
-    }
-    if (isReplying) {
-      return 'Thanks for getting back! Would love to jump on a quick call to share more.';
-    }
-    return 'Came across your profile and thought we should connect. Interested in a quick chat?';
-  };
-
-  const getNetworkingText = () => {
-    if (context) {
-      return `Noticed you're working on ${context.slice(0, 40)}. Would love to connect and learn more.`;
-    }
-    return 'Would love to connect and swap ideas sometime.';
-  };
-
-  const getCheckInText = () => {
-    if (isReplying && lastMessage) {
-      // Reference their last message briefly
-      const theirMsg = lastMessage.text.slice(0, 40);
-      return `Thanks for sharing about ${theirMsg || 'that'}. Wanted to follow up.`;
-    }
-    return 'Just checking in. How are things going?';
-  };
-
-  // Determine message type from goal intent (not copying the goal)
-  const isMeetingRequest = /\b(meeting|call|jump on|chat|talk|connect|sync|15 min|quick call|zoom|calendly)\b/i.test(lowerObjective);
-  const isFollowUp = /\b(update|follow up|status|progress|where are we|any news|check in)\b/i.test(lowerObjective);
-  const isSales = /\b(sales|pitch|demo|product|service|offer|deal|partnership|collaborate|work together)\b/i.test(lowerObjective);
-  const isNetworking = /\b(network|connect|founder|fintech|introduce|introduction|meet)\b/i.test(lowerObjective);
-
-  let messageBody = '';
-
-  if (isFollowUp) {
-    messageBody = getFollowUpText();
-  } else if (isMeetingRequest) {
-    messageBody = getMeetingRequestText();
-  } else if (isSales) {
-    messageBody = getSalesOutreachText();
-  } else if (isNetworking) {
-    messageBody = getNetworkingText();
-  } else {
-    messageBody = getCheckInText();
+  // Select greeting style
+  let greetingStyle = 'casual';
+  if (style.includes('formal') || style.includes('professional')) {
+    greetingStyle = 'professional';
+  } else if (style.includes('friendly') || style.includes('warm')) {
+    greetingStyle = 'friendly';
   }
 
-  // Handle "tell him about X" / "ask him Y" instruction patterns by converting to sales/networking intent
-  const normalizedInstruction = objective
-    .replace(/^(i want you to|can you|could you|please|kindly|just)\s+/i, '')
-    .trim();
+  // Build greeting
+  const greetings = VARIETY_TEMPLATES.greetings[greetingStyle];
+  const greeting = recipient
+    ? `${pickRandom(greetings)} ${recipient},`
+    : `${pickRandom(greetings)},`;
 
-  // If it's a "tell" instruction with product/company mention, treat as sales outreach
-  if (/^(say|tell)\s+/i.test(normalizedInstruction)) {
-    const content = normalizedInstruction.replace(/^(say|tell)\s+(him|her|them|the recipient)\s+(about|to|that)?\s*/i, '').trim();
+  // Build body based on context
+  let body = '';
 
-    // Extract product/company name if present
-    const productMatch = content.match(/(?:about|our)\s+([A-Z][A-Za-z0-9\s]+?)(?:\s+(?:product|app|platform|tool|service|company|startup)|[,.;]|\s+(?:and|to|for|with)\s+)/i);
-    const productName = productMatch ? productMatch[1].trim() : (content.split(/\s+(?:and|to|for|with)\s+/)[0] || '').slice(0, 40);
+  if (isReplying && lastMessage) {
+    // We're replying to their message - be conversational
+    const theirMsg = lastMessage.text.slice(0, 50);
+    const replyStarters = [
+      `Thanks for that`,
+      `Appreciate you sharing`,
+      `Good point about ${theirMsg.slice(0, 20) || 'that'}`,
+      `Interesting - ${theirMsg.slice(0, 20) || 'that'}`,
+    ];
+    body = pickRandom(replyStarters);
 
-    if (content.toLowerCase().includes('customer') || content.toLowerCase().includes('bring') || content.toLowerCase().includes('refer')) {
-      messageBody = productName
-        ? `I wanted to reach out about ${productName}. We're looking for partners who can help us connect with potential customers - would love to hear your thoughts!`
-        : `I wanted to reach out about a product we're building. We're looking for partners who can help connect us with potential customers - would love to hear your thoughts!`;
-    } else if (productName) {
-      messageBody = `Quick note - wanted to share ${productName}. Curious to get your take on it!`;
+    // Add follow-up question based on goal
+    if (/\b(meeting|call|chat|talk|connect|sync)\b/i.test(lowerObjective)) {
+      body += `. ${pickRandom(VARIETY_TEMPLATES.meetingRequest)}`;
+    } else {
+      body += `. ${pickRandom(VARIETY_TEMPLATES.followUp)}`;
     }
-    // If no product detected, let the intent-based templates handle it below
+  } else if (isFirstTime) {
+    // First time message - use profile info or context
+    if (hasProfileInfo && profileInfo.bio) {
+      const bioSnippet = profileInfo.bio.slice(0, 40);
+      body = `${pickRandom(VARIETY_TEMPLATES.openingLines.firstTime)}. ${bioSnippet ? `Love the focus on ${bioSnippet}.` : ''}`.trim();
+    } else if (hasContext) {
+      const contextLines = VARIETY_TEMPLATES.openingLines.contextBased;
+      body = pickRandom(contextLines).replace('{context}', context.slice(0, 30));
+    } else {
+      body = pickRandom(VARIETY_TEMPLATES.openingLines.firstTime);
+    }
+
+    // Add meeting request if that's the goal
+    if (/\b(meeting|call|chat|talk|connect|sync)\b/i.test(lowerObjective)) {
+      body += ` ${pickRandom(VARIETY_TEMPLATES.meetingRequest)}`;
+    } else if (/\b(question|ask|thoughts?|opinion)\b/i.test(lowerObjective)) {
+      body += ` ${pickRandom(VARIETY_TEMPLATES.followUp)}`;
+    }
   }
 
-  // Handle "ask him about Y" instructions
-  if (/^(ask|check)\s+/i.test(normalizedInstruction) && !messageBody) {
-    const content = normalizedInstruction.replace(/^(ask|check)\s+(him|her|them|the recipient)\s+(if|whether|about)?\s*/i, '').trim();
-    const cleanQuestion = content
-      .replace(/\b(him|her|them|the recipient)\b/gi, 'you')
-      .replace(/\b(he|she|they)\s+(has|is|can|could|would|will)\b/gi, 'you $2')
-      .replace(/\b(his|her|their)\b/gi, 'your');
-    messageBody = cleanQuestion.charAt(0).toUpperCase() + cleanQuestion.slice(1);
-    if (!/\?$/.test(messageBody)) messageBody = messageBody.replace(/[.!]+$/, '') + '?';
+  // Add closing if style warrants it (not for very brief)
+  let closing = '';
+  if (!style.includes('brief') && !style.includes('short')) {
+    const closings = VARIETY_TEMPLATES.closings[greetingStyle];
+    closing = pickRandom(closings);
   }
 
-  return joinMessage(greeting, messageBody);
+  // Assemble final message
+  const parts = [greeting, body, closing].filter(Boolean);
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 function isBlockedOutreachGoal(value) {
