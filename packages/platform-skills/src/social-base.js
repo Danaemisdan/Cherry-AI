@@ -95,7 +95,7 @@ export function createSocialHandler(platform, config) {
   async function engagePost(attachedBrowser, step, usernameOverride) {
     const username = usernameOverride || step.args.username;
     const page = await openTargetPage(attachedBrowser, { platform, username });
-    const comment = composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+    const comment = await composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
 
     if (config.openLatestPost) {
       await config.openLatestPost(page);
@@ -131,6 +131,66 @@ export function createSocialHandler(platform, config) {
     const filled = await fillEditable(page, config.postComposerSelectors || [], postText);
     if (!filled.ok) {
       throw new Error(`Could not open the ${platform} post composer`);
+    }
+
+    // Handle file attachment if provided
+    if (step.args.attachmentPath) {
+      try {
+        await page.waitForTimeout(800); // Wait for composer to settle
+
+        // Look for attachment button or file input
+        const attachmentSelectors = [
+          'input[type="file"]',
+          'input[accept*="image"]',
+          'button[aria-label*="photo"]', 
+          'button[aria-label*="image"]',
+          'button[aria-label*="attach"]',
+          'button[aria-label*="file"]',
+          'div[role="button"][aria-label*="photo"]',
+          'div[role="button"][aria-label*="image"]',
+          'svg[aria-label*="photo"]',
+          'svg[aria-label*="image"]',
+          '[data-testid*="photo"]',
+          '[data-testid*="attachment"]',
+        ];
+
+        let attached = false;
+        for (const selector of attachmentSelectors) {
+          try {
+            const locator = page.locator(selector).first();
+            if (await locator.count() > 0 && await locator.isVisible()) {
+              const isFileInput = await locator.evaluate(el => el.tagName === 'INPUT').catch(() => false);
+              if (isFileInput) {
+                await locator.setInputFiles(step.args.attachmentPath);
+                attached = true;
+              } else {
+                // Click attachment button then find file input
+                await locator.click({ timeout: 2000 });
+                await page.waitForTimeout(1000);
+                const fileInput = await page.locator('input[type="file"]').first();
+                if (await fileInput.count() > 0) {
+                  await fileInput.setInputFiles(step.args.attachmentPath);
+                  attached = true;
+                }
+              }
+              if (attached) break;
+            }
+          } catch { /* continue */ }
+        }
+
+        // Platform-specific fallbacks
+        if (!attached && config.attachMedia) {
+          attached = await config.attachMedia(page, step.args.attachmentPath);
+        }
+
+        // Wait for upload to complete
+        if (attached) {
+          await page.waitForTimeout(3000);
+        }
+      } catch (attachError) {
+        console.warn(`${platform} attachment failed:`, attachError.message);
+        // Continue without attachment
+      }
     }
 
     if (step.action === 'publish_post' && !step.args.requireManualReview) {

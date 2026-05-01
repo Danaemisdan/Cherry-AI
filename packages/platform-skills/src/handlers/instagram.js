@@ -278,13 +278,63 @@ const baseHandler = createSocialHandler('instagram', {
   async likePost(page) {
     await tryClick(page, ['svg[aria-label="Like"]', 'button svg[aria-label="Like"]']);
   },
-  commentSelectors: ['textarea[placeholder*="comment"]', 'textarea'],
-  commentSubmitLabels: ['Post'],
+  commentSelectors: [
+    'textarea[placeholder*="comment"]', 
+    'textarea[placeholder*="Add a comment"]',
+    'textarea',
+    'div[contenteditable="true"][aria-label*="comment"]',
+    'div[contenteditable="true"]',
+  ],
+  commentSubmitSelectors: [
+    'button[type="submit"]',
+    'button:has-text("Post")',
+    'div[role="button"]:has-text("Post")',
+    'button:has-text("Share")',
+    'button:has-svg[aria-label="Post"]',
+    '[data-testid="post-button"]',
+    '[data-testid="submit-button"]',
+  ],
+  commentSubmitLabels: ['Post', 'Share'],
   async openPostComposer(page) {
     await clickByText(page, ['a', 'div[role="button"]', 'button'], ['Create']).catch(() => {});
     await waitForAppShell(page);
   },
   postComposerSelectors: ['textarea', 'div[contenteditable="true"][role="textbox"]'],
+  async sendComment(page) {
+    // Instagram-specific comment submission with multiple strategies
+    const submitSelectors = [
+      'button[type="submit"]',
+      'button:has-text("Post")',
+      'div[role="button"]:has-text("Post")',
+      'button:has-text("Share")',
+      'svg[aria-label="Post"]',
+      'svg[aria-label="Share"]',
+      '[data-testid="post-button"]',
+      '[data-testid="submit-button"]',
+      'button._abl-',
+    ];
+
+    // Try clicking submit button
+    for (const selector of submitSelectors) {
+      try {
+        const locator = page.locator(selector).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 3000 });
+          await page.waitForTimeout(800);
+          return true;
+        }
+      } catch { /* continue */ }
+    }
+
+    // Try pressing Enter as fallback
+    try {
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(500);
+      return true;
+    } catch { /* fail silently */ }
+
+    return false;
+  },
 });
 
 // Enhanced handler with proper Instagram-specific DM flow

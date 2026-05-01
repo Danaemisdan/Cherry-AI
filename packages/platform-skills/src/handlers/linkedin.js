@@ -287,6 +287,13 @@ export const linkedinHandler = {
       };
     }
 
+    // Handle actions that should be delegated to base handler FIRST
+    // These include engage_post, follow_user, compose_post, publish_post, etc.
+    const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results'];
+    if (baseHandlerActions.includes(action)) {
+      return baseHandler.execute({ step, attachedBrowser });
+    }
+
     if (action === 'send_message') {
       const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 

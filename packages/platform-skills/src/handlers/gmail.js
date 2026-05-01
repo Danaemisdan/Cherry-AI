@@ -90,31 +90,67 @@ async function fillGmailCompose(page, { to, subject, body }) {
 }
 
 async function sendGmailMessage(page) {
-  // Try keyboard shortcut first
+  // Wait for any autocomplete to settle
+  await page.waitForTimeout(800);
+
+  // Try keyboard shortcut first (most reliable)
   const shortcut = process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter';
   await page.keyboard.press(shortcut).catch(() => {});
 
-  // Wait a moment
-  await page.waitForTimeout(500);
+  // Wait longer for send to process
+  await page.waitForTimeout(1500);
 
   // Check if compose window is still open (send might have failed)
   const composeStillOpen = await firstVisibleLocator(page, [
     'div[aria-label="Message Body"][contenteditable="true"]',
-    'div[role="dialog"]',
+    'div[role="dialog"] div[contenteditable="true"]',
+    'input[name="subjectbox"]',
   ]);
 
   if (composeStillOpen) {
-    // Try clicking Send button
-    const sendClicked = await tryClick(page, [
+    // Try multiple Send button selectors
+    const sendSelectors = [
       'div[role="button"][aria-label*="Send"]',
       'div[role="button"][data-tooltip*="Send"]',
-    ]);
+      'div[role="button"][data-tooltip="Send ‪(Ctrl-Enter)‬"]',
+      'div[role="button"][data-tooltip="Send ‪(⌘-Enter)‬"]',
+      'div[aria-label*="Send"]',
+      '.T-I-atl', // Gmail's send button class
+      'div.T-I.T-I-atl',
+      'div[role="button"]:has-text("Send")',
+    ];
 
-    if (!sendClicked) {
-      await clickByText(page, ['div[role="button"]'], ['Send']);
+    let sent = false;
+    for (const selector of sendSelectors) {
+      try {
+        const locator = page.locator(selector).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 3000 });
+          await page.waitForTimeout(1000);
+          sent = true;
+          break;
+        }
+      } catch { /* continue */ }
+    }
+
+    // Fallback to text-based click
+    if (!sent) {
+      const textClicked = await clickByText(page, ['div[role="button"]'], ['Send']);
+      if (textClicked) {
+        await page.waitForTimeout(1000);
+        sent = true;
+      }
+    }
+
+    // Try shortcut again as last resort
+    if (!sent) {
+      await page.keyboard.press(shortcut);
+      await page.waitForTimeout(1000);
     }
   }
 
+  // Verify compose closed
+  await page.waitForTimeout(500);
   return true;
 }
 

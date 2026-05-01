@@ -377,12 +377,13 @@ function sanitizeGeneratedMessage(rawText) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const firstChunk = filtered
-    .split(/(?:sender'?s reply:|reply:)/i)[0]
-    .split(/(?:\s{2,}|\n)/)[0]
+  // Don't split on double spaces or newlines - keep full message
+  // Only remove the "sender's reply:" prefix if present
+  const cleaned = filtered
+    .split(/(?:sender'?s reply:|reply:)\s*/i)[0]
     .trim();
 
-  return firstChunk.replace(/^['"\s]+|['"\s]+$/g, '').trim();
+  return cleaned.replace(/^['"\s]+|['"\s]+$/g, '').trim();
 }
 
 function looksLikePromptLeak(text) {
@@ -400,34 +401,31 @@ function looksLikePromptLeak(text) {
   ].some((fragment) => normalized.includes(fragment));
 }
 
-function isLowQualityOutreachMessage(text) {
-  const value = String(text || '').trim();
-  if (!value) return true;
-
-  // Allow longer messages for proper context (was 220, now 350)
-  if (value.length > 350) return true;
-  // Allow up to 3 sentences
-  const sentenceParts = value.split(/[.!?]+/).map(p => p.trim()).filter(Boolean);
-  if (sentenceParts.length > 3) return true;
-
-  const emojiMatches = value.match(/[\p{Extended_Pictographic}]/gu) || [];
-  const hashtagMatches = value.match(/#[\p{L}\p{N}_]+/gu) || [];
-
-  if (emojiMatches.length > 2) return true;
-  if (hashtagMatches.length > 0) return true;
-  if (/(.){4,}/.test(value)) return true;
-  if (/\b(sender'?s reply|reply:|final message:)\b/i.test(value)) return true;
-
-  // Check if it's just the goal text being echoed back
-  const lower = value.toLowerCase();
-  const goalEchoPatterns = [
-    'just say something interesting',
-    'say something interesting',
-    'goal:',
-    'your goal is',
-  ];
-  if (goalEchoPatterns.some(p => lower.includes(p))) return true;
-
+function isGibberishText(text) {
+  if (!text || text.length < 5) return true;
+  
+  const normalized = text.toLowerCase();
+  
+  // Check for excessive consonant clustering (gibberish indicator)
+  const consonantClusters = normalized.match(/[bcdfghjklmnpqrstvwxz]{4,}/g);
+  if (consonantClusters && consonantClusters.length > 1) return true;
+  
+  // Check for random character repetition patterns
+  if (/(.)\1{4,}/.test(normalized)) return true;
+  
+  // Check for unbalanced brackets/quotes
+  const openBrackets = (normalized.match(/\(/g) || []).length;
+  const closeBrackets = (normalized.match(/\)/g) || []).length;
+  if (openBrackets !== closeBrackets) return false; // Mismatched brackets ok
+  
+  // Word count check - gibberish often has very few real words
+  const words = text.split(/\s+/).filter(w => w.length > 1);
+  if (words.length < 2) return true;
+  
+  // Check if average word length is suspicious (too long = likely gibberish)
+  const avgWordLength = words.reduce((sum, w) => sum + w.length, 0) / words.length;
+  if (avgWordLength > 15) return true;
+  
   return false;
 }
 
@@ -545,45 +543,127 @@ export async function generateOutreachMessage({ username, goal, tone, query, pla
     throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
   }
 
-  // For replies with chat context, ALWAYS use LLM - never templates
   const hasChatContext = chatContext && chatContext.length > 0;
   const isReply = hasChatContext && chatContext[chatContext.length - 1]?.role !== 'me';
 
   // Build the proper prompt
   const prompt = buildOutreachPrompt({ username, goal, tone, query, platform, chatContext, profileInfo });
 
-  try {
-    const host = await connectLocalLlmHost();
-    // Higher temperature for more variety, longer max tokens for context understanding
-    const generated = sanitizeGeneratedMessage(await host.generate(prompt, hasChatContext ? 200 : 120, 0.85));
+  let lastError = null;
+  const maxRetries = 2;
 
-    if (!generated || looksLikePromptLeak(generated)) {
-      // Only use fallback for cold outreach, not replies
-      if (!isReply) {
-        return composeOutreachMessage({ username, goal, tone, query, chatContext, profileInfo });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const host = await connectLocalLlmHost();
+      // Use higher temp for more natural variety
+      const temperature = 0.9 + (attempt * 0.05); // Increase temp on retries
+      const maxTokens = hasChatContext ? 180 : 100;
+      
+      let generated = await host.generate(prompt, maxTokens, temperature);
+      generated = sanitizeGeneratedMessage(generated);
+
+      // Validate the output
+      if (!generated || generated.length < 3) {
+        lastError = 'Empty or too short output';
+        continue; // Retry
       }
-      // For replies, generate a simple contextual response
-      const lastMsg = chatContext[chatContext.length - 1]?.text?.slice(0, 30) || 'that';
-      return `Thanks for sharing. ${lastMsg ? `About ${lastMsg}... ` : ''}Would love to continue this conversation.`;
-    }
 
-    return generated;
-  } catch (error) {
-    // Only use fallback for cold outreach, not replies
-    if (!isReply) {
-      return composeOutreachMessage({ username, goal, tone, query, chatContext, profileInfo });
+      if (looksLikePromptLeak(generated)) {
+        lastError = 'Prompt leak detected';
+        continue; // Retry
+      }
+
+      // Basic quality check - just ensure it's not gibberish
+      if (isGibberishText(generated)) {
+        lastError = 'Gibberish detected';
+        continue; // Retry
+      }
+
+      // Success - return the generated message
+      return generated;
+
+    } catch (error) {
+      lastError = error.message;
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 500)); // Brief pause before retry
+      }
     }
-    // Simple fallback for replies
-    const lastMsg = chatContext[chatContext.length - 1]?.text?.slice(0, 30) || 'that';
-    return `Thanks for your message about ${lastMsg}. Let's chat more about this.`;
   }
+
+  // All retries failed - throw error instead of using templates
+  // This forces the system to surface the issue rather than send bad messages
+  throw new Error(`Failed to generate message after ${maxRetries + 1} attempts. Last error: ${lastError}. Please try again.`);
 }
 
-export function composeComment({ tone, goal }) {
-  const style = String(tone || 'Casual and brief').trim().toLowerCase();
+// Detect if text is gibberish/hallucinated
+function isGibberishText(text) {
+  if (!text || text.length < 5) return true;
+  
+  const normalized = text.toLowerCase();
+  
+  // Check for excessive consonant clustering (gibberish indicator)
+  const consonantClusters = normalized.match(/[bcdfghjklmnpqrstvwxz]{4,}/g);
+  if (consonantClusters && consonantClusters.length > 1) return true;
+  
+  // Check for random character repetition patterns
+  if (/(.)\1{4,}/.test(normalized)) return true;
+  
+  // Check for unbalanced brackets/quotes
+  const openBrackets = (normalized.match(/\(/g) || []).length;
+  const closeBrackets = (normalized.match(/\)/g) || []).length;
+  if (openBrackets !== closeBrackets) return false; // Mismatched brackets ok
+  
+  // Word count check - gibberish often has very few real words
+  const words = text.split(/\s+/).filter(w => w.length > 1);
+  if (words.length < 2) return true;
+  
+  // Check if average word length is suspicious (too long = likely gibberish)
+  const avgWordLength = words.reduce((sum, w) => sum + w.length, 0) / words.length;
+  if (avgWordLength > 15) return true;
+  
+  return false;
+}
+
+export async function composeComment({ tone, goal, postContent = '' }) {
+  // Use LLM for comment generation instead of templates
+  const style = String(tone || 'Casual and brief').trim();
   const objective = String(goal || 'start a conversation').trim();
-  if (style.includes('brief')) return `Sharp post. ${objective}.`;
-  return `This is well put together. ${objective}.`;
+  
+  const prompt = `Write a natural, brief comment on a social media post.
+
+POST CONTEXT: ${postContent ? postContent.slice(0, 200) : 'A post related to ' + objective}
+YOUR GOAL: ${objective}
+STYLE: ${style}
+
+INSTRUCTIONS:
+- Write 1 short sentence
+- Be genuine and specific
+- NO generic phrases like "great post" or "well said"
+- Actually engage with the content
+- Sound like a real person commenting
+
+STRICT RULES:
+- Return ONLY the comment text - no quotes, no labels
+- 1 sentence max
+- NO hashtags
+
+Write the comment now:`;
+
+  try {
+    const host = await connectLocalLlmHost();
+    let generated = await host.generate(prompt, 80, 0.85);
+    generated = sanitizeGeneratedMessage(generated);
+    
+    if (!generated || isGibberishText(generated)) {
+      // Simple fallback only if LLM fails completely
+      return postContent ? `Interesting perspective on this.` : `Thanks for sharing this.`;
+    }
+    
+    return generated;
+  } catch {
+    // Minimal fallback
+    return postContent ? `Interesting perspective on this.` : `Thanks for sharing this.`;
+  }
 }
 
 export function composePost({ platform, goal, tone, query }) {
@@ -910,7 +990,27 @@ export async function scrapePlatformProfiles(page, platform, maxResults) {
       if (currentPlatform === 'instagram' && /instagram\.com\/[^/]+\/?$/.test(href) && !href.includes('/explore/')) addUnique(output, { title: text, url: href, snippet: text });
       if (currentPlatform === 'twitter' && /x\.com\/[^/]+\/?$/.test(href) && !href.includes('/search')) addUnique(output, { title: text, url: href, snippet: text });
       if (currentPlatform === 'linkedin' && href.includes('/in/')) addUnique(output, { title: text, url: href.split('?')[0], snippet: text });
-      if (currentPlatform === 'facebook' && href.includes('facebook.com') && !href.includes('/share')) addUnique(output, { title: text, url: href, snippet: text });
+      // Facebook: Filter for personal profiles (not pages/groups)
+      if (currentPlatform === 'facebook' && 
+          href.includes('facebook.com') && 
+          !href.includes('/share') && 
+          !href.includes('/pages/') && 
+          !href.includes('/groups/') &&
+          !href.includes('/events/') &&
+          !href.includes('/marketplace/') &&
+          href.match(/facebook\.com\/[^/]+\/?$/)) {
+        // Check if looks like a personal profile (has person's name pattern)
+        const isLikelyProfile = text && 
+          !text.includes('Page') && 
+          !text.includes('Group') && 
+          !text.includes('Event') &&
+          text.length > 1 &&
+          text.length < 60;
+        
+        if (isLikelyProfile) {
+          addUnique(output, { title: text, url: href.split('?')[0], snippet: text, type: 'profile' });
+        }
+      }
       if (currentPlatform === 'gmail' && anchor.closest('[role="main"]')) addUnique(output, { title: text, url: href, snippet: anchor.closest('[role="main"]')?.innerText?.slice(0, 400) || text });
       if (currentPlatform === 'whatsapp' && anchor.closest('[role="grid"]')) addUnique(output, { title: text, url: href, snippet: anchor.closest('[role="grid"]')?.innerText?.slice(0, 400) || text });
       if (output.length >= limit) break;

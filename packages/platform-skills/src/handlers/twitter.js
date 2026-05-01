@@ -263,6 +263,12 @@ export const twitterHandler = {
       };
     }
 
+    // Handle actions that should be delegated to base handler
+    const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results'];
+    if (baseHandlerActions.includes(action)) {
+      return baseHandler.execute({ step, attachedBrowser });
+    }
+
     if (action === 'message_batch') {
       const usernames = (args.usernames || []).slice(0, Math.max(1, Math.min(Number(args.maxResults) || 10, 15)));
       const results = [];
