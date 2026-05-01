@@ -9749,6 +9749,398 @@
         }
       ],
       "createdAt": "2026-05-01T01:26:47.005Z"
+    },
+    {
+      "id": "task_7qe93vtg",
+      "status": "completed",
+      "prompt": "Block Jagadeesh on WhatsApp.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "block_user",
+        "query": "customer follow up",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_rbgkwba5",
+          "prompt": "Block Jagadeesh on WhatsApp."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_7qe93vtg",
+            "objective": "Block Jagadeesh on WhatsApp.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_zc8kcb8y",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Block Jagadeesh on WhatsApp.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "block_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_se92ptup",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Block Jagadeesh on WhatsApp.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "block_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_1kwptw09",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "block_user",
+                "args": {
+                  "prompt": "Block Jagadeesh on WhatsApp.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "block_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete block_user on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_zc8kcb8y",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_zc8kcb8y",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_se92ptup",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_se92ptup",
+          "message": "Opened @Jagadeesh on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_1kwptw09",
+          "label": "whatsapp:block_user"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_1kwptw09",
+          "message": "Completed whatsapp:block_user"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_dahtjv9d",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_dahtjv9d.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 3 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T13:54:21.847Z"
+    },
+    {
+      "id": "task_d34tsw95",
+      "status": "completed",
+      "prompt": "Open the status or updates view in WhatsApp.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "open_status",
+        "query": "customer follow up",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_8xb4lawe",
+          "prompt": "Open the status or updates view in WhatsApp."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_d34tsw95",
+            "objective": "Open the status or updates view in WhatsApp.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_mqr3dueq",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Open the status or updates view in WhatsApp.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "open_status",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_c8i689un",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_status",
+                "args": {
+                  "prompt": "Open the status or updates view in WhatsApp.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "open_status",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_status on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_mqr3dueq",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_mqr3dueq",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_c8i689un",
+          "label": "whatsapp:open_status"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_c8i689un",
+          "message": "Completed whatsapp:open_status"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_hd736fr4",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_hd736fr4.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 2 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T13:55:41.663Z"
+    },
+    {
+      "id": "task_da15llll",
+      "status": "completed",
+      "prompt": "Change the profile photo on WhatsApp. Asset: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "change_profile_photo",
+        "query": "customer follow up",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_e6bkcswu",
+          "prompt": "Change the profile photo on WhatsApp. Asset: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_da15llll",
+            "objective": "Change the profile photo on WhatsApp. Asset: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_cqssxmgr",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Change the profile photo on WhatsApp. Asset: none.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "change_profile_photo",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_jhzxnxdw",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "change_profile_photo",
+                "args": {
+                  "prompt": "Change the profile photo on WhatsApp. Asset: none.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "change_profile_photo",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete change_profile_photo on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_cqssxmgr",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_cqssxmgr",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_jhzxnxdw",
+          "label": "whatsapp:change_profile_photo"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_jhzxnxdw",
+          "message": "Completed whatsapp:change_profile_photo"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_v2rscmki",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_v2rscmki.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 2 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T13:55:59.297Z"
     }
   ],
   "campaigns": [],

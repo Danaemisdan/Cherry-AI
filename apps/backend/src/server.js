@@ -255,6 +255,71 @@ app.get('/campaigns', (_req, res) => {
   res.json([...campaigns.values()]);
 });
 
+// Contact Metrics API
+const contactMetricsCache = new Map();
+
+app.get('/metrics/contacts', async (_req, res) => {
+  try {
+    // Return cached data if available and fresh (< 5 minutes)
+    const cached = contactMetricsCache.get('data');
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+      return res.json(cached.data);
+    }
+
+    // Mock data for now - in production this would come from the agent
+    const metrics = {
+      summary: {
+        totalContacts: 0,
+        totalPlatforms: 0,
+        lastUpdated: Date.now(),
+      },
+      categories: {
+        leads: 0,
+        partners: 0,
+        candidates: 0,
+        customers: 0,
+        network: 0,
+        audience: 0,
+        unknown: 0,
+      },
+      platforms: [
+        { name: 'whatsapp', total: 0, connections: 0, pending: 0 },
+        { name: 'linkedin', total: 0, connections: 0, pending: 0 },
+        { name: 'instagram', total: 0, followers: 0, pending: 0 },
+        { name: 'twitter', total: 0, connections: 0, pending: 0 },
+        { name: 'facebook', total: 0, connections: 0, pending: 0 },
+      ],
+      recentActivity: [],
+      sentiment: { positive: 0, neutral: 0, negative: 0 },
+      status: 'pending_initial_sync',
+      message: 'Run "map_contacts" action on any platform to sync contact data',
+    };
+
+    contactMetricsCache.set('data', { data: metrics, timestamp: Date.now() });
+    res.json(metrics);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/metrics/contacts/refresh', async (req, res) => {
+  const { platform } = req.body || {};
+  
+  try {
+    // Clear cache to force refresh
+    contactMetricsCache.delete('data');
+    
+    // In production, this would trigger the agent to run map_contacts
+    res.json({ 
+      status: 'refresh_requested',
+      platform: platform || 'all',
+      message: `Refresh requested for ${platform || 'all platforms'}. Run map_contacts action to update.`,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 wss.on('connection', (socket, req) => {
   const url = new URL(req.url, 'http://localhost:8787');
   const role = url.searchParams.get('role');

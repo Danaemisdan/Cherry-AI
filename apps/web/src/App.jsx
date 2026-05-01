@@ -50,6 +50,7 @@ function usePlatformData() {
   const [campaigns, setCampaigns] = useState([]);
   const [agentOnline, setAgentOnline] = useState(false);
   const [agentState, setAgentState] = useState(null);
+  const [contactMetrics, setContactMetrics] = useState(null);
 
   async function refreshTasks() {
     const response = await fetch(`${backendUrl}/tasks`);
@@ -71,10 +72,21 @@ function usePlatformData() {
     setAgentOnline(Boolean(current?.online));
   }
 
+  async function refreshContactMetrics() {
+    try {
+      const response = await fetch(`${backendUrl}/metrics/contacts`);
+      const payload = await response.json();
+      setContactMetrics(payload);
+    } catch {
+      // Silently fail - metrics not critical
+    }
+  }
+
   useEffect(() => {
     refreshTasks().catch(() => {});
     refreshCampaigns().catch(() => {});
     refreshAgents().catch(() => {});
+    refreshContactMetrics().catch(() => {});
 
     const socket = new WebSocket('ws://localhost:8787/ws?role=web');
     socket.onmessage = (event) => {
@@ -94,6 +106,7 @@ function usePlatformData() {
       refreshTasks().catch(() => {});
       refreshCampaigns().catch(() => {});
       refreshAgents().catch(() => {});
+      refreshContactMetrics().catch(() => {});
     }, 4000);
 
     return () => {
@@ -106,9 +119,11 @@ function usePlatformData() {
     agentState,
     agentOnline,
     campaigns,
+    contactMetrics,
     events,
     refreshAgents,
     refreshCampaigns,
+    refreshContactMetrics,
     refreshTasks,
     tasks,
   };
@@ -139,6 +154,7 @@ function Shell({ agentOnline, agentState, children }) {
 
         <nav className="mt-8">
           <NavLink to="/">Workspace</NavLink>
+          <NavLink to="/dashboard">Dashboard</NavLink>
           <NavLink to="/campaigns">Campaigns</NavLink>
           <NavLink to="/pairing">Pairing</NavLink>
           <NavLink to="/history">History</NavLink>
@@ -890,6 +906,146 @@ function Campaigns({ campaigns, refreshCampaigns }) {
   );
 }
 
+function Dashboard({ contactMetrics, refreshContactMetrics }) {
+  const metrics = contactMetrics || {};
+  const summary = metrics.summary || {};
+  const categories = metrics.categories || {};
+  const platforms = metrics.platforms || [];
+  const sentiment = metrics.sentiment || {};
+  const recentActivity = metrics.recentActivity || [];
+
+  return (
+    <section className="space-y-12">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-4xl font-black text-white tracking-tighter">Contact Intelligence</h2>
+          <p className="text-[12px] text-zinc-600 font-black uppercase tracking-[0.4em] mt-4">
+            Cross-platform contact mapping and analytics
+          </p>
+        </div>
+        <button 
+          onClick={() => refreshContactMetrics()}
+          className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+        >
+          Refresh Data
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-6">
+        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
+          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Total Contacts</p>
+          <p className="text-5xl font-black text-white mt-4">{summary.totalContacts || 0}</p>
+        </div>
+        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
+          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Platforms</p>
+          <p className="text-5xl font-black text-white mt-4">{summary.totalPlatforms || 0}</p>
+        </div>
+        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
+          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Leads</p>
+          <p className="text-5xl font-black text-green-500 mt-4">{categories.leads || 0}</p>
+        </div>
+        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
+          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Active Chats</p>
+          <p className="text-5xl font-black text-blue-500 mt-4">
+            {(recentActivity || []).length}
+          </p>
+        </div>
+      </div>
+
+      {/* Platform Breakdown */}
+      <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
+        <h3 className="text-2xl font-black text-white mb-8">Platform Breakdown</h3>
+        <div className="grid grid-cols-5 gap-6">
+          {platforms.map((platform) => (
+            <div key={platform.name} className="p-6 bg-zinc-900/40 rounded-2xl border border-zinc-800 text-center">
+              <p className="text-lg font-bold text-white capitalize">{platform.name}</p>
+              <p className="text-3xl font-black text-white mt-2">{platform.total || 0}</p>
+              <div className="mt-3 space-y-1 text-xs text-zinc-500">
+                <p>{platform.connections || platform.followers || 0} connections</p>
+                {platform.pending > 0 && <p className="text-yellow-500">{platform.pending} pending</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Categories & Sentiment */}
+      <div className="grid grid-cols-2 gap-8">
+        <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
+          <h3 className="text-2xl font-black text-white mb-8">Contact Categories</h3>
+          <div className="space-y-4">
+            {Object.entries(categories).map(([name, count]) => (
+              <div key={name} className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+                <span className="text-zinc-400 capitalize font-bold">{name}</span>
+                <span className="text-2xl font-black text-white">{count || 0}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
+          <h3 className="text-2xl font-black text-white mb-8">Sentiment Analysis</h3>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+              <span className="text-green-500 font-bold">Positive</span>
+              <span className="text-2xl font-black text-white">{sentiment.positive || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+              <span className="text-zinc-400 font-bold">Neutral</span>
+              <span className="text-2xl font-black text-white">{sentiment.neutral || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+              <span className="text-red-500 font-bold">Negative</span>
+              <span className="text-2xl font-black text-white">{sentiment.negative || 0}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
+        <h3 className="text-2xl font-black text-white mb-8">Recent Activity</h3>
+        {recentActivity.length > 0 ? (
+          <div className="space-y-4">
+            {recentActivity.slice(0, 10).map((activity, idx) => (
+              <div key={idx} className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+                <div>
+                  <p className="text-white font-bold">{activity.name}</p>
+                  <p className="text-xs text-zinc-500 capitalize">{activity.platform} • {activity.category}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-zinc-600">
+                    {activity.lastMessageAt ? new Date(activity.lastMessageAt).toLocaleDateString() : 'No recent activity'}
+                  </p>
+                  {activity.potentialUse && (
+                    <span className="text-xs text-zinc-500">{activity.potentialUse}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-zinc-600">No recent activity. Run "map_contacts" to sync data.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Instructions */}
+      {metrics.status === 'pending_initial_sync' && (
+        <div className="p-8 bg-yellow-500/10 border border-yellow-500/30 rounded-[2rem]">
+          <p className="text-yellow-500 font-bold text-lg">Initial Setup Required</p>
+          <p className="text-zinc-400 mt-2">
+            To populate your dashboard, run the "map_contacts" action on any platform. 
+            This will extract your contacts, conversations, and build intelligence.
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Pairing() {
   const [pairing, setPairing] = useState(null);
 
@@ -1097,13 +1253,39 @@ function SearchIcon() {
   );
 }
 
+export function usePlatformData() {
+  return { 
+    events, 
+    tasks, 
+    campaigns, 
+    agentOnline, 
+    agentState, 
+    contactMetrics, 
+    refreshTasks, 
+    refreshCampaigns, 
+    refreshAgents, 
+    refreshContactMetrics 
+  };
+}
+
 export function App() {
-  const { agentOnline, agentState, campaigns, events, refreshCampaigns, refreshTasks, tasks } = usePlatformData();
+  const { 
+    agentOnline, 
+    agentState, 
+    campaigns, 
+    events, 
+    refreshCampaigns, 
+    refreshTasks, 
+    tasks, 
+    contactMetrics, 
+    refreshContactMetrics 
+  } = usePlatformData();
 
   return (
     <Shell agentOnline={agentOnline} agentState={agentState}>
       <Routes>
         <Route path="/" element={<Workspace agentOnline={agentOnline} events={events} refreshTasks={refreshTasks} tasks={tasks} />} />
+        <Route path="/dashboard" element={<Dashboard contactMetrics={contactMetrics} refreshContactMetrics={refreshContactMetrics} />} />
         <Route path="/campaigns" element={<Campaigns campaigns={campaigns} refreshCampaigns={refreshCampaigns} />} />
         <Route path="/pairing" element={<Pairing />} />
         <Route path="/history" element={<History events={events} tasks={tasks} />} />

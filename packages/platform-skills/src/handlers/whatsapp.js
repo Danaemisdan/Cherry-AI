@@ -355,7 +355,8 @@ async function waitForSearchResults(page, username) {
 }
 
 async function openWhatsAppPrimaryMenu(page) {
-  const opened = await tryClick(page, [
+  // Try multiple menu selectors - WhatsApp Web has different layouts
+  const menuSelectors = [
     'header [aria-label="Menu"]',
     'header [aria-label*="menu"]',
     'header button[title*="Menu"]',
@@ -364,36 +365,114 @@ async function openWhatsAppPrimaryMenu(page) {
     'button[aria-label*="menu"]',
     'div[role="button"][aria-label*="menu"]',
     'span[data-icon="menu"]',
-  ]);
+    '[data-testid="menu-bar-menu"]',
+    '[data-testid="toolbar-menu"]',
+    'aside header button',
+    'header button',
+  ];
 
-  if (!opened) {
-    throw new Error('Could not open the WhatsApp menu');
+  for (const selector of menuSelectors) {
+    try {
+      const locator = page.locator(selector).first();
+      if (await locator.count() > 0) {
+        await locator.click({ timeout: 2000 });
+        await page.waitForTimeout(800);
+        // Check if menu opened by looking for menu items
+        const menuItem = await page.locator('div[role="menuitem"], [role="menu"] div').first();
+        if (await menuItem.count() > 0) {
+          return true;
+        }
+      }
+    } catch { /* try next */ }
   }
 
-  await page.waitForTimeout(500).catch(() => {});
+  throw new Error('Could not open the WhatsApp menu');
 }
 
 async function clickWhatsAppMenuItem(page, labels = []) {
+  // Try multiple selector patterns for menu items
   const selectors = [
     'div[role="menuitem"]',
+    '[data-testid="menu-item"]',
+    '[role="menu"] div',
+    '[role="menu"] button',
+    'div[class*="menu"] div',
+    'li',
     'button',
     'div[role="button"]',
-    'li',
-    'span',
   ];
+
+  // First try exact text match
+  for (const selector of selectors) {
+    for (const label of labels) {
+      try {
+        // Try exact text
+        let locator = page.locator(`${selector}:has-text("${label}")`).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 2000 });
+          await page.waitForTimeout(600);
+          return true;
+        }
+
+        // Try case-insensitive
+        locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 2000 });
+          await page.waitForTimeout(600);
+          return true;
+        }
+      } catch { /* continue */ }
+    }
+  }
+
+  // Fallback to clickByText
   const clicked = await clickByText(page, selectors, labels);
   if (!clicked) {
     throw new Error(`Could not find a WhatsApp menu item matching: ${labels.join(', ')}`);
   }
-  await page.waitForTimeout(500).catch(() => {});
+  await page.waitForTimeout(600).catch(() => {});
 }
 
 async function confirmDialogAction(page, labels = []) {
+  // Wait for dialog to appear
+  await page.waitForTimeout(500);
+
+  // Try to find confirmation button
+  const dialogSelectors = [
+    '[role="dialog"] button',
+    '[data-testid*="dialog"] button',
+    'div[role="button"]',
+    'button',
+  ];
+
+  for (const selector of dialogSelectors) {
+    for (const label of labels) {
+      try {
+        // Try exact text
+        let locator = page.locator(`${selector}:has-text("${label}")`).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 3000 });
+          await page.waitForTimeout(1000);
+          return true;
+        }
+
+        // Try case-insensitive
+        locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
+        if (await locator.count() > 0 && await locator.isVisible()) {
+          await locator.click({ timeout: 3000 });
+          await page.waitForTimeout(1000);
+          return true;
+        }
+      } catch { /* continue */ }
+    }
+  }
+
+  // Fallback to clickByText
   const clicked = await clickByText(page, ['button', 'div[role="button"]', 'span'], labels);
   if (!clicked) {
     throw new Error(`Could not confirm WhatsApp action: ${labels.join(', ')}`);
   }
-  await page.waitForTimeout(700).catch(() => {});
+  await page.waitForTimeout(1000).catch(() => {});
 }
 
 async function openStatusView(page) {
@@ -542,20 +621,85 @@ export const whatsappHandler = {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.whatsapp, { platform: 'whatsapp' });
       await openProfileSettings(page);
 
-      const clickedEdit = await clickByText(page, ['button', 'div[role="button"]', 'span'], ['Profile photo', 'Edit profile photo', 'Edit photo']);
-      if (!clickedEdit && step.args.attachmentPath) {
-        await tryClick(page, [
-          'button[aria-label*="Profile photo"]',
-          'div[role="button"][aria-label*="Profile photo"]',
-          'span[data-icon="camera"]',
-        ]);
+      // Try multiple selectors for profile photo edit
+      let clickedEdit = false;
+      const photoSelectors = [
+        'button[aria-label*="Profile photo"]',
+        'div[role="button"][aria-label*="Profile photo"]',
+        'span[data-icon="camera"]',
+        '[data-testid*="profile-photo"]',
+        '[data-testid*="camera"]',
+        'div:has(> img):has(> span[data-icon="camera"])',
+      ];
+
+      // Try text-based click first
+      clickedEdit = await clickByText(page, ['button', 'div[role="button"]', 'span'], ['Profile photo', 'Edit profile photo', 'Edit photo', 'Change photo']);
+
+      // If that fails, try selectors
+      if (!clickedEdit) {
+        for (const selector of photoSelectors) {
+          try {
+            const locator = page.locator(selector).first();
+            if (await locator.count() > 0 && await locator.isVisible()) {
+              await locator.click({ timeout: 2000 });
+              clickedEdit = true;
+              await page.waitForTimeout(800);
+              break;
+            }
+          } catch { /* continue */ }
+        }
       }
 
+      // Handle file upload if attachment provided
       if (step.args.attachmentPath) {
-        await uploadIntoVisibleFileInput(page, step.args.attachmentPath);
+        await page.waitForTimeout(1000);
+
+        // Look for file input or upload button
+        const fileSelectors = [
+          'input[type="file"]',
+          'input[accept*="image"]',
+          '[data-testid="file-picker"]',
+          'button:has-text("Upload")',
+          'button:has-text("Choose")',
+        ];
+
+        let uploaded = false;
+        for (const selector of fileSelectors) {
+          try {
+            const locator = page.locator(selector).first();
+            if (await locator.count() > 0) {
+              const isFileInput = await locator.evaluate(el => el.tagName === 'INPUT').catch(() => false);
+              if (isFileInput) {
+                await locator.setInputFiles(step.args.attachmentPath);
+                uploaded = true;
+              } else {
+                await locator.click();
+                await page.waitForTimeout(500);
+                // Try to find file input after click
+                const fileInput = await page.locator('input[type="file"]').first();
+                if (await fileInput.count() > 0) {
+                  await fileInput.setInputFiles(step.args.attachmentPath);
+                  uploaded = true;
+                }
+              }
+              break;
+            }
+          } catch { /* continue */ }
+        }
+
+        if (!uploaded) {
+          // Fallback to existing upload function
+          await uploadIntoVisibleFileInput(page, step.args.attachmentPath);
+        }
+
+        // Wait for upload and confirm
+        await page.waitForTimeout(2000);
+
+        // Try to confirm/save
+        await confirmDialogAction(page, ['Save', 'OK', 'Done', 'Upload']);
       }
 
-      return { status: 'ready', summary: summarizeAction('whatsapp', step), data: await pageSnapshot(page) };
+      return { status: 'completed', summary: summarizeAction('whatsapp', step), data: await pageSnapshot(page) };
     }
 
     if (step.action === 'draft_message') {
@@ -605,9 +749,43 @@ export const whatsappHandler = {
 
     if (step.action === 'block_user') {
       const page = await openTarget(attachedBrowser, step.args.username);
-      await openWhatsAppPrimaryMenu(page);
-      await clickWhatsAppMenuItem(page, ['Block']);
-      await confirmDialogAction(page, ['Block']);
+
+      // Wait for conversation to be fully loaded
+      await page.waitForTimeout(1000);
+
+      // Try to open contact info menu (different from primary menu)
+      let openedMenu = false;
+      const contactMenuSelectors = [
+        'header button[title*="info"]',
+        'header [aria-label*="info"]',
+        'header [data-testid*="contact"]',
+        'header [data-testid="conversation-info-header"]',
+        'header button',
+      ];
+
+      for (const selector of contactMenuSelectors) {
+        try {
+          const locator = page.locator(selector).first();
+          if (await locator.count() > 0) {
+            await locator.click({ timeout: 2000 });
+            await page.waitForTimeout(800);
+            openedMenu = true;
+            break;
+          }
+        } catch { /* continue */ }
+      }
+
+      // Try primary menu as fallback
+      if (!openedMenu) {
+        await openWhatsAppPrimaryMenu(page);
+      }
+
+      // Click Block option
+      await clickWhatsAppMenuItem(page, ['Block', 'Block contact']);
+
+      // Confirm the block action
+      await confirmDialogAction(page, ['Block', 'Block contact', 'Yes']);
+
       return { status: 'completed', summary: summarizeAction('whatsapp', step), data: await pageSnapshot(page) };
     }
 
