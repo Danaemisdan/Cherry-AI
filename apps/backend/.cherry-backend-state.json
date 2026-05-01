@@ -7,8 +7,8 @@
       "os": "macos",
       "agentVersion": "0.1.0",
       "online": false,
-      "browserAttached": true,
-      "tabs": 2,
+      "browserAttached": false,
+      "tabs": 0,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -9429,6 +9429,326 @@
         }
       ],
       "createdAt": "2026-04-30T22:31:34.627Z"
+    },
+    {
+      "id": "task_vsz90je3",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Just say something interesting to him",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_cyghsoni",
+          "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_vsz90je3",
+            "objective": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_p1t22467",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_2vqa3swd",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_kfhh4fe4",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_wqp3tkg4",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Just say something interesting to him. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_p1t22467",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_p1t22467",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_2vqa3swd",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_1_2vqa3swd",
+          "error": "Please log in to LinkedIn",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Please log in to LinkedIn"
+        }
+      ],
+      "createdAt": "2026-05-01T01:13:07.495Z"
+    },
+    {
+      "id": "task_soz4thv1",
+      "status": "completed",
+      "prompt": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_post",
+        "query": "",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Just say something interesting to him",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_ezzc3oay",
+          "prompt": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_soz4thv1",
+            "objective": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_hreb8cas",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none.",
+                  "platform": "linkedin",
+                  "query": "",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_post",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_06qoklsg",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "compose_post",
+                "args": {
+                  "prompt": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none.",
+                  "platform": "linkedin",
+                  "query": "",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_post",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete compose_post on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_wjan199o",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "publish_post",
+                "args": {
+                  "prompt": "Automatically create a post on LinkedIn. Content goal: Just say something interesting to him. Tone: Casual and brief. Asset: none.",
+                  "platform": "linkedin",
+                  "query": "",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say something interesting to him",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_post",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete publish_post on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_hreb8cas",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_hreb8cas",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_06qoklsg",
+          "label": "linkedin:compose_post"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_06qoklsg",
+          "message": "Opened linkedin composer"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_wjan199o",
+          "label": "linkedin:publish_post"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_wjan199o",
+          "message": "Submitted linkedin post"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_xtqnf8ev",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_xtqnf8ev.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 3 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T01:26:47.005Z"
     }
   ],
   "campaigns": [],

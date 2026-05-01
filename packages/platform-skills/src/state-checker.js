@@ -21,11 +21,28 @@ export async function checkLoginState(page, platform) {
     },
     linkedin: async () => {
       try {
-        await page.waitForSelector('.global-nav__me, .feed-identity-module, #global-nav', { timeout: 5000 });
-        return { loggedIn: true, ready: true };
+        // Multiple checks for logged-in state - some may fail due to lazy loading
+        const checks = await Promise.allSettled([
+          page.waitForSelector('.global-nav__me, .feed-identity-module, #global-nav, nav.global-nav', { timeout: 3000 }),
+          page.waitForSelector('[data-testid="global-nav__me"], .profile-rail-card, .identity-hub', { timeout: 3000 }),
+          page.waitForSelector('a[href*="/in/"], button[aria-label*="profile"]', { timeout: 3000 }),
+        ]);
+        const anySuccess = checks.some(c => c.status === 'fulfilled');
+        if (anySuccess) return { loggedIn: true, ready: true };
+
+        // Fallback: check if we're on a feed/profile page without login prompts
+        const url = page.url();
+        const bodyText = await page.locator('body').innerText().catch(() => '');
+        const hasFeedContent = bodyText.includes('feed') || bodyText.includes('LinkedIn') || url.includes('/feed/') || url.includes('/in/');
+        const hasLoginPrompt = bodyText.includes('Sign in') || bodyText.includes('Join now') || await page.locator('.nav__button-secondary, a:has-text("Sign in"), button:has-text("Sign in")').count() > 0;
+
+        if (hasFeedContent && !hasLoginPrompt) {
+          return { loggedIn: true, ready: true };
+        }
+
+        return { loggedIn: false, ready: false, needsLogin: hasLoginPrompt, message: 'Please log in to LinkedIn' };
       } catch {
-        const hasLoginBtn = await page.locator('.nav__button-secondary, a:has-text("Sign in")').count() > 0;
-        return { loggedIn: false, ready: false, needsLogin: hasLoginBtn, message: 'Please log in to LinkedIn' };
+        return { loggedIn: false, ready: false, needsLogin: true, message: 'Please log in to LinkedIn' };
       }
     },
     facebook: async () => {

@@ -269,6 +269,13 @@ async function clickMessagesNav(tabId) {
   await StealthEngine.sleep(2500);
 }
 
+async function openInstagramInbox(tabId) {
+  await StealthEngine.applySpoofing(tabId);
+  await CDPController.sendCommand(tabId, 'Page.navigate', { url: INSTAGRAM_INBOX_URL });
+  await StealthEngine.waitForPageLoad(tabId);
+  await StealthEngine.sleep(3500);
+}
+
 async function clickComposeMessage(tabId) {
   const composeEval = await evalOnPage(tabId, `
     (() => {
@@ -518,7 +525,7 @@ async function extractProfileInfo(tabId, username) {
 }
 
 async function openConversationFromCurrentContext(tabId, username) {
-  await clickMessagesNav(tabId);
+  await openInstagramInbox(tabId);
   await clickComposeMessage(tabId);
 
   const bestMatch = await searchMessagesRecipient(tabId, username);

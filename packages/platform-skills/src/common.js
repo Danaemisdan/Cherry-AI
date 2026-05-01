@@ -252,44 +252,89 @@ let llmHostPromise = null;
 let llmHost = null;
 let llmMessageId = 0;
 
-function buildOutreachPrompt({ username, goal, tone, query, platform, chatContext = [] }) {
+function buildOutreachPrompt({ username, goal, tone, query, platform, chatContext = [], profileInfo = {} }) {
   const recipient = normalizeUsername(username) || 'the recipient';
   const objective = String(goal || 'start a useful conversation').trim();
   const context = String(query || '').trim();
   const style = String(tone || 'Casual and brief').trim() || 'Casual and brief';
 
-  // Build conversation history section
-  const chatHistorySection = chatContext.length > 0
-    ? `\nPrevious conversation history (read this to understand the context, but do NOT copy these messages verbatim):\n${chatContext.slice(-5).map((msg, i) => `${i + 1}. ${msg.role === 'me' ? 'Me' : 'Them'}: ${msg.text.slice(0, 200)}${msg.text.length > 200 ? '...' : ''}`).join('\n')}`
-    : '';
+  // Determine if this is a reply or cold outreach
+  const hasChatContext = chatContext && chatContext.length > 0;
+  const lastMessage = hasChatContext ? chatContext[chatContext.length - 1] : null;
+  const isReply = lastMessage && lastMessage.role !== 'me';
 
-  return `You are writing a natural, human-like ${platform} message to ${recipient}.
+  // Build conversation history section - better formatting
+  let chatHistorySection = '';
+  if (hasChatContext) {
+    const recentMessages = chatContext.slice(-6);
+    chatHistorySection = `\n\nCONVERSATION HISTORY (most recent messages):\n${recentMessages.map((msg, i) => {
+      const role = msg.role === 'me' ? 'Me' : 'Them';
+      const text = msg.text?.slice(0, 250) || '';
+      return `${role}: "${text}${msg.text?.length > 250 ? '...' : ''}"`;
+    }).join('\n')}`;
+  }
 
-YOUR TASK: Write ONE direct message that achieves this goal: "${objective}"
+  // Profile info section
+  let profileSection = '';
+  if (profileInfo && (profileInfo.bio || profileInfo.recentPost)) {
+    profileSection = `\n\nRECIPIENT PROFILE INFO:\n${profileInfo.bio ? `Bio: ${profileInfo.bio.slice(0, 100)}` : ''}${profileInfo.recentPost ? `\nRecent post: ${profileInfo.recentPost.slice(0, 100)}` : ''}`;
+  }
 
-IMPORTANT - HOW TO WRITE THE MESSAGE:
-- The "Goal" above is your INTENT, not the message text. DO NOT copy it word-for-word.
-- Instead, interpret the goal naturally and write a conversational message.
-- Use the conversation history below to understand context and reply appropriately.
-- Write as if you're texting a friend or colleague - casual, natural, conversational.
-- 1-2 short sentences maximum. Be brief.
-- Sound like a real person, not a sales bot or template.
+  // Different instructions based on reply vs cold outreach
+  if (isReply) {
+    return `You are replying to a conversation with ${recipient} on ${platform}.
 
-TONE TO USE: ${style}
-${context ? `KEYWORDS/CONTEXT TO INCLUDE: ${context}` : ''}${chatHistorySection}
+YOUR TASK: Write a natural, conversational reply to their last message.
+
+CONTEXT:${chatHistorySection}
+
+INSTRUCTIONS FOR REPLYING:
+- Read the conversation history carefully
+- Reply naturally to what they said in their LAST message
+- Use the SAME LANGUAGE they used (English, Hindi, Telugu, Tinglish, etc.)
+- Be conversational - like texting a friend
+- Reference their specific points briefly, don't just say "that's interesting"
+- Keep it 1-2 short sentences
+- If they asked a question, answer it or acknowledge it
+- Match their energy and tone
+- NO generic phrases like "Good point about [quote]" or "Interesting - [quote]"
+- Instead, actually respond to the substance of what they said
+
+STYLE: ${style}
 
 STRICT RULES:
-- Return ONLY the final message text - no labels, no quotes around it, no "Final message:" prefix
-- DO NOT copy the goal text directly into the message
-- DO NOT start with fragments like "Him about" or "Her to" or "Tell him" - write complete sentences
-- DO NOT use words like "u" instead of "you" or "r" instead of "are" - write proper English
-- DO NOT write "Sender's reply" or roleplay scenarios
-- DO NOT invent facts about the recipient you don't know
-- DO NOT use multiple emojis (0-1 max if natural)
-- DO NOT add hashtags
-- DO NOT write multiple versions or alternatives
-- If the goal is sales/outreach, be genuine and specific - not generic fluff
-- Respond naturally to the conversation flow if there's chat history above
+- Return ONLY the reply message - no labels, no quotes, no explanations
+- Write in the language of the conversation
+- Sound like a real person texting, not a bot
+- 1-2 sentences max
+- NO hashtags
+- Max 1 emoji if it fits naturally
+
+Write your reply now:`;
+  }
+
+  // Cold outreach prompt
+  return `You are writing an initial message to ${recipient} on ${platform}.
+
+YOUR GOAL: ${objective}
+${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
+
+INSTRUCTIONS:
+- Write a natural, friendly first message
+- Be genuine and specific - avoid generic fluff like "I came across your profile"
+- 1-2 short sentences
+- Sound like a real person, not a sales template
+- NO "Hey [name], I came across your profile and..." - that's too common
+- Instead, be direct and natural
+
+STYLE: ${style}
+
+STRICT RULES:
+- Return ONLY the message text - no labels, no quotes
+- Write proper English (no "u" for "you")
+- NO hashtags
+- Max 1 emoji
+- 1-2 sentences max
 
 Write the message now:`;
 }
@@ -359,20 +404,29 @@ function isLowQualityOutreachMessage(text) {
   const value = String(text || '').trim();
   if (!value) return true;
 
+  // Allow longer messages for proper context (was 220, now 350)
+  if (value.length > 350) return true;
+  // Allow up to 3 sentences
+  const sentenceParts = value.split(/[.!?]+/).map(p => p.trim()).filter(Boolean);
+  if (sentenceParts.length > 3) return true;
+
   const emojiMatches = value.match(/[\p{Extended_Pictographic}]/gu) || [];
   const hashtagMatches = value.match(/#[\p{L}\p{N}_]+/gu) || [];
-  const sentenceParts = value
-    .split(/[.!?]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
 
-  if (value.length > 220) return true;
-  if (sentenceParts.length > 2) return true;
-  if (emojiMatches.length > 1) return true;
+  if (emojiMatches.length > 2) return true;
   if (hashtagMatches.length > 0) return true;
-  if (/(.)\1{4,}/.test(value)) return true;
-  if (/\b(sender'?s reply|reply)\b/i.test(value)) return true;
-  if (/\b(let'?s go check it out together|we'?re all ears|stay tuned)\b/i.test(value)) return true;
+  if (/(.){4,}/.test(value)) return true;
+  if (/\b(sender'?s reply|reply:|final message:)\b/i.test(value)) return true;
+
+  // Check if it's just the goal text being echoed back
+  const lower = value.toLowerCase();
+  const goalEchoPatterns = [
+    'just say something interesting',
+    'say something interesting',
+    'goal:',
+    'your goal is',
+  ];
+  if (goalEchoPatterns.some(p => lower.includes(p))) return true;
 
   return false;
 }
@@ -486,23 +540,42 @@ async function connectLocalLlmHost() {
   return llmHostPromise;
 }
 
-export async function generateOutreachMessage({ username, goal, tone, query, platform = 'social', chatContext = [] }) {
+export async function generateOutreachMessage({ username, goal, tone, query, platform = 'social', chatContext = [], profileInfo = {} }) {
   if (isBlockedOutreachGoal(`${goal || ''} ${query || ''}`)) {
     throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
   }
 
-  const fallback = composeOutreachMessage({ username, goal, tone, query, chatContext });
-  const prompt = buildOutreachPrompt({ username, goal, tone, query, platform, chatContext });
+  // For replies with chat context, ALWAYS use LLM - never templates
+  const hasChatContext = chatContext && chatContext.length > 0;
+  const isReply = hasChatContext && chatContext[chatContext.length - 1]?.role !== 'me';
+
+  // Build the proper prompt
+  const prompt = buildOutreachPrompt({ username, goal, tone, query, platform, chatContext, profileInfo });
 
   try {
     const host = await connectLocalLlmHost();
-    const generated = sanitizeGeneratedMessage(await host.generate(prompt, 120, 0.8));
-    if (!generated || looksLikePromptLeak(generated) || isLowQualityOutreachMessage(generated)) {
-      return fallback;
+    // Higher temperature for more variety, longer max tokens for context understanding
+    const generated = sanitizeGeneratedMessage(await host.generate(prompt, hasChatContext ? 200 : 120, 0.85));
+
+    if (!generated || looksLikePromptLeak(generated)) {
+      // Only use fallback for cold outreach, not replies
+      if (!isReply) {
+        return composeOutreachMessage({ username, goal, tone, query, chatContext, profileInfo });
+      }
+      // For replies, generate a simple contextual response
+      const lastMsg = chatContext[chatContext.length - 1]?.text?.slice(0, 30) || 'that';
+      return `Thanks for sharing. ${lastMsg ? `About ${lastMsg}... ` : ''}Would love to continue this conversation.`;
     }
+
     return generated;
-  } catch {
-    return fallback;
+  } catch (error) {
+    // Only use fallback for cold outreach, not replies
+    if (!isReply) {
+      return composeOutreachMessage({ username, goal, tone, query, chatContext, profileInfo });
+    }
+    // Simple fallback for replies
+    const lastMsg = chatContext[chatContext.length - 1]?.text?.slice(0, 30) || 'that';
+    return `Thanks for your message about ${lastMsg}. Let's chat more about this.`;
   }
 }
 
@@ -643,18 +716,52 @@ export async function clickByText(page, selectors, labels = []) {
   return false;
 }
 
-export async function fillEditable(page, selectors = [], value = '') {
+export async function fillEditable(page, selectors = [], value = '', options = {}) {
+  const { humanLike = true, typingSpeed = 'fast' } = options;
+
   for (const selector of selectors) {
     const locator = page.locator(selector).first();
     if (await locator.count().catch(() => 0)) {
-      await locator.click({ timeout: 3000 }).catch(() => {});
-      const tagName = await locator.evaluate((element) => element.tagName.toLowerCase()).catch(() => '');
-      const isInputLike = tagName === 'input' || tagName === 'textarea';
-      const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+      await locator.click();
+      await page.waitForTimeout(100);
 
-      if (isInputLike) {
-        await locator.fill('').catch(() => {});
-        await locator.fill(value).catch(() => {});
+      if (humanLike && value.length > 10) {
+        // Human-like typing with variable speed and occasional mistakes
+        const chars = value.split('');
+        let typed = '';
+
+        for (let i = 0; i < chars.length; i++) {
+          const char = chars[i];
+
+          // Variable delay based on typing speed
+          let delay;
+          if (typingSpeed === 'fast') {
+            delay = Math.random() * 30 + 10; // 10-40ms
+          } else if (typingSpeed === 'normal') {
+            delay = Math.random() * 80 + 40; // 40-120ms
+          } else {
+            delay = Math.random() * 150 + 80; // 80-230ms
+          }
+
+          // Occasionally pause longer (thinking)
+          if (Math.random() < 0.05) {
+            delay += Math.random() * 200 + 100;
+          }
+
+          // Very rare typo and backspace (1% chance)
+          if (Math.random() < 0.01 && i > 3 && /[a-z]/i.test(char)) {
+            // Type wrong character
+            const wrongChar = String.fromCharCode(char.charCodeAt(0) + (Math.random() < 0.5 ? 1 : -1));
+            await locator.type(wrongChar, { delay: delay / 2 });
+            await page.waitForTimeout(delay);
+            // Backspace it
+            await locator.press('Backspace');
+            await page.waitForTimeout(delay);
+          }
+
+          await locator.type(char, { delay });
+          typed += char;
+        }
       } else {
         await page.keyboard.press(`${modifier}+a`).catch(() => {});
         await page.keyboard.press('Backspace').catch(() => {});
@@ -671,9 +778,56 @@ export async function fillEditable(page, selectors = [], value = '') {
   return { ok: false, selector: '' };
 }
 
-export async function submitComposer(page, selectors = [], labels = []) {
-  if (await tryClick(page, selectors)) return true;
-  return clickByText(page, ['button', 'div[role="button"]', 'span'], labels);
+export async function submitComposer(page, selectors = [], labels = [], options = {}) {
+  const { waitForEnabled = true, timeout = 5000 } = options;
+
+  // Platform-specific button selectors if none provided
+  const defaultSelectors = [
+    'button[type="submit"]:not([disabled])',
+    'button:has-text("Post"):not([disabled])',
+    'button:has-text("Send"):not([disabled])',
+    'button:has-text("Message"):not([disabled])',
+    'div[role="button"]:has-text("Post"):not([aria-disabled="true"])',
+    'div[role="button"]:has-text("Send"):not([aria-disabled="true"])',
+    '[data-testid="tweetButtonInline"]:not([disabled])',
+    '[data-testid="tweetButton"]:not([disabled])',
+    '[data-testid="send-button"]:not([disabled])',
+    '[aria-label*="Post"]:not([disabled])',
+    '[aria-label*="Send"]:not([disabled])',
+  ];
+
+  const allSelectors = [...selectors, ...defaultSelectors];
+
+  // Try clicking by selector first
+  for (const selector of allSelectors) {
+    try {
+      const locator = page.locator(selector).first();
+      if (await locator.count().catch(() => 0)) {
+        // Wait for button to be enabled if needed
+        if (waitForEnabled) {
+          await locator.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+        }
+        await locator.click({ timeout: 3000 });
+        await page.waitForTimeout(500); // Brief pause after click
+        return true;
+      }
+    } catch { /* try next */ }
+  }
+
+  // Fallback: try clicking by text labels
+  const textLabels = [...labels, 'Post', 'Send', 'Message', 'Tweet', 'Share'];
+  for (const label of textLabels) {
+    try {
+      const locator = page.locator(`button:has-text("${label}"):not([disabled]), div[role="button"]:has-text("${label}"):not([aria-disabled="true"])`).first();
+      if (await locator.count().catch(() => 0)) {
+        await locator.click({ timeout: 3000 });
+        await page.waitForTimeout(500);
+        return true;
+      }
+    } catch { /* try next */ }
+  }
+
+  return false;
 }
 
 export async function openAttachedPage(attachedBrowser, url, { platform, forceNavigate = false } = {}) {
