@@ -288,7 +288,7 @@ export const linkedinHandler = {
     }
 
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview } = args;
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 
       // Navigate to profile
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
@@ -330,6 +330,39 @@ export const linkedinHandler = {
           'div[role="textbox"][contenteditable="true"]',
           'textarea',
         ], truncatedMessage);
+      }
+
+      // Handle file attachment if provided
+      if (attachmentPath && messageType.type !== 'connection_request') {
+        try {
+          // Look for attachment button
+          const attachBtn = await firstVisibleLocator(page, [
+            'button[aria-label*="Attach"]',
+            'button[aria-label*="attachment"]',
+            'button:has-text("Attach")',
+            '[data-testid="attach-file"]',
+            'input[type="file"]',
+          ]);
+
+          if (attachBtn) {
+            // If it's a file input, use it directly
+            const isFileInput = await attachBtn.evaluate(el => el.tagName === 'INPUT').catch(() => false);
+            if (isFileInput) {
+              await attachBtn.setInputFiles(attachmentPath);
+            } else {
+              // Click button then find file input
+              await attachBtn.click();
+              await page.waitForTimeout(800);
+              const fileInput = await page.locator('input[type="file"]').first();
+              if (fileInput) {
+                await fileInput.setInputFiles(attachmentPath);
+              }
+            }
+            await page.waitForTimeout(2000); // Wait for upload
+          }
+        } catch (attachError) {
+          console.warn('Attachment failed:', attachError.message);
+        }
       }
 
       if (!filled.ok) {

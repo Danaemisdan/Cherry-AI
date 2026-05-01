@@ -22,6 +22,7 @@ import {
 } from './common.js';
 import { checkLoginState } from './state-checker.js';
 import { extractChatContext } from './chat-context.js';
+import { mapAllContacts, exportForDashboard, extractWhatsAppContacts, extractLinkedInContacts, extractInstagramContacts } from './contact-mapper.js';
 
 export function createSocialHandler(platform, config) {
   async function draftOrSendMessage(attachedBrowser, step, usernameOverride, providedChatContext = null) {
@@ -236,6 +237,39 @@ export function createSocialHandler(platform, config) {
       if (step.action === 'extract_context' || step.action === 'export_artifact') {
         const page = await openAttachedPage(attachedBrowser, buildPlatformSearchUrl(platform, step.args.query || step.args.prompt), { platform, forceNavigate: true });
         return { status: 'completed', summary: summarizeAction(platform, step), data: await pageSnapshot(page) };
+      }
+
+      if (step.action === 'map_contacts') {
+        const { includeConversations = true, includePending = true } = step.args || {};
+        
+        let contacts = [];
+        
+        switch (platform) {
+          case 'whatsapp':
+            const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+            contacts = await extractWhatsAppContacts(page, { includeChats: includeConversations });
+            break;
+          case 'linkedin':
+            const liPage = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+            contacts = await extractLinkedInContacts(liPage, { includePending });
+            break;
+          case 'instagram':
+            const igPage = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+            contacts = await extractInstagramContacts(igPage, { includePending });
+            break;
+          default:
+            throw new Error(`Contact mapping not yet supported for ${platform}`);
+        }
+        
+        return {
+          status: 'completed',
+          summary: `Mapped ${contacts.count || contacts.totalCount || 0} contacts from ${platform}`,
+          data: {
+            platform,
+            contacts,
+            dashboardData: exportForDashboard({ platforms: { [platform]: contacts }, categorized: contacts.categorized || {}, totalContacts: contacts.count || 0, timestamp: Date.now() }),
+          },
+        };
       }
 
       throw new Error(`${platform} does not support the "${step.action}" action in Cherry yet`);

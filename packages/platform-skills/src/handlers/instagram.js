@@ -340,7 +340,7 @@ export const instagramHandler = {
     }
 
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview } = args;
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 
       // Navigate to profile and open message
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
@@ -370,6 +370,40 @@ export const instagramHandler = {
 
       if (!filled.ok) {
         throw new Error(`Could not fill Instagram message composer for "${username}"`);
+      }
+
+      // Handle file attachment if provided
+      if (attachmentPath) {
+        try {
+          // Look for attachment button (gallery/camera icon)
+          const attachBtn = await firstVisibleLocator(page, [
+            'button[aria-label*="Add"]', // Add photo/video
+            'button[aria-label*="Gallery"]', // Gallery
+            'button[aria-label*="Attachment"]', // Attachment
+            'svg[aria-label*="Gallery"]',
+            'svg[aria-label*="Add"]',
+            '[data-testid="add-attachment"]',
+            'input[type="file"]',
+          ]);
+
+          if (attachBtn) {
+            const isFileInput = await attachBtn.evaluate(el => el.tagName === 'INPUT').catch(() => false);
+            if (isFileInput) {
+              await attachBtn.setInputFiles(attachmentPath);
+            } else {
+              // Click the attachment button then find file input
+              await attachBtn.click();
+              await page.waitForTimeout(800);
+              const fileInput = await page.locator('input[type="file"]').first();
+              if (fileInput) {
+                await fileInput.setInputFiles(attachmentPath);
+              }
+            }
+            await page.waitForTimeout(2000); // Wait for upload
+          }
+        } catch (attachError) {
+          console.warn('Instagram attachment failed:', attachError.message);
+        }
       }
 
       // Send if not manual review

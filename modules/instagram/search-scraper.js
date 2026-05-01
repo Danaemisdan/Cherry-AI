@@ -160,16 +160,22 @@ export const InstagramScraper = {
         return [];
       }
 
-      // Poll for post links — up to 20 seconds
-      let pollAttempts = 0;
-      let postUrls = [];
-      while (pollAttempts < 10) {
+      // Build a large candidate pool before leaving search. A single viewport can
+      // expose only a handful of posts, which made large scrapes stop at 2-3 rows.
+      const targetPostPoolSize = Math.max(maxResults * 8, maxResults + 20);
+      const maxScrollAttempts = Math.min(90, Math.max(18, Math.ceil(maxResults / 2)));
+      let scrollAttempts = 0;
+      let stagnantAttempts = 0;
+      const postUrlSet = new Set();
+
+      while (scrollAttempts < maxScrollAttempts && postUrlSet.size < targetPostPoolSize && stagnantAttempts < 8) {
         if (await detectNoResultsState(tabId)) {
-          console.log('[Cherry IG] Search returned no results during poll for:', tag);
+          console.log('[Cherry IG] Search returned no results while collecting posts for:', tag);
           await saveHistory(visitedProfiles, visitedPosts);
           return [];
         }
 
+        const beforeCount = postUrlSet.size;
         const postsEval = await CDPController.sendCommand(tabId, 'Runtime.evaluate', {
           expression: `
             (() => {
@@ -180,20 +186,35 @@ export const InstagramScraper = {
           `,
           returnByValue: true
         });
-        const found = (postsEval.result.value || []).filter(u => !visitedPosts.has(u));
-        if (found.length > 0) { postUrls = found; break; }
-        console.log('[Cherry IG] Waiting for posts... attempt', pollAttempts + 1);
-        await StealthEngine.simulateScroll(tabId, 'down', 2);
-        await StealthEngine.sleep(2000);
-        pollAttempts++;
+
+        for (const url of postsEval.result.value || []) {
+          if (!visitedPosts.has(url)) {
+            postUrlSet.add(url);
+          }
+        }
+
+        if (postUrlSet.size === beforeCount) {
+          stagnantAttempts++;
+        } else {
+          stagnantAttempts = 0;
+          console.log('[Cherry IG] Collected post candidates:', postUrlSet.size, '/', targetPostPoolSize);
+        }
+
+        if (postUrlSet.size >= targetPostPoolSize) break;
+
+        await StealthEngine.simulateScroll(tabId, 'down', 3);
+        await StealthEngine.sleep(1800);
+        scrollAttempts++;
       }
+
+      let postUrls = [...postUrlSet];
       console.log('[Cherry IG] Found', postUrls.length, 'new posts');
 
       if (!postUrls.length) {
         throw new Error('Still no posts found for #' + tag + ' after waiting. Check that Instagram is open and logged in.');
       }
 
-      postUrls = postUrls.slice(0, maxResults * 4); // grab extra for dedup headroom
+      postUrls = postUrls.slice(0, targetPostPoolSize); // grab extra for dedup/history headroom
       const authorsSeen = new Set();
 
       for (const postUrl of postUrls) {

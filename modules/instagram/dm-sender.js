@@ -117,8 +117,112 @@ function sanitizeGeneratedMessage(rawText) {
   return text;
 }
 
-function looksLikePromptLeak(text) {
-  const normalized = String(text || '').toLowerCase();
+function normalizeForCompare(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[@#][a-z0-9._]+/gi, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function wordSet(value) {
+  return new Set(
+    normalizeForCompare(value)
+      .split(' ')
+      .filter((word) => word.length > 2)
+  );
+}
+
+function overlapRatio(a, b) {
+  const aWords = wordSet(a);
+  const bWords = wordSet(b);
+  if (!aWords.size || !bWords.size) return 0;
+
+  let overlap = 0;
+  for (const word of aWords) {
+    if (bWords.has(word)) overlap++;
+  }
+  return overlap / Math.min(aWords.size, bWords.size);
+}
+
+function extractProfileHook(profileData) {
+  const source = [
+    profileData.displayName || '',
+    profileData.bio || '',
+    ...(profileData.recentPosts || [])
+  ].join(' ');
+  const lower = source.toLowerCase();
+  const hooks = [
+    ['tech', 'tech'],
+    ['programming', 'programming'],
+    ['developer', 'development'],
+    ['design', 'design'],
+    ['designer', 'design'],
+    ['illustrator', 'illustration'],
+    ['art', 'art'],
+    ['music', 'music'],
+    ['fitness', 'fitness'],
+    ['fashion', 'fashion'],
+    ['travel', 'travel'],
+    ['food', 'food'],
+    ['founder', 'what you are building'],
+    ['startup', 'what you are building'],
+    ['marketing', 'marketing'],
+    ['ai', 'AI'],
+    ['creator', 'your content'],
+  ];
+
+  const matches = hooks
+    .filter(([needle]) => lower.includes(needle))
+    .map(([, label]) => label);
+  return [...new Set(matches)].slice(0, 2).join(' and ') || 'your profile';
+}
+
+function buildDeterministicMessage({ username, profileData, goal, tonePrompt }) {
+  const normalizedGoal = sanitizeGoal(goal);
+  const tone = String(tonePrompt || '').toLowerCase();
+  const displayName = String(profileData.displayName || '').trim();
+  const name = displayName && displayName.toLowerCase() !== username.toLowerCase()
+    ? displayName.split(/[|•(@]/)[0].trim().split(/\s+/).slice(0, 2).join(' ')
+    : `@${username}`;
+  const hook = extractProfileHook(profileData);
+  const brief = tone.includes('brief') || tone.includes('casual');
+  const asks = normalizedGoal.toLowerCase().includes('meeting') || normalizedGoal.toLowerCase().includes('call')
+    ? [
+        'Open to a quick chat this week?',
+        'Would a quick call make sense?',
+        'Could we set up a short chat?'
+      ]
+    : [
+        `Wanted to reach out about ${normalizedGoal}.`,
+        `I had a quick thought around ${normalizedGoal}.`,
+        `I think there may be a useful angle around ${normalizedGoal}.`
+      ];
+  const openers = brief
+    ? [
+        `Hey ${name}, noticed your work around ${hook}.`,
+        `Hey ${name}, your ${hook} angle caught my eye.`,
+        `Hey ${name}, liked the focus on ${hook}.`
+      ]
+    : [
+        `Hi ${name}, I was looking at your profile and the ${hook} stood out.`,
+        `Hi ${name}, your profile around ${hook} caught my attention.`,
+        `Hi ${name}, I noticed the ${hook} focus on your profile.`
+      ];
+
+  const opener = openers[Math.floor(Math.random() * openers.length)];
+  const ask = asks[Math.floor(Math.random() * asks.length)];
+  return `${opener} ${ask}`;
+}
+
+function looksLikeBadDM(text, { username, profileData, goal }) {
+  const normalized = String(text || '').replace(/[’‘]/g, "'").toLowerCase();
   if (!normalized) {
     return true;
   }
@@ -133,21 +237,46 @@ function looksLikePromptLeak(text) {
     'rules:',
   ];
 
-  return markers.some((marker) => normalized.includes(marker));
+  if (markers.some((marker) => normalized.includes(marker))) return true;
+  if (normalized.length < 18 || normalized.length > 320) return true;
+  if (/\b(my name is|i am|i'm)\s+@?[a-z0-9._]+/i.test(normalized)) return true;
+  const escapedUsername = escapeRegExp(normalizeUsername(username).toLowerCase());
+  if (new RegExp(`\\b(my name is|i am|i'm)\\s+@?${escapedUsername}\\b`, 'i').test(normalized)) return true;
+  if (/\b(i am|i'm)\s+(a|an|the)\s+\d{1,2}[- ]?year[- ]?old\b/i.test(normalized)) return true;
+  if (/\bnot a fan of the term ['"]?clich/i.test(normalized)) return true;
+
+  const bio = String(profileData?.bio || '').trim();
+  if (bio) {
+    const cleanMessage = normalizeForCompare(text);
+    const cleanBio = normalizeForCompare(bio);
+    if (cleanBio.length > 35 && cleanMessage.includes(cleanBio.slice(0, 80))) return true;
+    if (overlapRatio(text, bio) > 0.68) return true;
+  }
+
+  const normalizedGoal = normalizeForCompare(goal);
+  if (normalizedGoal.includes('meeting') && !/\b(chat|call|meeting|talk|connect)\b/i.test(text)) {
+    return true;
+  }
+
+  return false;
 }
 
-async function generateDirectMessage({ prompt, fallbackPrompt }) {
-  let messageText = sanitizeGeneratedMessage(await LLMClient.generate(prompt, 90, 0.7));
-  if (!looksLikePromptLeak(messageText) && messageText) {
-    return messageText;
+async function generateDirectMessage({ prompt, fallbackPrompt, username, profileData, goal, tonePrompt }) {
+  try {
+    let messageText = sanitizeGeneratedMessage(await LLMClient.generate(prompt, 90, 0.7));
+    if (!looksLikeBadDM(messageText, { username, profileData, goal })) {
+      return messageText;
+    }
+
+    messageText = sanitizeGeneratedMessage(await LLMClient.generate(fallbackPrompt, 70, 0.55));
+    if (!looksLikeBadDM(messageText, { username, profileData, goal })) {
+      return messageText;
+    }
+  } catch (err) {
+    console.log('[Cherry IG] LLM DM generation failed, using guarded fallback:', err.message);
   }
 
-  messageText = sanitizeGeneratedMessage(await LLMClient.generate(fallbackPrompt, 70, 0.55));
-  if (!looksLikePromptLeak(messageText) && messageText) {
-    return messageText;
-  }
-
-  throw new Error('LLM returned instructions instead of a DM.');
+  return buildDeterministicMessage({ username, profileData, goal, tonePrompt });
 }
 
 async function evalOnPage(tabId, expression) {
@@ -752,7 +881,17 @@ Maximum 2 short sentences.
 DM:`;
 
     console.log('Asking Cherry AI Engine for message...');
-    const messageText = await generateDirectMessage({ prompt, fallbackPrompt });
+    const messageText = await generateDirectMessage({
+      prompt,
+      fallbackPrompt,
+      username: resolvedProfileData.username || normalizedUsername,
+      profileData: {
+        ...profileData,
+        ...resolvedProfileData
+      },
+      goal: userGoal,
+      tonePrompt
+    });
 
     const match = await openConversationFromCurrentContext(tabId, matchedProfileUsername);
     if (!match) {
