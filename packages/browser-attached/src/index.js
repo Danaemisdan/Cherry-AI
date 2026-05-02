@@ -18,12 +18,39 @@ function defaultCherryDebugUserDataDir() {
   return path.join(os.homedir(), '.cherry-agent', 'chrome-debug');
 }
 
+import { existsSync } from 'node:fs';
+
+function findWindowsChrome() {
+  // Check multiple common Chrome installation paths on Windows
+  const possiblePaths = [
+    // Standard install locations
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    // User-level install (local app data)
+    path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    // Other possible locations
+    path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    // Microsoft Edge as fallback (also Chromium-based)
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  ];
+
+  for (const chromePath of possiblePaths) {
+    if (existsSync(chromePath)) {
+      return chromePath;
+    }
+  }
+
+  // Default fallback if none found (will likely fail but we try)
+  return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+}
+
 function defaultChromeExecutable() {
   if (process.platform === 'darwin') {
     return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   }
   if (process.platform === 'win32') {
-    return path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe');
+    return findWindowsChrome();
   }
   return 'google-chrome';
 }
