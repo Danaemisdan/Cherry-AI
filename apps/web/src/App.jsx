@@ -1259,20 +1259,7 @@ function SearchIcon() {
   );
 }
 
-export function usePlatformData() {
-  return { 
-    events, 
-    tasks, 
-    campaigns, 
-    agentOnline, 
-    agentState, 
-    contactMetrics, 
-    refreshTasks, 
-    refreshCampaigns, 
-    refreshAgents, 
-    refreshContactMetrics 
-  };
-}
+export { usePlatformData };
 
 export function App() {
   const { 

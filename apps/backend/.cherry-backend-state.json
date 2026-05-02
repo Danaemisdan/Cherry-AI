@@ -7,8 +7,8 @@
       "os": "macos",
       "agentVersion": "0.1.0",
       "online": false,
-      "browserAttached": true,
-      "tabs": 3,
+      "browserAttached": false,
+      "tabs": 0,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false

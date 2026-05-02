@@ -15,6 +15,7 @@ import {
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
+import { extractProfileContext, formatProfileContext } from '../profile-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Facebook DM Helper Functions
@@ -379,10 +380,16 @@ export const facebookHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'messenger_search' };
       }
 
-      // Extract chat context
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'facebook', 6);
+      
+      // Extract comprehensive profile info (work, education, bio)
+      console.log(`[Facebook] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'facebook', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'facebook');
+      console.log(`[Facebook] Profile context: ${rawProfileInfo.work || 'no work info'}, ${rawProfileInfo.education || 'no education info'}`);
 
-      // Generate message with context
+      // Generate message with FULL context
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -390,7 +397,7 @@ export const facebookHandler = {
         query,
         platform: 'facebook',
         chatContext,
-        profileInfo: {},
+        profileInfo,
       });
 
       // Fill composer - Facebook uses contenteditable divs

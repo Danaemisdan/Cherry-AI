@@ -286,13 +286,14 @@ function buildOutreachPrompt({ username, goal, tone, query, platform, chatContex
 
 YOUR TASK: Write a natural, conversational reply to their last message.
 
-CONTEXT:${chatHistorySection}
+CONVERSATION HISTORY:${chatHistorySection}${profileSection}
 
 INSTRUCTIONS FOR REPLYING:
-- Read the conversation history carefully
+- Read the conversation history AND profile context carefully
 - Reply naturally to what they said in their LAST message
 - Use the SAME LANGUAGE they used (English, Hindi, Telugu, Tinglish, etc.)
 - Be conversational - like texting a friend
+- If you know their job/company from profile context, you can reference it naturally
 - Reference their specific points briefly, don't just say "that's interesting"
 - Keep it 1-2 short sentences
 - If they asked a question, answer it or acknowledge it
@@ -323,13 +324,17 @@ ${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
 
 INSTRUCTIONS:
 - FOLLOW THE USER'S GOAL EXACTLY - if they say "be rude", BE RUDE. If they say "ask a question", ASK IT.
+- USE THE PROFILE CONTEXT provided above - reference their job, company, bio, or recent posts when relevant
+- If they work at a company, mention it naturally
+- If they posted about something recently, reference it specifically (not generic "saw your post")
+- If their bio mentions something interesting, reference it
 - Write 1-2 SHORT sentences max (total 20 words or less)
-- Sound like a real person texting on WhatsApp, NOT an email
-- NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
-- If you don't know a name, just say "Hey" or "Hi there" - NEVER use brackets
+- Sound like a real person texting, NOT a formal email
+- NEVER use placeholders like [your name], {name}, [recipient], [company], etc. - use the ACTUAL info from context
 - NEVER start with "Subject:" lines
 - NO "Dear Sir/Madam" or formal business language
 - Be direct and casual
+- Make it feel PERSONAL - like you actually looked at their profile
 
 STYLE: ${style}
 

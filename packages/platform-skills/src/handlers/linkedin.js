@@ -16,6 +16,7 @@ import {
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
+import { extractProfileContext, formatProfileContext } from '../profile-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // LinkedIn DM Helper Functions
@@ -515,10 +516,16 @@ export const linkedinHandler = {
         }
       }
 
-      // Extract chat context if available
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'linkedin', 6);
+      
+      // Extract comprehensive profile info (job, company, bio, recent posts)
+      console.log(`[LinkedIn] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'linkedin', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'linkedin');
+      console.log(`[LinkedIn] Profile context: ${rawProfileInfo.company || 'no company'}, ${rawProfileInfo.jobTitle || 'no title'}`);
 
-      // Generate message (shorter for LinkedIn)
+      // Generate message with FULL context (chat + profile + posts)
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -526,7 +533,7 @@ export const linkedinHandler = {
         query,
         platform: 'linkedin',
         chatContext,
-        profileInfo: {},
+        profileInfo,
       });
 
       // Truncate for LinkedIn limits

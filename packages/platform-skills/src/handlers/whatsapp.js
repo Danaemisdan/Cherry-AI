@@ -21,6 +21,7 @@ import {
   unsupported,
 } from '../common.js';
 import { extractChatContext as extractSharedChatContext } from '../chat-context.js';
+import { extractProfileContext, formatProfileContext } from '../profile-context.js';
 
 function normalizeChatText(value = '') {
   return String(value).trim().toLowerCase();
@@ -501,9 +502,13 @@ async function sendMessage(attachedBrowser, step, usernameOverride) {
     await openWhatsAppConversation(page, username);
   }
 
-  // Extract chat context for smarter message generation
-  const chatContext = await extractChatContext(page, 8);
+  // Extract FULL chat context for smarter message generation
+  // WhatsApp doesn't have public profiles, but we extract deep chat history
+  console.log(`[WhatsApp] Extracting full chat context for ${username}...`);
+  const chatContext = await extractChatContext(page, 15); // Get more messages for better context
+  console.log(`[WhatsApp] Got ${chatContext.length} messages of context`);
 
+  // Generate message with FULL conversation context
   const message = await generateOutreachMessage({
     username,
     goal: step.args.messageGoal,
@@ -511,6 +516,7 @@ async function sendMessage(attachedBrowser, step, usernameOverride) {
     query: step.args.query,
     platform: 'whatsapp',
     chatContext,
+    profileInfo: {}, // WhatsApp has no public profile
   });
 
   const filled = await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]'], message);

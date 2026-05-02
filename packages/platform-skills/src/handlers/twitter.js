@@ -15,6 +15,7 @@ import {
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
+import { extractProfileContext, formatProfileContext } from '../profile-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Twitter DM Helper Functions
@@ -323,10 +324,16 @@ export const twitterHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
       }
 
-      // Extract chat context
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'twitter', 6);
+      
+      // Extract comprehensive profile info (bio, recent tweets, location)
+      console.log(`[Twitter] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'twitter', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'twitter');
+      console.log(`[Twitter] Profile context: ${rawProfileInfo.isVerified ? 'verified' : 'not verified'}, ${rawProfileInfo.followers || 'unknown followers'}`);
 
-      // Generate message with context
+      // Generate message with FULL context
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -334,7 +341,7 @@ export const twitterHandler = {
         query,
         platform: 'twitter',
         chatContext,
-        profileInfo: {},
+        profileInfo,
       });
 
       // Fill composer

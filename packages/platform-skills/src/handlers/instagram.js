@@ -17,6 +17,7 @@ import {
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
+import { extractProfileContext, formatProfileContext } from '../profile-context.js';
 import { createSocialHandler } from '../social-base.js';
 
 // Instagram DM Helper Functions
@@ -413,10 +414,16 @@ export const instagramHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
       }
 
-      // Extract chat context from the conversation
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'instagram', 8);
+      
+      // Extract comprehensive profile info (bio, category, recent posts)
+      console.log(`[Instagram] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'instagram', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'instagram');
+      console.log(`[Instagram] Profile context: ${rawProfileInfo.category || 'no category'}, ${rawProfileInfo.followers || 'unknown followers'}`);
 
-      // Generate message with context awareness
+      // Generate message with FULL context (chat + profile + posts)
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -424,7 +431,7 @@ export const instagramHandler = {
         query,
         platform: 'instagram',
         chatContext,
-        profileInfo: {},
+        profileInfo,
       });
 
       // Fill composer
