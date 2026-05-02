@@ -20,72 +20,16 @@ import {
   tryClick,
   unsupported,
 } from '../common.js';
+import { extractChatContext as extractSharedChatContext } from '../chat-context.js';
 
 function normalizeChatText(value = '') {
   return String(value).trim().toLowerCase();
 }
 
 async function extractChatContext(page, limit = 10) {
-  // Extract recent messages from WhatsApp Web conversation
-  try {
-    const messages = await page.evaluate((msgLimit) => {
-      const result = [];
-      // Look for message bubbles - WhatsApp uses various selectors
-      const messageSelectors = [
-        '[data-testid="msg-container"]',
-        '.message-in',
-        '.message-out',
-        'div[role="row"] div[data-pre-plain-text]',
-        '[data-testid="msg"]',
-        '.focusable-list-item div[dir]',
-      ];
-
-      for (const selector of messageSelectors) {
-        const elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          elements.forEach((el, idx) => {
-            if (result.length >= msgLimit) return;
-
-            // Determine if outgoing (me) or incoming (them)
-            const isOutgoing = el.classList.contains('message-out') ||
-                              el.closest('.message-out') !== null ||
-                              el.getAttribute('data-testid')?.includes('out') ||
-                              el.closest('[data-testid*="out"]') !== null ||
-                              el.querySelector('span[data-testid*="check"]') !== null;
-
-            // Extract text content
-            let text = '';
-            const textEl = el.querySelector('.selectable-text, span[dir="ltr"], div[dir="ltr"]');
-            if (textEl) {
-              text = textEl.textContent || '';
-            } else {
-              text = el.textContent || '';
-            }
-
-            // Clean up the text
-            text = text.replace(/\s+/g, ' ').trim();
-            if (text && text.length > 2) {
-              // Avoid duplicates
-              const lastMsg = result[result.length - 1];
-              if (!lastMsg || lastMsg.text !== text) {
-                result.push({
-                  role: isOutgoing ? 'me' : 'them',
-                  text: text.slice(0, 300), // Limit length
-                });
-              }
-            }
-          });
-          if (result.length > 0) break; // Found messages with this selector
-        }
-      }
-
-      return result.slice(-msgLimit); // Return last N messages
-    }, limit);
-
-    return messages || [];
-  } catch (error) {
-    return [];
-  }
+  // Use shared chat context extractor for consistency
+  const context = await extractSharedChatContext(page, 'whatsapp', limit);
+  return context || [];
 }
 
 async function getViewportWidth(page) {

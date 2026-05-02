@@ -373,7 +373,6 @@ function sanitizeGeneratedMessage(rawText) {
     .replace(/^\s*subject\s*:.*/gim, '')
     // Remove signature lines
     .replace(/(?:best\s+regards|sent\s+from|cheers|thanks,?).*/gi, '')
-    .replace(/\s+/g, ' ')
     .trim();
 
   const badFragments = [
@@ -386,23 +385,35 @@ function sanitizeGeneratedMessage(rawText) {
     'final message:',
   ];
 
-  const filtered = text
-    .split('\n')
+  // Split by newlines and --- separators (which cause repetition)
+  const segments = text
+    .split(/\n+|\s*---+\s*/)
     .map((line) => line.trim())
     .filter(Boolean)
     .filter((line) => !badFragments.some((fragment) => line.toLowerCase().includes(fragment)))
-    .filter((line) => !line.startsWith('-'))
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .filter((line) => !line.startsWith('-') || line.length > 10); // Keep lines starting with - if they're long
 
-  // Don't split on double spaces or newlines - keep full message
-  // Only remove the "sender's reply:" prefix if present
-  const cleaned = filtered
-    .split(/(?:sender'?s reply:|reply:)\s*/i)[0]
-    .trim();
+  // Deduplicate repeated sentences
+  const seen = new Set();
+  const uniqueSegments = [];
+  for (const segment of segments) {
+    const normalized = segment.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      uniqueSegments.push(segment);
+    }
+  }
 
-  return cleaned.replace(/^['"\s]+|['"\s]+$/g, '').trim();
+  // Join with single space, preserve emojis
+  let result = uniqueSegments.join(' ').replace(/\s+/g, ' ').trim();
+
+  // Only take first sentence or two to avoid repetition
+  const sentences = result.match(/[^.!?]+[.!?]+/g) || [result];
+  if (sentences.length > 2) {
+    result = sentences.slice(0, 2).join(' ').trim();
+  }
+
+  return result;
 }
 
 function looksLikePromptLeak(text) {
@@ -665,11 +676,39 @@ Write the comment now:`;
   }
 }
 
-export function composePost({ platform, goal, tone, query }) {
+export async function composePost({ platform, goal, tone, query }) {
   const objective = String(goal || `share an update on ${platform}`).trim();
   const prompt = String(query || '').trim();
   const style = String(tone || 'Clear and concise').trim();
-  return `${objective}${prompt ? `\n\nContext: ${prompt}` : ''}\n\nTone: ${style}`;
+  
+  // Generate actual post content using LLM
+  const host = await connectLocalLlmHost();
+  const postPrompt = `Write a short social media post for ${platform}.
+
+GOAL: ${objective}
+${prompt ? `CONTEXT: ${prompt}` : ''}
+STYLE: ${style}
+
+INSTRUCTIONS:
+- Write 1-2 engaging sentences
+- Sound natural and authentic
+- No hashtags unless relevant
+- Max 280 characters for Twitter/X
+
+Write the post now:`;
+
+  try {
+    const generated = await host.generate(postPrompt, 150, 0.8);
+    const cleaned = sanitizeGeneratedMessage(generated);
+    if (cleaned && cleaned.length > 5) {
+      return cleaned;
+    }
+  } catch (error) {
+    console.warn('LLM post generation failed:', error.message);
+  }
+  
+  // Fallback to simple template if LLM fails
+  return `${objective}${prompt ? ` - ${prompt}` : ''}`;
 }
 
 function normalizeComparableUrl(url = '') {

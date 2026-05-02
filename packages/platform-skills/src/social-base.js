@@ -122,7 +122,7 @@ export function createSocialHandler(platform, config) {
 
   async function composeOrPublishPost(attachedBrowser, step) {
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
-    const postText = composePost({ platform, goal: step.args.messageGoal, tone: step.args.tone, query: step.args.query });
+    const postText = await composePost({ platform, goal: step.args.messageGoal, tone: step.args.tone, query: step.args.query });
 
     if (config.openPostComposer) {
       await config.openPostComposer(page);

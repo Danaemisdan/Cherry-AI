@@ -57,6 +57,82 @@ async function checkFacebookFriendStatus(page) {
   };
 }
 
+async function openFacebookMessageFromInbox(page, username) {
+  // Strategy: Navigate to Facebook Messenger and search for user
+  try {
+    await navigate(page, 'https://www.facebook.com/messages', 'facebook');
+    await waitForAppShell(page, 'facebook');
+    await minimalDelay(800);
+
+    // Look for "New message" button
+    const newMessageSelectors = [
+      'a[href="/messages/new/"]',
+      'button:has-text("New message")',
+      'div[role="button"]:has-text("New message")',
+      '[aria-label="New message"]',
+    ];
+
+    let opened = await tryClick(page, newMessageSelectors);
+    if (!opened) {
+      opened = await clickByText(page, ['button', 'a', 'div[role="button"]'], ['New message']);
+    }
+
+    if (!opened) {
+      return false;
+    }
+
+    await waitForAppShell(page, 'facebook');
+    await minimalDelay(500);
+
+    // Find search input
+    const searchBox = await firstVisibleLocator(page, [
+      'input[placeholder*="Search"]',
+      'input[aria-label*="Search"]',
+      'input[type="text"]',
+      'input[role="combobox"]',
+    ]);
+
+    if (!searchBox) {
+      return false;
+    }
+
+    // Type username
+    await searchBox.click().catch(() => {});
+    await searchBox.fill('').catch(() => {});
+    await searchBox.type(username, { delay: 20 }).catch(() => {});
+    await minimalDelay(1000);
+
+    // Click on user result
+    const userResultSelectors = [
+      `div[role="option"]:has-text("${username}")`,
+      'div[role="option"]',
+      'div[role="listitem"]',
+      'li div[role="button"]',
+    ];
+
+    for (const selector of userResultSelectors) {
+      const result = page.locator(selector).first();
+      if (await result.isVisible().catch(() => false)) {
+        await result.click().catch(() => {});
+        await minimalDelay(800);
+        break;
+      }
+    }
+
+    // Verify composer is available
+    const composer = await firstVisibleLocator(page, [
+      'div[contenteditable="true"]',
+      'div[role="textbox"]',
+      'textarea',
+    ]);
+
+    return !!composer;
+  } catch (error) {
+    console.log('[Facebook] Inbox search error:', error.message);
+    return false;
+  }
+}
+
 async function openFacebookMessage(page, username) {
   // Facebook DM rules:
   // 1. Best case: Already friends - Message button available
@@ -283,12 +359,25 @@ export const facebookHandler = {
     if (action === 'send_message') {
       const { username, messageGoal, tone, query, requireManualReview } = args;
 
-      // Navigate to profile
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.facebook, { platform: 'facebook' });
-      await navigateToFacebookProfile(page, username);
-
-      // Open message
-      const messageStatus = await openFacebookMessage(page, username);
+      
+      // Strategy: Try Messenger inbox search FIRST
+      // Only use direct profile URL as fallback
+      let openedViaInbox = await openFacebookMessageFromInbox(page, username);
+      let messageStatus;
+      
+      if (!openedViaInbox) {
+        // Fallback: Navigate to profile and try message button
+        console.log(`[Facebook] Inbox search failed for ${username}, trying profile...`);
+        try {
+          await navigateToFacebookProfile(page, username);
+          messageStatus = await openFacebookMessage(page, username);
+        } catch (profileError) {
+          throw new Error(`Could not message ${username} on Facebook. Try adding them as a friend first.`);
+        }
+      } else {
+        messageStatus = { type: 'message', canSend: true, method: 'messenger_search' };
+      }
 
       // Extract chat context
       const chatContext = await extractChatContext(page, 'facebook', 6);

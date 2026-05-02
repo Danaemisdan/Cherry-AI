@@ -470,50 +470,47 @@ export const linkedinHandler = {
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
       
-      // Try multiple strategies to find the person
+      // Try multiple strategies to find the person - SEARCH FIRST, never use direct URL
       let foundVia = null;
       let messageType = null;
+      let searchError = null;
       
-      // Strategy 1: Try direct profile URL first (fastest if it works)
-      try {
-        await navigateToLinkedInProfile(page, username);
-        messageType = await openLinkedInMessage(page, username);
-        foundVia = 'direct_profile';
-      } catch (directError) {
-        console.log(`Direct profile failed for ${username}, trying messaging search...`);
-        
-        // Strategy 2: Search in messaging (for connected people)
-        const foundInMessaging = await searchInLinkedInMessaging(page, username);
-        if (foundInMessaging) {
-          foundVia = 'messaging_search';
+      // Strategy 1: Search in messaging (for already connected people)
+      console.log(`[LinkedIn] Searching for "${username}" in messaging...`);
+      const foundInMessaging = await searchInLinkedInMessaging(page, username);
+      if (foundInMessaging) {
+        foundVia = 'messaging_search';
+        messageType = { type: 'message', noteAvailable: true };
+        console.log(`[LinkedIn] Found ${username} in messaging`);
+      } else {
+        // Strategy 2: Search in my network/connections
+        console.log(`[LinkedIn] Searching connections for "${username}"...`);
+        const foundInConnections = await searchLinkedInConnections(page, username);
+        if (foundInConnections === true) {
+          foundVia = 'connections';
           messageType = { type: 'message', noteAvailable: true };
+          console.log(`[LinkedIn] Found ${username} in connections`);
+        } else if (foundInConnections === 'profile_opened') {
+          foundVia = 'connections_profile';
+          messageType = await openLinkedInMessage(page, username);
+          console.log(`[LinkedIn] Found ${username} via connections profile`);
         } else {
-          // Strategy 3: Search in my network/connections
-          const foundInConnections = await searchLinkedInConnections(page, username);
-          if (foundInConnections === true) {
-            foundVia = 'connections';
-            messageType = { type: 'message', noteAvailable: true };
-          } else if (foundInConnections === 'profile_opened') {
-            foundVia = 'connections_profile';
-            messageType = await openLinkedInMessage(page, username);
-          } else {
-            // Strategy 4: Search on home page
-            const foundInSearch = await searchLinkedInHome(page, username);
-            if (foundInSearch) {
-              foundVia = 'home_search';
-              // Check if we can message or need to connect
-              const status = await checkLinkedInConnectionStatus(page);
-              if (status.isConnected) {
-                messageType = await openLinkedInMessage(page, username);
-              } else if (status.canConnect) {
-                // Person found but not connected - send connection request
-                messageType = await openLinkedInMessage(page, username);
-              } else {
-                throw new Error(`Found ${username} but cannot message or connect. They may have restricted messaging.`);
-              }
+          // Strategy 3: Search on home page
+          console.log(`[LinkedIn] Searching LinkedIn for "${username}"...`);
+          const foundInSearch = await searchLinkedInHome(page, username);
+          if (foundInSearch) {
+            foundVia = 'home_search';
+            const status = await checkLinkedInConnectionStatus(page);
+            if (status.isConnected) {
+              messageType = await openLinkedInMessage(page, username);
+            } else if (status.canConnect) {
+              messageType = await openLinkedInMessage(page, username);
             } else {
-              throw new Error(`Could not find anyone named "${username}" in your LinkedIn network or connections. Try connecting with them first.`);
+              throw new Error(`Found ${username} but cannot message or connect. They may have restricted messaging.`);
             }
+            console.log(`[LinkedIn] Found ${username} via home search`);
+          } else {
+            throw new Error(`Could not find anyone named "${username}" in your LinkedIn network or connections. Try connecting with them first.`);
           }
         }
       }

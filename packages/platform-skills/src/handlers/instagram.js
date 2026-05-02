@@ -393,10 +393,25 @@ export const instagramHandler = {
     if (action === 'send_message') {
       const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 
-      // Navigate to profile and open message
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
-      await navigateToProfile(page, username);
-      await openInstagramMessage(page, username);
+      
+      // Strategy: Try DM inbox search FIRST (works for all account types)
+      // Only use direct profile URL as fallback
+      let openedViaInbox = await openInstagramMessageFromInbox(page, username);
+      let messageStatus;
+      
+      if (!openedViaInbox) {
+        // Fallback: Navigate to profile and try message button
+        console.log(`[Instagram] Inbox search failed for ${username}, trying profile...`);
+        try {
+          await navigateToProfile(page, username);
+          messageStatus = await openInstagramMessage(page, username);
+        } catch (profileError) {
+          throw new Error(`Could not message ${username} on Instagram. Try searching for them directly in your Instagram inbox first.`);
+        }
+      } else {
+        messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
+      }
 
       // Extract chat context from the conversation
       const chatContext = await extractChatContext(page, 'instagram', 8);

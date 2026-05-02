@@ -49,6 +49,95 @@ async function checkTwitterFollowStatus(page) {
   };
 }
 
+async function openTwitterMessageFromInbox(page, username) {
+  // Strategy: Navigate to Twitter DM inbox and search for user
+  try {
+    await navigate(page, 'https://twitter.com/messages', 'twitter');
+    await waitForAppShell(page, 'twitter');
+    await minimalDelay(800);
+
+    // Look for "New message" button
+    const newMessageSelectors = [
+      'button[aria-label="New message"]',
+      'button[data-testid="newDmButton"]',
+      'a[href="/messages/compose"]',
+      'button:has-text("New message")',
+    ];
+
+    let opened = await tryClick(page, newMessageSelectors);
+    if (!opened) {
+      opened = await clickByText(page, ['button'], ['New message']);
+    }
+
+    if (!opened) {
+      return false;
+    }
+
+    await waitForAppShell(page, 'twitter');
+    await minimalDelay(500);
+
+    // Find search input for recipient
+    const searchBox = await firstVisibleLocator(page, [
+      'input[placeholder*="Search people"]',
+      'input[aria-label*="Search"]',
+      'input[data-testid="dmComposerRecipientInput"]',
+      'input[type="text"]',
+    ]);
+
+    if (!searchBox) {
+      return false;
+    }
+
+    // Type username
+    await searchBox.click().catch(() => {});
+    await searchBox.fill('').catch(() => {});
+    await searchBox.type(username, { delay: 20 }).catch(() => {});
+    await minimalDelay(1000);
+
+    // Click on user result
+    const userResultSelectors = [
+      `div[data-testid="TypeaheadUser"]:has-text("${username}")`,
+      'div[data-testid="TypeaheadUser"]',
+      'div[role="option"]',
+      'div[data-testid="cellInnerDiv"]',
+    ];
+
+    for (const selector of userResultSelectors) {
+      const result = page.locator(selector).first();
+      if (await result.isVisible().catch(() => false)) {
+        await result.click().catch(() => {});
+        await minimalDelay(500);
+        break;
+      }
+    }
+
+    // Look for "Next" button to proceed to conversation
+    const nextClicked = await tryClick(page, [
+      'button[data-testid="nextButton"]',
+      'button:has-text("Next")',
+      'button[type="submit"]',
+    ]);
+
+    if (!nextClicked) {
+      await clickByText(page, ['button'], ['Next']);
+    }
+
+    await minimalDelay(800);
+
+    // Verify composer is available
+    const composer = await firstVisibleLocator(page, [
+      'div[data-testid="dmComposerTextInput"]',
+      'div[contenteditable="true"]',
+      'textarea',
+    ]);
+
+    return !!composer;
+  } catch (error) {
+    console.log('[Twitter] Inbox search error:', error.message);
+    return false;
+  }
+}
+
 async function openTwitterMessage(page, username) {
   // Twitter DM rules:
   // 1. You can DM anyone who follows you (mutual follow not required)
@@ -214,12 +303,25 @@ export const twitterHandler = {
     if (action === 'send_message') {
       const { username, messageGoal, tone, query, requireManualReview } = args;
 
-      // Navigate to profile
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.twitter, { platform: 'twitter' });
-      await navigateToTwitterProfile(page, username);
-
-      // Open message
-      const messageStatus = await openTwitterMessage(page, username);
+      
+      // Strategy: Try DM inbox search FIRST
+      // Only use direct profile URL as fallback
+      let openedViaInbox = await openTwitterMessageFromInbox(page, username);
+      let messageStatus;
+      
+      if (!openedViaInbox) {
+        // Fallback: Navigate to profile and try message button
+        console.log(`[Twitter] Inbox search failed for ${username}, trying profile...`);
+        try {
+          await navigateToTwitterProfile(page, username);
+          messageStatus = await openTwitterMessage(page, username);
+        } catch (profileError) {
+          throw new Error(`Could not message @${username} on Twitter. They may have restricted DMs. Try following them first.`);
+        }
+      } else {
+        messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
+      }
 
       // Extract chat context
       const chatContext = await extractChatContext(page, 'twitter', 6);
