@@ -1,7 +1,8 @@
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { existsSync } from 'node:fs';
 
 function defaultChromeUserDataDir() {
   const home = os.homedir();
@@ -18,17 +19,23 @@ function defaultCherryDebugUserDataDir() {
   return path.join(os.homedir(), '.cherry-agent', 'chrome-debug');
 }
 
-import { existsSync } from 'node:fs';
-
 function findWindowsChrome() {
+  // First try to get Chrome path from Windows registry
+  try {
+    const regQuery = 'reg query "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe" /ve';
+    const output = execSync(regQuery, { encoding: 'utf8', windowsHide: true });
+    const match = output.match(/REG_SZ\s+(.+\.exe)/i);
+    if (match && existsSync(match[1])) {
+      return match[1];
+    }
+  } catch { /* registry lookup failed, continue */ }
+
   // Check multiple common Chrome installation paths on Windows
   const possiblePaths = [
-    // Standard install locations
+    // Standard install locations (most common)
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     // User-level install (local app data)
-    path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    // Other possible locations
     path.join(os.homedir(), 'AppData', 'Local', 'Google', 'Chrome', 'Application', 'chrome.exe'),
     // Microsoft Edge as fallback (also Chromium-based)
     'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
@@ -37,12 +44,16 @@ function findWindowsChrome() {
 
   for (const chromePath of possiblePaths) {
     if (existsSync(chromePath)) {
+      console.log(`[Browser] Found Chrome at: ${chromePath}`);
       return chromePath;
     }
   }
 
-  // Default fallback if none found (will likely fail but we try)
-  return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  // If Chrome not found, throw helpful error
+  throw new Error(
+    `Chrome not found on Windows. Please install Chrome from https://chrome.google.com or set CHERRY_CHROME_PATH environment variable to your Chrome executable path.\n` +
+    `Searched locations:\n${possiblePaths.join('\n')}`
+  );
 }
 
 function defaultChromeExecutable() {
