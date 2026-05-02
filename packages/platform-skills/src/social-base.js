@@ -218,7 +218,10 @@ export function createSocialHandler(platform, config) {
       }
 
       if (step.action === 'scrape_results') {
-        if (['find_leads', 'lead_and_message', 'execute_deep_scrape'].includes(step.args.operation)) {
+        // For deep scrape on LinkedIn, use native platform search instead of Google
+        // Google results for LinkedIn are often poor (navigation links, not profiles)
+        if (['find_leads', 'lead_and_message'].includes(step.args.operation) || 
+            (step.args.operation === 'execute_deep_scrape' && platform !== 'linkedin')) {
           const { page, results } = await scrapeGoogleResults(attachedBrowser, {
             query: step.args.query || step.args.prompt,
             platform,
@@ -227,6 +230,7 @@ export function createSocialHandler(platform, config) {
           return { status: 'completed', summary: summarizeAction(platform, step), data: { page: await pageSnapshot(page), results } };
         }
 
+        // Use native platform search for LinkedIn deep scrape and all other cases
         const page = await openSearchSurface(await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform }), platform, step.args.query || step.args.prompt);
         const results = await scrapePlatformProfiles(page, platform, step.args.maxResults);
         return { status: 'completed', summary: summarizeAction(platform, step), data: { page: await pageSnapshot(page), results } };

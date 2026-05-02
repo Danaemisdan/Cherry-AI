@@ -13,6 +13,7 @@ import {
   summarizeAction,
   tryClick,
   waitForAppShell,
+  minimalDelay,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
@@ -22,7 +23,7 @@ import { createSocialHandler } from '../social-base.js';
 async function navigateToProfile(page, username) {
   const url = buildPlatformTargetUrl('instagram', username);
   await navigate(page, url, 'instagram');
-  await waitForAppShell(page);
+  await waitForAppShell(page, 'instagram');
 }
 
 async function checkInstagramFollowStatus(page) {
@@ -55,8 +56,8 @@ async function checkInstagramFollowStatus(page) {
 async function openInstagramMessageFromInbox(page, username) {
   // Primary method for private accounts: Go to inbox and search for user
   await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
-  await waitForAppShell(page);
-  await page.waitForTimeout(1500);
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(800);
 
   // Look for the "New message" or search button first
   const newMessageSelectors = [
@@ -75,8 +76,8 @@ async function openInstagramMessageFromInbox(page, username) {
   }
 
   if (openedSearch) {
-    await waitForAppShell(page);
-    await page.waitForTimeout(1000);
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(500);
   }
 
   // Look for search input (to: field)
@@ -96,8 +97,8 @@ async function openInstagramMessageFromInbox(page, username) {
   // Click and type username
   await searchBox.click({ timeout: 3000 }).catch(() => {});
   await searchBox.fill('').catch(() => {});
-  await searchBox.type(username, { delay: 30 }).catch(() => {});
-  await page.waitForTimeout(2000);
+  await searchBox.type(username, { delay: 20 }).catch(() => {});
+  await minimalDelay(1000);
 
   // Try to find and click on the user in search results
   // Instagram shows results as clickable divs with the username
@@ -116,7 +117,7 @@ async function openInstagramMessageFromInbox(page, username) {
       await result.click().catch(() => {});
 
       // Wait to see if a conversation opened
-      await page.waitForTimeout(1500);
+      await minimalDelay(800);
 
       // Check if composer appeared
       const composer = await firstVisibleLocator(page, [
@@ -138,7 +139,7 @@ async function openInstagramMessageFromInbox(page, username) {
     const text = await result.textContent().catch(() => '');
     if (text.toLowerCase().includes(username.toLowerCase())) {
       await result.click().catch(() => {});
-      await page.waitForTimeout(1500);
+      await minimalDelay(800);
 
       const composer = await firstVisibleLocator(page, [
         'textarea',
@@ -172,8 +173,8 @@ async function openInstagramMessage(page, username) {
     const inboxOpened = await openInstagramMessageFromInbox(page, username);
 
     if (inboxOpened) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1000);
+      await waitForAppShell(page, 'instagram');
+      await minimalDelay(500);
 
       // Verify composer is available
       const composer = await firstVisibleLocator(page, [
@@ -273,7 +274,7 @@ const baseHandler = createSocialHandler('instagram', {
   followLabels: ['Follow'],
   async openLatestPost(page) {
     await page.locator('a[href*="/p/"], a[href*="/reel/"]').first().click().catch(() => {});
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'instagram');
   },
   async likePost(page) {
     await tryClick(page, ['svg[aria-label="Like"]', 'button svg[aria-label="Like"]']);
@@ -297,7 +298,7 @@ const baseHandler = createSocialHandler('instagram', {
   commentSubmitLabels: ['Post', 'Share'],
   async openPostComposer(page) {
     await clickByText(page, ['a', 'div[role="button"]', 'button'], ['Create']).catch(() => {});
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'instagram');
   },
   postComposerSelectors: ['textarea', 'div[contenteditable="true"][role="textbox"]'],
   async sendComment(page) {
@@ -320,7 +321,7 @@ const baseHandler = createSocialHandler('instagram', {
         const locator = page.locator(selector).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 3000 });
-          await page.waitForTimeout(800);
+          await minimalDelay(300);
           return true;
         }
       } catch { /* continue */ }
@@ -329,7 +330,7 @@ const baseHandler = createSocialHandler('instagram', {
     // Try pressing Enter as fallback
     try {
       await page.keyboard.press('Enter');
-      await page.waitForTimeout(500);
+      await minimalDelay(300);
       return true;
     } catch { /* fail silently */ }
 
@@ -443,13 +444,13 @@ export const instagramHandler = {
             } else {
               // Click the attachment button then find file input
               await attachBtn.click();
-              await page.waitForTimeout(800);
+              await minimalDelay(500);
               const fileInput = await page.locator('input[type="file"]').first();
               if (fileInput) {
                 await fileInput.setInputFiles(attachmentPath);
               }
             }
-            await page.waitForTimeout(2000); // Wait for upload
+            await minimalDelay(1500); // Wait for upload
           }
         } catch (attachError) {
           console.warn('Instagram attachment failed:', attachError.message);

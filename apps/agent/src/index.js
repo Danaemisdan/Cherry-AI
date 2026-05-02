@@ -90,6 +90,9 @@ async function runTask(task, socket) {
   const results = [];
   try {
     for (const step of plan.steps) {
+      const stepStart = Date.now();
+      console.log(`[TIME] Step ${step.id} starting: ${step.platform}:${step.action}`);
+      
       socket.send(JSON.stringify({
         type: 'task.event',
         taskId: task.id,
@@ -98,11 +101,13 @@ async function runTask(task, socket) {
 
       try {
         const result = await executeSkill({ step, attachedBrowser, managedBrowser });
-        results.push({ step, result });
+        const stepDuration = Date.now() - stepStart;
+        console.log(`[TIME] Step ${step.id} completed in ${stepDuration}ms`);
+        results.push({ step, result, duration: stepDuration });
         socket.send(JSON.stringify({
           type: 'task.event',
           taskId: task.id,
-          payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete' },
+          payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete', duration: stepDuration },
         }));
       } catch (error) {
         socket.send(JSON.stringify({

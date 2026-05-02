@@ -34,13 +34,13 @@ async function getPlatformTab(prefix) {
   const allTabs = await chrome.tabs.query({ currentWindow: true });
   for (const tab of allTabs) {
     if (tab.url && hosts.some(h => tab.url.includes(h))) {
-      await chrome.tabs.update(tab.id, { active: true });
+      // Work in background - don't activate tab
       return tab.id;
     }
   }
   const url = PLATFORM_URLS[prefix] || 'https://www.google.com/';
-  const newTab = await chrome.tabs.create({ url, active: true });
-  await new Promise(r => setTimeout(r, 5000));
+  const newTab = await chrome.tabs.create({ url, active: false }); // Don't focus
+  await new Promise(r => setTimeout(r, 2000)); // Reduced from 5s
   return newTab.id;
 }
 
@@ -88,7 +88,7 @@ async function runInstagramBulkAction(tabId, usernames, actionLabel, runner) {
     }
 
     if (i < normalizedUsers.length - 1) {
-      await StealthEngine.sleep(Math.floor(Math.random() * 30000) + 15000);
+      await StealthEngine.sleep(2000); // Reduced from 15-45s to 2s
     }
   }
 
@@ -118,7 +118,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const prefix = (request.type || '').split('_')[0];
         activeTabId = await getPlatformTab(prefix);
         await CDPController.attach(activeTabId);
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 500)); // Reduced from 1.5s
 
         let result = null;
 

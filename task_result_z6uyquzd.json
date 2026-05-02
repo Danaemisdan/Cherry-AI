@@ -1,0 +1,397 @@
+{
+  "plan": {
+    "taskId": "task_yem2ctrf",
+    "objective": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+    "targetPlatforms": [
+      "linkedin"
+    ],
+    "steps": [
+      {
+        "id": "linkedin_0_8mnxeo7j",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "open_workspace",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete open_workspace on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      {
+        "id": "linkedin_1_2t0x0ciu",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "search",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete search on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      {
+        "id": "linkedin_2_sghswtgu",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "scrape_results",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete scrape_results on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      {
+        "id": "linkedin_3_pgbew3fp",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "extract_context",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete extract_context on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      {
+        "id": "linkedin_4_zbkt06jr",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "export_artifact",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete export_artifact on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "step": {
+        "id": "linkedin_0_8mnxeo7j",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "open_workspace",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete open_workspace on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      "result": {
+        "status": "ready",
+        "summary": "Opened linkedin workspace",
+        "data": {
+          "title": "Feed | LinkedIn",
+          "url": "https://www.linkedin.com/feed/",
+          "text": "0 notifications\nSkip to main content\nHome\n3\nMy Network\nJobs\n1\nMessaging\n9\nNotifications\nMe\nFor Business\nAdvertise\n\nDanny K\n\nFounder at Evrything AI, Game Developer and Designer “The Unreal Guy”\n\nDubai\n\nEvrything AI\n\nProfile viewers\n\n214\n\nPost impressions\n\n20\n\nMy pages (5)\n\nEvrything AI\n\nActivity\n\n0\n\nJobFinderAI\n\nActivity\n\n0\n\nFundfy AI\n\nActivity\n\n0\n\nGrow your business faster\n\nTry Premium Page\n\nAdvertise on LinkedIn\n\nSaved items\n\nGroups\n\nNewsletters\n\nEvents\n\nStart a post\n\nVideo\n\nPhoto\n\nWrite article\n\nSort by: Top\n\nNew posts\nFeed post\n\nIOM Papua New Guinea\n\n1d • \n\n📸 𝗖𝗔𝗟𝗟 𝗙𝗢𝗥 𝗘𝗫𝗣𝗥𝗘𝗦𝗦𝗜𝗢𝗡𝗦 𝗢𝗙 𝗜𝗡𝗧𝗘𝗥𝗘𝗦𝗧\n\nIOM Papua New Guinea invites qualified 𝗣𝗵𝗼𝘁𝗼𝗴𝗿𝗮𝗽𝗵𝗲𝗿𝘀 and 𝗩𝗶𝗱𝗲𝗼𝗴𝗿𝗮𝗽𝗵𝗲𝗿𝘀 to submit an Expression of Interest to be included in a national roster. Selected professionals may be engaged on an assignment basis to document project activities, community engagements, events, and human‑interest stories across diverse geographic and cultural settings in PNG. Assignments may take place at national, provincial, district, or community levels, including remote and rural locations.\n\n𝗟𝗼𝗰𝗮𝘁𝗶𝗼𝗻\nPapua New Guinea (All 22 provinces – applicants may indicate one or multiple provinces of availability)\n\n𝗧𝘆𝗽𝗲 𝗼𝗳 𝗔𝘀𝘀𝗶𝗴𝗻𝗺𝗲𝗻𝘁 / 𝗘𝗻𝗴𝗮𝗴𝗲𝗺𝗲𝗻𝘁\nPhotographers & Videographers (Roster-based, assignment as needed)\n \n𝗦𝗰𝗼𝗽𝗲 𝗼𝗳 𝗪𝗼𝗿𝗸 (𝗜𝗻𝗱𝗶𝗰𝗮𝘁𝗶𝘃𝗲)\n🔹Photography and Videography of field activities, workshops, trainings, and official events.\n🔹Human interest stories and beneficiary profiles (with IOM informed consent)\n🔹Short videos, interviews, and visual testimonials\n🔹High‑quality images and video content for reports, publications, websites, and social media\n \n𝗪𝗵𝗼 𝗦𝗵𝗼𝘂𝗹𝗱 𝗔𝗽𝗽𝗹𝘆\nProfessionals with:\n🔹Proven experience in photography and/or videography\n🔹Experience working in communities and culturally sensitive settings\n🔹Ability to deliver high‑resolution photos and quality video footage\n🔹Access to professional or semi‑professional equipment\n🔹Strong time management and ability to meet deadlines\n🔹Experience with humanitarian, development, government, or community organizations (an asset)\n \n𝗘𝘁𝗵𝗶𝗰𝘀 & 𝗦𝗮𝗳𝗲𝗴𝘂𝗮𝗿𝗱𝗶𝗻𝗴\nAll work must follow:\n🔹Ethical photography and storytelling principles\n🔹Safeguarding and child‑protection standards\n🔹Informed consent requirements\n🔹Respect for dignity, privacy, and local customs\n \n𝗪𝗵𝗮𝘁 𝘁𝗼 𝗦𝘂𝗯𝗺𝗶𝘁\n🔹Interested applicants should email the following by 15 May 2026 (COB):\n🔹Brief Expression of Interest (1–2 pages maximum)\n🔹Portfolio or sample work (links or attachments)\n🔹CV or short professional profile\n🔹Province(s) of availability\n🔹Contact details (email and phone number)\n\n📌 𝗡𝗼𝘁𝗲: 𝗣𝗿𝗶𝗰𝗲𝘀 𝗮𝗿𝗲 𝗻𝗼𝘁 𝗿𝗲𝗾𝘂𝗶𝗿𝗲𝗱 𝗮𝘁 𝘁𝗵𝗶𝘀 𝘀𝘁𝗮𝗴𝗲.\n\n𝗛𝗼𝘄 𝘁𝗼 𝗔𝗽𝗽𝗹𝘆\n📧 Email: pngprocurement@iom.int\n📌 Email Subject: REOI_PNG_COM-001 – Photographers and Videographers\n📄 Format: PDF only\n📦 Max file size: 10MB per email\n📝 File names must use Latin characters only (no symbols)\n \n𝗖𝗼𝗻𝘁𝗮𝗰𝘁 𝗳𝗼𝗿 𝗖𝗹𝗮𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻𝘀\nHerber Santos\n📧 pngprocurement@iom.int\n\nThis Request for Expression of Interest does not constitute a solicitation. Submission of an EOI does not guarantee selection or receipt of future solicitation documents.\n… more\n\n54 reactions\n54\n\n6 comments\n6 comments\n\n•\n\n17 reposts\n17 reposts\n\nLike\nComment\nRepost\nSend\nFeed post\n\nJulio Gonzalez, Thomas Lambert and 75 other connections follow Veeam Software\n\nVeeam Software\n\n \n\n455,315 followers\n\nPromoted\n\nLearn how to confidently recover when ransomware tries to stop you.\n\nRansomware recovery made simple\n\nPreview 5 of 12 pages\n\nWant to view more? Unlock the full document below.\n\n1 / 6\n\n1\nUnlock full document\n\n15 reactions\n15\n\nLike\nComment\nRepost\nSend\nFeed post\n\nStrati Georgopoulos\n\n \n • Following\n\nEntrepreneur | Executive Search Leader | Research-Obsessed Talent Strategist | Architect of High-Performance Teams\n\n5d • \n\nThere is a difference between being open and being exposed.\n\nIn business and in life, not everything needs to be shared in real time. Most people speak too early, too loosely, and to the wrong audience. Then they spend time managing reactions instead of staying focused on what actually matters.\n\nThe people who move well tend to be more measured. They know what to say, when to say it, and who it is for. Not out of fear. Out of discipline.\n\nPrivacy is not distance. It is control.\n\nAnd control keeps things clean.\n… more\n\nDarine Sakr and 4,374 others reacted\nDarine Sakr and 4,374 others\n\n153 comments\n153 comments\n\n•\n\n296 reposts\n296 reposts\n\nLike\nComment\nRepost\nSend\n\nToday’s puzzles\n\nPatches #45\n\nPiece it together\n\nZip #410\n\n350 connections played\n\nMini Sudoku #263\n\nThe classic game, made mini\n\nTango #571\n\nHarmonize the grid\n\nShow more\n\nAdd to your feed\n\nTech Mahindra\n\nCompany • IT Services and IT Consulting\n\nFollow\n\nDeblina Sen\n\nHR Executive @EY || Hiring for Oracle\n\nFollow\n\nAccenture\n\nCompany • Business Consulting and Services\n\nFollow\nView all recommendations\n\nAbout\n\nAccessibility\n\nHelp Center\n\nPrivacy & Terms\n\nAd Choices\n\nAdvertising\n\nBusiness Services\n\nGet the LinkedIn app\n\nMore\n\nLinkedIn Corporation © 2026"
+        }
+      }
+    },
+    {
+      "step": {
+        "id": "linkedin_1_2t0x0ciu",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "search",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete search on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      "result": {
+        "status": "ready",
+        "summary": "Opened linkedin search for \"fintech founders india\"",
+        "data": {
+          "title": "Search | LinkedIn",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=fintech%20founders%20india",
+          "text": "0 notifications\nSkip to main content\nHome\n3\nMy Network\nJobs\n1\nMessaging\n9\nNotifications\nMe\nFor Business\nAdvertise\nPeople\n1st\n2nd\n3rd+\nSeniority\nLocations\nCurrent companies\nAll filters\n\nCHAITANYA MACHARLA \n • 2nd\n\nFounder at CredXfer | Building India’s Super Payments App | Web3 | FinTech | Digital Payments\n\nHyderabad, Telangana, India\n\nConnect\n\nSummary: ...across India. Phase 1 is focused on domestic...\n\nAditya Rao \n • 2nd\n\nFounder & CEO at TaxiTribe | Building India’s Driver-First Mobility Protocol\n\nBengaluru, Karnataka, India\n\nConnect\n\nSummary: .... In parallel, my 10-year journey in fintech as part...\n\nVinit Arrya is a mutual connection\n\nShripad G. \n • 2nd\n\nfounder at Building solutions India SG\n\nPonda, Goa, India\n\nFollow\n\nCurrent: Founder and  Head Consultant at Building Solutions India\n\n824 followers\n\nMelita Furtado • 2nd\n\nFounder and CEO at Awww India\n\nMumbai, Maharashtra, India\n\nConnect\n\nCurrent: Founder at Awww - ...to more than 30,000 happy moms around India...\n\nManish Sharma is a mutual connection\n\nMukesh Bhatt • 2nd\n\nFounder at INFOMIND INDIA\n\nDelhi, India\n\nConnect\n\nCurrent: Founder at INFOMIND INDIA - Infomind India is one of the acknowledged recruitment agencies based in India with an associate...\n\nAmit Dua, Mohit Gupta and 20 other mutual connections\n\nSonal Sayani Kochhar • 3rd+\n\nFounder at Urban Wellness India\n\nUnited Arab Emirates\n\nConnect\n\nCurrent: Founder at Urban Wellness India\n\nS K Hansda \n • 2nd\n\nFounder & CEO @ Wheelin | Quick Arrival | Innovating Car Care in India | Doorstep Car wash  • Monthly Subscriptions\n\nJharkhand, India\n\nConnect\n\nAnil Kumar is a mutual connection\n\nSwapnil More • 2nd\n\nFounder at Alteryx India\n\nBengaluru, Karnataka, India\n\nConnect\n\nEducation: Poddar International College - India\n\nVinit Arrya is a mutual connection\n\nVijay Bhatter \n • 2nd\n\nFounder & CEO at India Forums & Cyberax\n\nMumbai Metropolitan Region\n\nConnect\n\nCurrent: Founder at India Forums\n\nAmit Patel and Namrata Sinha are mutual connections\n\nSajal Srivastava \n • 2nd\n\nFounder at VetSERV India (www.vetserv.co.in)\n\nNoida, Uttar Pradesh, India\n\nConnect\n\nCurrent: Founder at VetSERV India\n\nAnil Kumar is a mutual connection\n\nAre these results helpful?\n\nYour feedback helps us improve search results\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nNext\n\nAbout\n\nAccessibility\n\nHelp Center\n\nPrivacy & Terms\n\nAd Choices\n\nAdvertising\n\nBusiness Services\n\nGet the LinkedIn app\n\nMore\n\nLinkedIn Corporation © 2026"
+        }
+      }
+    },
+    {
+      "step": {
+        "id": "linkedin_2_sghswtgu",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "scrape_results",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete scrape_results on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      "result": {
+        "status": "completed",
+        "summary": "Collected visible linkedin search results for \"fintech founders india\"",
+        "data": {
+          "page": {
+            "title": "fintech founders india site:linkedin.com - Google Search",
+            "url": "https://www.google.com/search?q=fintech%20founders%20india%20site%3Alinkedin.com",
+            "text": "Skip to main content\nAccessibility help\nAccessibility feedback\nAI Mode\nAll\nImages\nNews\nVideos\nForums\nShopping\nMore\nTools\nSearch Results\nWeb results\nTop 10 Indian Fintech Leaders: Driving Growth with ...\n\nLinkedIn · siliconindia\n5 reactions · 9 months ago\nTop 10 Indian Fintech Leaders Steering the Nation's Financial Future Policies alone are not transforming India into a fintech revolution.\nNaveen Kukreja - Co-Founder at Fintech startup\n\nLinkedIn · Naveen Kukreja\n28.9K+ followers\nGurgaon, Haryana, India · Co-Founder · Fintech startup - to be launched\nNaveen Kukreja · Co-Founder at Fintech startup - to be launched. Co-Founder - Paisabazaar.com | Business World 40 Under 40 | DCE/DTU Trailblazer | Entrepreneur | ...Read more\nAmit Kumar - CEO | Fintech Founder | Director | CXO\n\nLinkedIn · Amit Kumar\n3.3K+ followers\nMumbai, Maharashtra, India · CEO & Co-Founder · SprintMoney\nCEO | Fintech Founder | Director | CXO | Consumer Banking · Passionate Business Leader committed to building a Fintech platform with a tech led customer ...\nMadhusudanan R - Co founder - M2P Fintech, the global ...\n\nLinkedIn · Madhusudanan R\n31.8K+ followers\nMumbai, Maharashtra, India · Founder · M2P Fintech\nCo founder - M2P Fintech, the global Banking infrastructure business. · Fintech entrepreneur with deep rooted experience in building and scaling Payments ...\nRayan Malhotra - 2x Influencer Founder & CEO – NeoFinity\n\nLinkedIn · Rayan Malhotra\n2.8K+ followers\nRayan Malhotra is a serial entrepreneur, fintech leader & startup evangelist, influencer, speaker, and mentor who has a knack for scaling tech businesses.Read more\nAditya Kumar - Various\n\nLinkedIn · Aditya Kumar\n15.1K+ followers\nBengaluru, Karnataka, India · Various\nTwo-time fintech founder with over a decade of experience building, scaling, and exiting… · Experience: Various · Education: University of Warwick ...\nIndia's Fintech Story in 2026: From Catching Up to Setting ...\n\nLinkedIn · Piyush Singh\n10+ reactions · 3 months ago\nPiyush Singh. Founder - CeDISI: FinTech & MSME Digitalisation I… Published Jan 10, 2026. + Follow.Read more\n40 Founders Revolutionizing Payments in Fintech | Mohan K\n\nLinkedIn · Indian Startup Times\n90+ reactions · 1 year ago\nThese 40 fintech founders have reimagined digital payments and financial services, driving innovation, accessibility, and growth.Read more\nHimanshu Tiwari ⚡️ - 💡 Fintech Founder\n\nLinkedIn · Himanshu Tiwari ⚡️\n10.9K+ followers\nHimanshu Tiwari ⚡️ · Fintech Founder | Building Scalable Platforms for Credit, Voice, and Financial Distribution Across India | Angel Investor | Strategic ...Read more\nIndian fintech founders redefine digital banking with ...\n\nLinkedIn · Entrepreneur Media India\n20+ reactions · 2 months ago\n#35Under35 | At just 35 and under, Sai Sandeep and Kalyan Karteek Sadasivuni, Co-Founders of Purpleplum, are redefining how banks embrace ...Read more\nPage navigation\n\t\n1\t\n2\n\t\n3\n\t\n4\n\t\n5\n\t\n6\n\t\n7\n\t\n8\n\t\n9\n\t\n10\n\t\nNext\nFooter links\nResults are not personalised\nIndia\nBoduppal, Hyderabad, Telangana - From your IP address\n - Update location\nHelpSend feedbackPrivacyTerms"
+          },
+          "results": [
+            {
+              "title": "Accessibility help",
+              "url": "https://support.google.com/websearch/answer/181196?hl=en-IN",
+              "snippet": "Skip to main content\nAccessibility help\nAccessibility feedback"
+            },
+            {
+              "title": "AI Mode",
+              "url": "https://www.google.com/search?q=fintech+founders+india+site:linkedin.com&num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=50&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&aep=1&ntc=1&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQ2J8OegQIERAD",
+              "snippet": "AI Mode"
+            },
+            {
+              "title": "Images",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=2&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQtKgLegQIFxAB",
+              "snippet": "Images"
+            },
+            {
+              "title": "News",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&q=fintech+founders+india+site:linkedin.com&tbm=nws&source=lnms&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQ0pQJegQIFhAB",
+              "snippet": "News"
+            },
+            {
+              "title": "Videos",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=7&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQtKgLegQIFRAB",
+              "snippet": "Videos"
+            },
+            {
+              "title": "Forums",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=18&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQs6gLegQIFBAB",
+              "snippet": "Forums"
+            },
+            {
+              "title": "Shopping",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=28&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&ved=1t:220175&ictx=111",
+              "snippet": "Shopping"
+            },
+            {
+              "title": "Short videos",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=39&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQs6gLegQIPRAB",
+              "snippet": "Short videos"
+            },
+            {
+              "title": "Maps",
+              "url": "https://maps.google.com/maps?num=10&sca_esv=cc26d5f28dfddab8&output=search&q=fintech+founders+india+site:linkedin.com&source=lnms&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&entry=mc&ved=1t:200715&ictx=111",
+              "snippet": "Maps"
+            },
+            {
+              "title": "Books",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&q=fintech+founders+india+site:linkedin.com&udm=36&source=lnms&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQ0pQJegQIPhAB",
+              "snippet": "Books"
+            },
+            {
+              "title": "Web",
+              "url": "https://www.google.com/search?num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&udm=web&fbs=ADc_l-aN0CWEZBOHjofHoaMMDiKpaEWjvZ2Py1XXV8d8KvlI3ppPEReeCOS7s1VbbZz2TLutTM8bcskdZ5Z5EWAFJPjTghF9mS0qmGrv36U8kfuC6phFf8U1aWAryveA6Pgbo-LJArAvFGtBaC-wIVf-3rOLbrzlISCuJck68rl0WFoHGTeNP9xZJUZnLVvAIZB5lw287sSA28lFrT9_xdHVkCgVCxYNHQ&q=fintech+founders+india+site:linkedin.com&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQs6gLegQIQBAB",
+              "snippet": "Web"
+            },
+            {
+              "title": "Any time",
+              "url": "https://www.google.com/search?q=fintech%20founders%20india%20site%3Alinkedin.com#",
+              "snippet": "Any time"
+            },
+            {
+              "title": "Past hour",
+              "url": "https://www.google.com/search?q=fintech+founders+india+site:linkedin.com&num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&source=lnt&tbs=qdr:h&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQpwV6BAgFEAY",
+              "snippet": "Past hour"
+            },
+            {
+              "title": "Past 24 hours",
+              "url": "https://www.google.com/search?q=fintech+founders+india+site:linkedin.com&num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&source=lnt&tbs=qdr:d&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQpwV6BAgFEAc",
+              "snippet": "Past 24 hours"
+            },
+            {
+              "title": "Past week",
+              "url": "https://www.google.com/search?q=fintech+founders+india+site:linkedin.com&num=10&sca_esv=cc26d5f28dfddab8&sxsrf=ANbL-n5VaCYUIQbokOzxJRsw4vcU_CuOkA:1777664630865&source=lnt&tbs=qdr:w&sa=X&ved=2ahUKEwi41-jm7JiUAxUFTGwGHYb9CUoQpwV6BAgFEAg",
+              "snippet": "Past week"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": {
+        "id": "linkedin_3_pgbew3fp",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "extract_context",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete extract_context on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      "result": {
+        "status": "completed",
+        "summary": "Captured page context for \"fintech founders india\"",
+        "data": {
+          "title": "Search | LinkedIn",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=fintech%20founders%20india",
+          "text": "0 notifications\nSkip to main content\nHome\n3\nMy Network\nJobs\n1\nMessaging\n9\nNotifications\nMe\nFor Business\nAdvertise\nPeople\n1st\n2nd\n3rd+\nSeniority\nLocations\nCurrent companies\nAll filters\n\nCHAITANYA MACHARLA \n • 2nd\n\nFounder at CredXfer | Building India’s Super Payments App | Web3 | FinTech | Digital Payments\n\nHyderabad, Telangana, India\n\nConnect\n\nSummary: ...across India. Phase 1 is focused on domestic...\n\nAditya Rao \n • 2nd\n\nFounder & CEO at TaxiTribe | Building India’s Driver-First Mobility Protocol\n\nBengaluru, Karnataka, India\n\nConnect\n\nSummary: .... In parallel, my 10-year journey in fintech as part...\n\nVinit Arrya is a mutual connection\n\nShripad G. \n • 2nd\n\nfounder at Building solutions India SG\n\nPonda, Goa, India\n\nFollow\n\nCurrent: Founder and  Head Consultant at Building Solutions India\n\n824 followers\n\nMelita Furtado • 2nd\n\nFounder and CEO at Awww India\n\nMumbai, Maharashtra, India\n\nConnect\n\nCurrent: Founder at Awww - ...to more than 30,000 happy moms around India...\n\nManish Sharma is a mutual connection\n\nMukesh Bhatt • 2nd\n\nFounder at INFOMIND INDIA\n\nDelhi, India\n\nConnect\n\nCurrent: Founder at INFOMIND INDIA - Infomind India is one of the acknowledged recruitment agencies based in India with an associate...\n\nAmit Dua, Mohit Gupta and 20 other mutual connections\n\nSonal Sayani Kochhar • 3rd+\n\nFounder at Urban Wellness India\n\nUnited Arab Emirates\n\nConnect\n\nCurrent: Founder at Urban Wellness India\n\nS K Hansda \n • 2nd\n\nFounder & CEO @ Wheelin | Quick Arrival | Innovating Car Care in India | Doorstep Car wash  • Monthly Subscriptions\n\nJharkhand, India\n\nConnect\n\nAnil Kumar is a mutual connection\n\nSwapnil More • 2nd\n\nFounder at Alteryx India\n\nBengaluru, Karnataka, India\n\nConnect\n\nEducation: Poddar International College - India\n\nVinit Arrya is a mutual connection\n\nVijay Bhatter \n • 2nd\n\nFounder & CEO at India Forums & Cyberax\n\nMumbai Metropolitan Region\n\nConnect\n\nCurrent: Founder at India Forums\n\nAmit Patel and Namrata Sinha are mutual connections\n\nSajal Srivastava \n • 2nd\n\nFounder at VetSERV India (www.vetserv.co.in)\n\nNoida, Uttar Pradesh, India\n\nConnect\n\nCurrent: Founder at VetSERV India\n\nAnil Kumar is a mutual connection\n\nAre these results helpful?\n\nYour feedback helps us improve search results\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nNext\n\nAbout\n\nAccessibility\n\nHelp Center\n\nPrivacy & Terms\n\nAd Choices\n\nAdvertising\n\nBusiness Services\n\nGet the LinkedIn app\n\nMore\n\nLinkedIn Corporation © 2026"
+        }
+      }
+    },
+    {
+      "step": {
+        "id": "linkedin_4_zbkt06jr",
+        "platform": "linkedin",
+        "browserMode": "attached",
+        "action": "export_artifact",
+        "args": {
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+          "platform": "linkedin",
+          "query": "fintech founders india",
+          "username": "Iba",
+          "usernames": [],
+          "messageGoal": "Just say I love you to her",
+          "tone": "Casual and brief",
+          "operation": "execute_deep_scrape",
+          "maxResults": 15,
+          "destination": "inbox",
+          "requireManualReview": false,
+          "oneByOne": false
+        },
+        "successCriteria": "Complete export_artifact on linkedin",
+        "retryPolicy": {
+          "maxAttempts": 2,
+          "replanOnFailure": true
+        }
+      },
+      "result": {
+        "status": "completed",
+        "summary": "Prepared artifact output",
+        "data": {
+          "title": "Search | LinkedIn",
+          "url": "https://www.linkedin.com/search/results/people/?keywords=fintech%20founders%20india",
+          "text": "0 notifications\nSkip to main content\nHome\n3\nMy Network\nJobs\n1\nMessaging\n9\nNotifications\nMe\nFor Business\nAdvertise\nPeople\n1st\n2nd\n3rd+\nSeniority\nLocations\nCurrent companies\nAll filters\n\nCHAITANYA MACHARLA \n • 2nd\n\nFounder at CredXfer | Building India’s Super Payments App | Web3 | FinTech | Digital Payments\n\nHyderabad, Telangana, India\n\nConnect\n\nSummary: ...across India. Phase 1 is focused on domestic...\n\nAditya Rao \n • 2nd\n\nFounder & CEO at TaxiTribe | Building India’s Driver-First Mobility Protocol\n\nBengaluru, Karnataka, India\n\nConnect\n\nSummary: .... In parallel, my 10-year journey in fintech as part...\n\nVinit Arrya is a mutual connection\n\nShripad G. \n • 2nd\n\nfounder at Building solutions India SG\n\nPonda, Goa, India\n\nFollow\n\nCurrent: Founder and  Head Consultant at Building Solutions India\n\n824 followers\n\nMelita Furtado • 2nd\n\nFounder and CEO at Awww India\n\nMumbai, Maharashtra, India\n\nConnect\n\nCurrent: Founder at Awww - ...to more than 30,000 happy moms around India...\n\nManish Sharma is a mutual connection\n\nMukesh Bhatt • 2nd\n\nFounder at INFOMIND INDIA\n\nDelhi, India\n\nConnect\n\nCurrent: Founder at INFOMIND INDIA - Infomind India is one of the acknowledged recruitment agencies based in India with an associate...\n\nAmit Dua, Mohit Gupta and 20 other mutual connections\n\nSonal Sayani Kochhar • 3rd+\n\nFounder at Urban Wellness India\n\nUnited Arab Emirates\n\nConnect\n\nCurrent: Founder at Urban Wellness India\n\nS K Hansda \n • 2nd\n\nFounder & CEO @ Wheelin | Quick Arrival | Innovating Car Care in India | Doorstep Car wash  • Monthly Subscriptions\n\nJharkhand, India\n\nConnect\n\nAnil Kumar is a mutual connection\n\nSwapnil More • 2nd\n\nFounder at Alteryx India\n\nBengaluru, Karnataka, India\n\nConnect\n\nEducation: Poddar International College - India\n\nVinit Arrya is a mutual connection\n\nVijay Bhatter \n • 2nd\n\nFounder & CEO at India Forums & Cyberax\n\nMumbai Metropolitan Region\n\nConnect\n\nCurrent: Founder at India Forums\n\nAmit Patel and Namrata Sinha are mutual connections\n\nSajal Srivastava \n • 2nd\n\nFounder at VetSERV India (www.vetserv.co.in)\n\nNoida, Uttar Pradesh, India\n\nConnect\n\nCurrent: Founder at VetSERV India\n\nAnil Kumar is a mutual connection\n\nAre these results helpful?\n\nYour feedback helps us improve search results\n\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\nNext\n\nAbout\n\nAccessibility\n\nHelp Center\n\nPrivacy & Terms\n\nAd Choices\n\nAdvertising\n\nBusiness Services\n\nGet the LinkedIn app\n\nMore\n\nLinkedIn Corporation © 2026"
+        }
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import {
   firstWorkingLocator,
   firstVisibleLocator,
   generateOutreachMessage,
+  minimalDelay,
   navigate,
   normalizeUsername,
   openAttachedPage,
@@ -211,13 +212,13 @@ async function focusWhatsAppSearch(page) {
 
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
   await page.keyboard.press(`${modifier}+k`).catch(() => {});
-  await page.waitForTimeout(250).catch(() => {});
+  await minimalDelay(200);
 
   searchBox = await findWhatsAppSearchBox(page);
   if (searchBox) return searchBox;
 
   await page.keyboard.press(`${modifier}+f`).catch(() => {});
-  await page.waitForTimeout(250).catch(() => {});
+  await minimalDelay(200);
 
   searchBox = await findWhatsAppSearchBox(page);
   if (searchBox) return searchBox;
@@ -290,7 +291,7 @@ async function openWhatsAppConversation(page, username) {
     await searchBox.click({ timeout: 3000 }).catch(() => {});
     await searchBox.fill('').catch(() => {});
     await searchBox.type(target, { delay: 20 }).catch(() => {});
-    await page.waitForTimeout(1200).catch(() => {});
+    await minimalDelay(800);
 
     const clicked = await clickVisibleChatCandidate(page, target, { strict: true, searchBox });
     if (!clicked) {
@@ -376,7 +377,7 @@ async function openWhatsAppPrimaryMenu(page) {
       const locator = page.locator(selector).first();
       if (await locator.count() > 0) {
         await locator.click({ timeout: 2000 });
-        await page.waitForTimeout(800);
+        await minimalDelay(500);
         // Check if menu opened by looking for menu items
         const menuItem = await page.locator('div[role="menuitem"], [role="menu"] div').first();
         if (await menuItem.count() > 0) {
@@ -410,7 +411,7 @@ async function clickWhatsAppMenuItem(page, labels = []) {
         let locator = page.locator(`${selector}:has-text("${label}")`).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 2000 });
-          await page.waitForTimeout(600);
+          await minimalDelay(400);
           return true;
         }
 
@@ -418,7 +419,7 @@ async function clickWhatsAppMenuItem(page, labels = []) {
         locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 2000 });
-          await page.waitForTimeout(600);
+          await minimalDelay(400);
           return true;
         }
       } catch { /* continue */ }
@@ -430,12 +431,12 @@ async function clickWhatsAppMenuItem(page, labels = []) {
   if (!clicked) {
     throw new Error(`Could not find a WhatsApp menu item matching: ${labels.join(', ')}`);
   }
-  await page.waitForTimeout(600).catch(() => {});
+  await minimalDelay(400);
 }
 
 async function confirmDialogAction(page, labels = []) {
   // Wait for dialog to appear
-  await page.waitForTimeout(500);
+  await minimalDelay(300);
 
   // Try to find confirmation button
   const dialogSelectors = [
@@ -452,7 +453,7 @@ async function confirmDialogAction(page, labels = []) {
         let locator = page.locator(`${selector}:has-text("${label}")`).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 3000 });
-          await page.waitForTimeout(1000);
+          await minimalDelay(600);
           return true;
         }
 
@@ -460,7 +461,7 @@ async function confirmDialogAction(page, labels = []) {
         locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 3000 });
-          await page.waitForTimeout(1000);
+          await minimalDelay(600);
           return true;
         }
       } catch { /* continue */ }
@@ -472,7 +473,7 @@ async function confirmDialogAction(page, labels = []) {
   if (!clicked) {
     throw new Error(`Could not confirm WhatsApp action: ${labels.join(', ')}`);
   }
-  await page.waitForTimeout(1000).catch(() => {});
+  await minimalDelay(600);
 }
 
 async function openStatusView(page) {
@@ -495,14 +496,14 @@ async function openStatusView(page) {
     }
   }
 
-  await page.waitForTimeout(1200).catch(() => {});
+  await minimalDelay(800);
   return page;
 }
 
 async function openProfileSettings(page) {
   await openWhatsAppPrimaryMenu(page);
   await clickWhatsAppMenuItem(page, ['Profile', 'Settings']);
-  await page.waitForTimeout(1200).catch(() => {});
+  await minimalDelay(800);
 }
 
 async function uploadIntoVisibleFileInput(page, filePath) {
@@ -519,7 +520,7 @@ async function uploadIntoVisibleFileInput(page, filePath) {
   await input.setInputFiles(filePath).catch(() => {
     throw new Error('WhatsApp rejected the selected file');
   });
-  await page.waitForTimeout(1200).catch(() => {});
+  await minimalDelay(800);
 }
 
 async function openStatusComposer(page) {
@@ -538,7 +539,7 @@ async function openStatusComposer(page) {
       throw new Error('Could not open the WhatsApp status composer');
     }
   }
-  await page.waitForTimeout(1200).catch(() => {});
+  await minimalDelay(800);
 }
 
 async function openTarget(attachedBrowser, username) {
@@ -643,7 +644,7 @@ export const whatsappHandler = {
             if (await locator.count() > 0 && await locator.isVisible()) {
               await locator.click({ timeout: 2000 });
               clickedEdit = true;
-              await page.waitForTimeout(800);
+              await minimalDelay(500);
               break;
             }
           } catch { /* continue */ }
@@ -652,7 +653,7 @@ export const whatsappHandler = {
 
       // Handle file upload if attachment provided
       if (step.args.attachmentPath) {
-        await page.waitForTimeout(1000);
+        await minimalDelay(600);
 
         // Look for file input or upload button
         const fileSelectors = [
@@ -674,7 +675,7 @@ export const whatsappHandler = {
                 uploaded = true;
               } else {
                 await locator.click();
-                await page.waitForTimeout(500);
+                await minimalDelay(300);
                 // Try to find file input after click
                 const fileInput = await page.locator('input[type="file"]').first();
                 if (await fileInput.count() > 0) {
@@ -693,7 +694,7 @@ export const whatsappHandler = {
         }
 
         // Wait for upload and confirm
-        await page.waitForTimeout(2000);
+        await minimalDelay(1200);
 
         // Try to confirm/save
         await confirmDialogAction(page, ['Save', 'OK', 'Done', 'Upload']);
@@ -751,7 +752,7 @@ export const whatsappHandler = {
       const page = await openTarget(attachedBrowser, step.args.username);
 
       // Wait for conversation to be fully loaded
-      await page.waitForTimeout(1000);
+      await minimalDelay(600);
 
       // Try to open contact info menu (different from primary menu)
       let openedMenu = false;
@@ -768,7 +769,7 @@ export const whatsappHandler = {
           const locator = page.locator(selector).first();
           if (await locator.count() > 0) {
             await locator.click({ timeout: 2000 });
-            await page.waitForTimeout(800);
+            await minimalDelay(500);
             openedMenu = true;
             break;
           }

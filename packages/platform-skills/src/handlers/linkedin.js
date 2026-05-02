@@ -5,6 +5,7 @@ import {
   fillEditable,
   firstVisibleLocator,
   generateOutreachMessage,
+  minimalDelay,
   navigate,
   openAttachedPage,
   pageSnapshot,
@@ -21,7 +22,169 @@ import { createSocialHandler } from '../social-base.js';
 async function navigateToLinkedInProfile(page, username) {
   const url = buildPlatformTargetUrl('linkedin', username);
   await navigate(page, url, 'linkedin');
-  await waitForAppShell(page);
+  await waitForAppShell(page, 'linkedin');
+}
+
+async function searchInLinkedInMessaging(page, username) {
+  // Strategy 1: Search in messaging for already connected people
+  await navigate(page, 'https://www.linkedin.com/messaging/', 'linkedin');
+  await waitForAppShell(page, 'linkedin');
+  
+  // Look for new message button or search
+  const newMsgBtn = await firstVisibleLocator(page, [
+    'button:has-text("New message")',
+    'button:has-text("Compose")',
+    'button[aria-label*="New message"]',
+    '.msg-new-conversation-compose__trigger',
+  ]);
+  
+  if (newMsgBtn) {
+    await newMsgBtn.click().catch(() => {});
+    await minimalDelay(500);
+  }
+  
+  // Find the recipient search box
+  const searchBox = await firstVisibleLocator(page, [
+    'input[placeholder*="Type a name"]',
+    'input[placeholder*="Search"]',
+    '.msg-connections-typeahead__input',
+    'input[role="combobox"]',
+  ]);
+  
+  if (searchBox) {
+    await searchBox.click({ timeout: 3000 }).catch(() => {});
+    await searchBox.fill('').catch(() => {});
+    await searchBox.type(username.slice(0, 20), { delay: 30 }).catch(() => {});
+    await minimalDelay(800);
+    
+    // Look for search results
+    const resultSelectors = [
+      '.msg-connections-typeahead__result',
+      '.msg-connections-typeahead__recipient',
+      '.msg-conversation-card',
+      'li[role="option"]',
+      '.artdeco-typeahead__result',
+    ];
+    
+    for (const selector of resultSelectors) {
+      const result = page.locator(selector).first();
+      if (await result.isVisible().catch(() => false)) {
+        const text = await result.textContent().catch(() => '');
+        if (text.toLowerCase().includes(username.toLowerCase())) {
+          await result.click().catch(() => {});
+          await minimalDelay(500);
+          return true;
+        }
+      }
+    }
+    
+    // Press escape to close search dropdown
+    await page.keyboard.press('Escape').catch(() => {});
+  }
+  
+  return false;
+}
+
+async function searchLinkedInConnections(page, username) {
+  // Strategy 2: Search in my network/connections
+  await navigate(page, 'https://www.linkedin.com/mynetwork/invite-connect/connections/', 'linkedin');
+  await waitForAppShell(page, 'linkedin');
+  
+  const searchBox = await firstVisibleLocator(page, [
+    'input[placeholder*="Search"]',
+    '.mn-connections-search-input',
+    'input[aria-label*="Search"]',
+  ]);
+  
+  if (searchBox) {
+    await searchBox.click().catch(() => {});
+    await searchBox.fill('').catch(() => {});
+    await searchBox.type(username, { delay: 30 }).catch(() => {});
+    await minimalDelay(1000);
+    
+    // Check if any connections match
+    const connectionCards = await page.locator('.mn-connection-card').all();
+    for (const card of connectionCards.slice(0, 3)) {
+      const name = await card.locator('.mn-connection-card__name').textContent().catch(() => '');
+      if (name.toLowerCase().includes(username.toLowerCase())) {
+        // Click message button on this connection
+        const msgBtn = await card.locator('button:has-text("Message"), button[aria-label*="Message"]').first();
+        if (await msgBtn.isVisible().catch(() => false)) {
+          await msgBtn.click();
+          await minimalDelay(500);
+          return true;
+        }
+        // Otherwise click the card to go to profile
+        await card.click();
+        await minimalDelay(500);
+        return 'profile_opened';
+      }
+    }
+  }
+  
+  return false;
+}
+
+async function searchLinkedInHome(page, username) {
+  // Strategy 3: Search on home page and find person
+  await navigate(page, 'https://www.linkedin.com/feed/', 'linkedin');
+  await waitForAppShell(page, 'linkedin');
+  
+  // Find the main search bar
+  const searchBox = await firstVisibleLocator(page, [
+    'input[placeholder*="Search"]',
+    '.search-global-typeahead__input',
+    'input[role="combobox"]',
+  ]);
+  
+  if (searchBox) {
+    await searchBox.click().catch(() => {});
+    await searchBox.fill('').catch(() => {});
+    await searchBox.type(username, { delay: 30 }).catch(() => {});
+    await minimalDelay(1000);
+    
+    // Press enter to search
+    await page.keyboard.press('Enter').catch(() => {});
+    await minimalDelay(1500);
+    
+    // Wait for search results page
+    await waitForAppShell(page, 'linkedin');
+    
+    // Look for people results
+    const peopleTab = await firstVisibleLocator(page, [
+      'button:has-text("People")',
+      'a:has-text("People")',
+      '[aria-label*="People"]',
+    ]);
+    
+    if (peopleTab) {
+      await peopleTab.click().catch(() => {});
+      await minimalDelay(800);
+    }
+    
+    // Find first person result and click
+    const personResults = await page.locator('.entity-result__item, .search-result__info, a[href*="/in/"]').all();
+    for (const result of personResults.slice(0, 3)) {
+      const text = await result.textContent().catch(() => '');
+      const href = await result.getAttribute('href').catch(() => '');
+      
+      if (text.toLowerCase().includes(username.toLowerCase()) || href.includes(username.toLowerCase().replace(' ', '-'))) {
+        await result.click().catch(() => {});
+        await minimalDelay(800);
+        return true;
+      }
+    }
+    
+    // If no exact match, click first person result anyway
+    const firstResult = page.locator('.entity-result__item a[href*="/in/"], .search-result__image-wrapper a').first();
+    if (await firstResult.isVisible().catch(() => false)) {
+      await firstResult.click().catch(() => {});
+      await minimalDelay(800);
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 async function checkLinkedInConnectionStatus(page) {
@@ -100,8 +263,8 @@ async function openLinkedInMessage(page, username) {
     }
 
     if (connectClicked) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1000);
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(500);
 
       // Click "Add a note" to customize the connection request
       const addNoteSelectors = [
@@ -115,8 +278,8 @@ async function openLinkedInMessage(page, username) {
                              await clickByText(page, ['button', 'span'], ['Add a note', 'Add note']);
 
       if (addNoteClicked) {
-        await waitForAppShell(page);
-        await page.waitForTimeout(800);
+        await waitForAppShell(page, 'linkedin');
+        await minimalDelay(300);
 
         // Verify the note textarea is available
         const noteComposer = await firstVisibleLocator(page, [
@@ -144,8 +307,8 @@ async function openLinkedInMessage(page, username) {
 
     if (followClicked) {
       // After following, try Message button again
-      await waitForAppShell(page);
-      await page.waitForTimeout(1000);
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(500);
 
       clicked = await tryClick(page, messageSelectors);
 
@@ -158,7 +321,7 @@ async function openLinkedInMessage(page, username) {
   if (!clicked && !clicked?.type) {
     // Last resort - navigate to messaging directly
     await navigate(page, 'https://www.linkedin.com/messaging/', 'linkedin');
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'linkedin');
 
     // Try to search for the user in messaging
     const searchBox = await firstVisibleLocator(page, [
@@ -171,8 +334,8 @@ async function openLinkedInMessage(page, username) {
     if (searchBox && username) {
       await searchBox.click({ timeout: 3000 }).catch(() => {});
       await searchBox.fill('').catch(() => {});
-      await searchBox.type(username.slice(0, 20), { delay: 30 }).catch(() => {});
-      await page.waitForTimeout(2000);
+      await searchBox.type(username.slice(0, 20), { delay: 20 }).catch(() => {});
+      await minimalDelay(1000);
 
       // Try multiple search result selectors
       const searchResults = [
@@ -192,8 +355,16 @@ async function openLinkedInMessage(page, username) {
     }
   }
 
-  await waitForAppShell(page);
-  await page.waitForTimeout(1000);
+  await waitForAppShell(page, 'linkedin');
+  await minimalDelay(300);
+
+  // Close any blocking overlays/connection search dropdowns
+  await page.keyboard.press('Escape').catch(() => {});
+  await minimalDelay(200);
+  
+  // Click elsewhere to dismiss any dropdowns
+  await page.click('body', { position: { x: 10, y: 10 } }).catch(() => {});
+  await minimalDelay(200);
 
   // Verify composer is available
   const composer = await firstVisibleLocator(page, [
@@ -229,7 +400,7 @@ const baseHandler = createSocialHandler('linkedin', {
   commentSubmitLabels: ['Post'],
   async openPostComposer(page) {
     await clickByText(page, ['button', 'div[role="button"]'], ['Start a post']).catch(() => {});
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'linkedin');
   },
   postComposerSelectors: ['div[role="textbox"][contenteditable="true"]'],
   publishPostLabels: ['Post'],
@@ -297,12 +468,55 @@ export const linkedinHandler = {
     if (action === 'send_message') {
       const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 
-      // Navigate to profile
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
-      await navigateToLinkedInProfile(page, username);
-
-      // Open message/connection dialog
-      const messageType = await openLinkedInMessage(page, username);
+      
+      // Try multiple strategies to find the person
+      let foundVia = null;
+      let messageType = null;
+      
+      // Strategy 1: Try direct profile URL first (fastest if it works)
+      try {
+        await navigateToLinkedInProfile(page, username);
+        messageType = await openLinkedInMessage(page, username);
+        foundVia = 'direct_profile';
+      } catch (directError) {
+        console.log(`Direct profile failed for ${username}, trying messaging search...`);
+        
+        // Strategy 2: Search in messaging (for connected people)
+        const foundInMessaging = await searchInLinkedInMessaging(page, username);
+        if (foundInMessaging) {
+          foundVia = 'messaging_search';
+          messageType = { type: 'message', noteAvailable: true };
+        } else {
+          // Strategy 3: Search in my network/connections
+          const foundInConnections = await searchLinkedInConnections(page, username);
+          if (foundInConnections === true) {
+            foundVia = 'connections';
+            messageType = { type: 'message', noteAvailable: true };
+          } else if (foundInConnections === 'profile_opened') {
+            foundVia = 'connections_profile';
+            messageType = await openLinkedInMessage(page, username);
+          } else {
+            // Strategy 4: Search on home page
+            const foundInSearch = await searchLinkedInHome(page, username);
+            if (foundInSearch) {
+              foundVia = 'home_search';
+              // Check if we can message or need to connect
+              const status = await checkLinkedInConnectionStatus(page);
+              if (status.isConnected) {
+                messageType = await openLinkedInMessage(page, username);
+              } else if (status.canConnect) {
+                // Person found but not connected - send connection request
+                messageType = await openLinkedInMessage(page, username);
+              } else {
+                throw new Error(`Found ${username} but cannot message or connect. They may have restricted messaging.`);
+              }
+            } else {
+              throw new Error(`Could not find anyone named "${username}" in your LinkedIn network or connections. Try connecting with them first.`);
+            }
+          }
+        }
+      }
 
       // Extract chat context if available
       const chatContext = await extractChatContext(page, 'linkedin', 6);
@@ -359,13 +573,13 @@ export const linkedinHandler = {
             } else {
               // Click button then find file input
               await attachBtn.click();
-              await page.waitForTimeout(800);
+              await minimalDelay(500);
               const fileInput = await page.locator('input[type="file"]').first();
               if (fileInput) {
                 await fileInput.setInputFiles(attachmentPath);
               }
             }
-            await page.waitForTimeout(2000); // Wait for upload
+            await minimalDelay(1200); // Wait for upload
           }
         } catch (attachError) {
           console.warn('Attachment failed:', attachError.message);
@@ -395,7 +609,7 @@ export const linkedinHandler = {
       return {
         status: 'completed',
         summary: summarizeAction('linkedin', step, { sent }),
-        data: { page: await pageSnapshot(page), message: truncatedMessage, sent, type: messageType.type },
+        data: { page: await pageSnapshot(page), message: truncatedMessage, sent, type: messageType.type, foundVia },
       };
     }
 

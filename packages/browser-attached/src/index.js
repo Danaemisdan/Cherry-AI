@@ -254,14 +254,14 @@ export class AttachedBrowserController {
     const pages = await this.listPages();
     const existing = pages.find((page) => page.url().includes(url));
     if (existing) {
-      await existing.bringToFront().catch(() => {});
+      // Work in background - do not bring to front
       return existing;
     }
 
     const context = await this.getPrimaryContext();
     const page = await context.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded' });
-    await page.bringToFront().catch(() => {});
+    // Work in background - do not focus the new tab
     return page;
   }
 

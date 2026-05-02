@@ -302,39 +302,48 @@ INSTRUCTIONS FOR REPLYING:
 
 STYLE: ${style}
 
-STRICT RULES:
-- Return ONLY the reply message - no labels, no quotes, no explanations
-- Write in the language of the conversation
-- Sound like a real person texting, not a bot
-- 1-2 sentences max
+CRITICAL RULES - VIOLATING THESE WILL FAIL:
+- Return ONLY the reply text - NO labels, NO quotes, NO "Subject:" lines
+- Write 1 SHORT sentence only (max 15 words)
+- Sound like a real person texting on WhatsApp, NOT a formal email
+- NEVER use placeholders like [your name], {name}, [recipient], etc. - write the actual name or omit it
+- NEVER start with "Subject:" or include email headers
+- NEVER include signature lines like "Best regards" or "Sent from my..."
 - NO hashtags
-- Max 1 emoji if it fits naturally
+- Max 1 emoji
 
 Write your reply now:`;
   }
 
   // Cold outreach prompt
-  return `You are writing an initial message to ${recipient} on ${platform}.
+  return `You are writing an initial DM to ${recipient} on ${platform}.
 
 YOUR GOAL: ${objective}
 ${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
 
 INSTRUCTIONS:
-- Write a natural, friendly first message
-- Be genuine and specific - avoid generic fluff like "I came across your profile"
-- 1-2 short sentences
-- Sound like a real person, not a sales template
-- NO "Hey [name], I came across your profile and..." - that's too common
-- Instead, be direct and natural
+- Write a natural, friendly first message like texting a friend
+- Be genuine and specific
+- 1-2 SHORT sentences max (total 20 words or less)
+- Sound like a real person on WhatsApp, NOT a sales email
+- NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
+- If you don't know a name, just say "Hey" or "Hi there" - NEVER use brackets
+- NEVER start with "Subject:" lines
+- NO "Dear Sir/Madam" or formal business language
+- NO "I came across your profile" - that's overused
+- Be direct and casual
 
 STYLE: ${style}
 
-STRICT RULES:
-- Return ONLY the message text - no labels, no quotes
-- Write proper English (no "u" for "you")
+CRITICAL RULES - VIOLATING THESE WILL FAIL:
+- Return ONLY the message text - NO labels, NO quotes, NO "Subject:" lines
+- 1-2 SHORT sentences max (20 words total)
+- NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
+- NEVER write "Subject:" or include email formatting
+- NEVER include signatures like "Best regards" or "Sent from..."
+- Sound like WhatsApp/text message, NOT email
 - NO hashtags
 - Max 1 emoji
-- 1-2 sentences max
 
 Write the message now:`;
 }
@@ -354,6 +363,16 @@ function sanitizeGeneratedMessage(rawText) {
     .replace(/\b(user|assistant|model)\s*:/gi, ' ')
     .replace(/\bsender'?s reply\s*:/gi, ' ')
     .replace(/\breply\s*:/gi, ' ')
+    // Remove template placeholders like [your name], {name}, [company], etc.
+    .replace(/\[your\s+name\]|\{your\s+name\}|\[name\]|\{name\}/gi, '')
+    .replace(/\[your\s+course\]|\{your\s+course\}|\[course\]|\{course\}/gi, '')
+    .replace(/\[your\s+destination\]|\{your\s+destination\}|\[destination\]|\{destination\}/gi, '')
+    .replace(/\[company\]|\{company\}|\[recipient\]|\{recipient\}/gi, '')
+    .replace(/\[your\s*\.?\s*\w+\]|\{your\s*\.?\s*\w+\}/gi, '')
+    // Remove email-style Subject lines
+    .replace(/^\s*subject\s*:.*/gim, '')
+    // Remove signature lines
+    .replace(/(?:best\s+regards|sent\s+from|cheers|thanks,?).*/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -389,7 +408,13 @@ function sanitizeGeneratedMessage(rawText) {
 function looksLikePromptLeak(text) {
   const normalized = String(text || '').toLowerCase();
   if (!normalized) return true;
-  return [
+  
+  // Check for placeholder patterns
+  const hasPlaceholders = /\[your\s+\w+\]|\{your\s+\w+\}|\[\w+\]|\{\w+\}/.test(text);
+  const hasSubjectLine = /^\s*subject\s*:/im.test(text);
+  const hasSignature = /(?:best regards|sent from my|sent from the|cheers,|thanks,).*/i.test(text);
+  
+  const promptLeakPatterns = [
     'goal from the ui:',
     'tone from the ui:',
     'rules:',
@@ -398,7 +423,10 @@ function looksLikePromptLeak(text) {
     'return only the final message text',
     "sender's reply",
     'reply:',
-  ].some((fragment) => normalized.includes(fragment));
+  ];
+  
+  return hasPlaceholders || hasSubjectLine || hasSignature || 
+    promptLeakPatterns.some((fragment) => normalized.includes(fragment));
 }
 
 function isGibberishText(text) {
@@ -595,35 +623,6 @@ export async function generateOutreachMessage({ username, goal, tone, query, pla
   throw new Error(`Failed to generate message after ${maxRetries + 1} attempts. Last error: ${lastError}. Please try again.`);
 }
 
-// Detect if text is gibberish/hallucinated
-function isGibberishText(text) {
-  if (!text || text.length < 5) return true;
-  
-  const normalized = text.toLowerCase();
-  
-  // Check for excessive consonant clustering (gibberish indicator)
-  const consonantClusters = normalized.match(/[bcdfghjklmnpqrstvwxz]{4,}/g);
-  if (consonantClusters && consonantClusters.length > 1) return true;
-  
-  // Check for random character repetition patterns
-  if (/(.)\1{4,}/.test(normalized)) return true;
-  
-  // Check for unbalanced brackets/quotes
-  const openBrackets = (normalized.match(/\(/g) || []).length;
-  const closeBrackets = (normalized.match(/\)/g) || []).length;
-  if (openBrackets !== closeBrackets) return false; // Mismatched brackets ok
-  
-  // Word count check - gibberish often has very few real words
-  const words = text.split(/\s+/).filter(w => w.length > 1);
-  if (words.length < 2) return true;
-  
-  // Check if average word length is suspicious (too long = likely gibberish)
-  const avgWordLength = words.reduce((sum, w) => sum + w.length, 0) / words.length;
-  if (avgWordLength > 15) return true;
-  
-  return false;
-}
-
 export async function composeComment({ tone, goal, postContent = '' }) {
   // Use LLM for comment generation instead of templates
   const style = String(tone || 'Casual and brief').trim();
@@ -690,9 +689,41 @@ function pageMatchesPlatform(url, platform) {
   return (PLATFORM_DOMAINS[platform] || []).some((domain) => hostname.includes(domain));
 }
 
-export async function waitForAppShell(page) {
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
-  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+export async function waitForAppShell(page, platform) {
+  // Fast path: check if page is already ready
+  const isReady = await page.evaluate((selectors) => {
+    return selectors.some(s => document.querySelector(s) !== null);
+  }, platform && READY_SELECTORS[platform] ? READY_SELECTORS[platform] : ['body']);
+  
+  if (isReady) return;
+  
+  // Quick wait for basic load
+  await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
+  
+  // Check again with shorter timeout
+  const hasContent = await page.locator('body').count().catch(() => 0);
+  if (hasContent > 0) return;
+  
+  // Only wait for networkidle if needed (max 3s)
+  await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
+}
+
+// Smart wait - check if element exists before waiting
+export async function smartWait(page, checkFn, options = {}) {
+  const { maxWaitMs = 5000, intervalMs = 100 } = options;
+  const start = Date.now();
+  
+  while (Date.now() - start < maxWaitMs) {
+    const isReady = await checkFn().catch(() => false);
+    if (isReady) return true;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return false;
+}
+
+// Minimal delay - only when necessary
+export async function minimalDelay(ms = 0) {
+  if (ms > 0) await new Promise(r => setTimeout(r, ms));
 }
 
 export async function bodyText(page) {
@@ -758,15 +789,24 @@ export async function ensurePlatformReady(page, platform) {
 
   for (const selector of readySelectors) {
     const locator = page.locator(selector).first();
-    const visible = await locator.waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
+    const visible = await locator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
     if (visible) return;
   }
 }
 
 export async function navigate(page, url, platform) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  // Fast navigation - use domcontentloaded for speed
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  
   if (platform) {
-    await ensurePlatformReady(page, platform);
+    // Quick check if already ready before full ensurePlatformReady
+    const isReady = await page.evaluate((selectors) => {
+      return selectors.some(s => document.querySelector(s) !== null);
+    }, platform && READY_SELECTORS[platform] ? READY_SELECTORS[platform] : ['body']);
+    
+    if (!isReady) {
+      await ensurePlatformReady(page, platform);
+    }
   } else {
     await waitForAppShell(page);
   }
@@ -920,7 +960,7 @@ export async function openAttachedPage(attachedBrowser, url, { platform, forceNa
     page = await attachedBrowser.getOrCreatePage({ url });
   }
 
-  await page.bringToFront().catch(() => {});
+  // Work in background - do not bring to front
 
   const currentUrl = normalizeComparableUrl(page.url());
   const targetUrl = normalizeComparableUrl(url);

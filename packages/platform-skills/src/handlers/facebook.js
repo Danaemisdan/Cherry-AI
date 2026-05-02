@@ -21,7 +21,7 @@ import { createSocialHandler } from '../social-base.js';
 async function navigateToFacebookProfile(page, username) {
   const url = buildPlatformTargetUrl('facebook', username);
   await navigate(page, url, 'facebook');
-  await waitForAppShell(page);
+  await waitForAppShell(page, 'facebook');
 }
 
 async function checkFacebookFriendStatus(page) {
@@ -108,8 +108,8 @@ async function openFacebookMessage(page, username) {
     const friendRequestSent = await tryClick(page, addFriendSelectors);
 
     if (friendRequestSent) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1500);
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(800);
 
       // Re-check status after adding friend
       const newStatus = await checkFacebookFriendStatus(page);
@@ -137,8 +137,8 @@ async function openFacebookMessage(page, username) {
                      await clickByText(page, ['button', 'div[role="button"]'], ['Follow']);
 
     if (followed) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1000);
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(500);
 
       // Try message button again after following
       clicked = await tryClick(page, messageSelectors);
@@ -153,8 +153,8 @@ async function openFacebookMessage(page, username) {
     throw new Error(`Could not open Facebook message for ${username}. You may need to be friends first, or they may have restricted messaging.`);
   }
 
-  await waitForAppShell(page);
-  await page.waitForTimeout(2000); // Facebook messenger takes longer to load
+  await waitForAppShell(page, 'facebook');
+  await minimalDelay(1000); // Facebook messenger takes longer to load
 
   // Look for composer with extensive selectors
   const composerSelectors = [
@@ -173,8 +173,8 @@ async function openFacebookMessage(page, username) {
     // Might have opened in messenger.com in new tab
     const currentUrl = page.url();
     if (currentUrl.includes('messenger.com') || currentUrl.includes('/messages/') || currentUrl.includes('/t/')) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(3000);
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(1500);
 
       const messengerComposer = await firstVisibleLocator(page, [
         'div[contenteditable="true"]',
@@ -219,7 +219,7 @@ const baseHandler = createSocialHandler('facebook', {
   },
   async openPostComposer(page) {
     await clickByText(page, ['div[role="button"]', 'button'], [`What's on your mind`, 'Create post']).catch(() => {});
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'facebook');
   },
   postComposerSelectors: ['div[role="textbox"][contenteditable="true"]'],
   publishPostLabels: ['Post'],

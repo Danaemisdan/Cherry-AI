@@ -21,7 +21,7 @@ import { createSocialHandler } from '../social-base.js';
 async function navigateToTwitterProfile(page, username) {
   const url = buildPlatformTargetUrl('twitter', username);
   await navigate(page, url, 'twitter');
-  await waitForAppShell(page);
+  await waitForAppShell(page, 'twitter');
 }
 
 async function checkTwitterFollowStatus(page) {
@@ -89,8 +89,8 @@ async function openTwitterMessage(page, username) {
     const followed = await tryClick(page, followSelectors);
 
     if (followed) {
-      await waitForAppShell(page);
-      await page.waitForTimeout(1500);
+      await waitForAppShell(page, 'twitter');
+      await minimalDelay(800);
 
       // Try message button again after following
       clicked = await tryClick(page, messageSelectors);
@@ -106,8 +106,8 @@ async function openTwitterMessage(page, username) {
     throw new Error(`Could not open Twitter DM for @${username}. They may have restricted DMs or only accept from followers.`);
   }
 
-  await waitForAppShell(page);
-  await page.waitForTimeout(1000);
+  await waitForAppShell(page, 'twitter');
+  await minimalDelay(500);
 
   // Verify composer is available with multiple selectors
   const composer = await firstVisibleLocator(page, [
@@ -143,7 +143,7 @@ const baseHandler = createSocialHandler('twitter', {
     const article = page.locator('article[data-testid="tweet"]').first();
     await article.scrollIntoViewIfNeeded().catch(() => {});
     await article.locator('button[data-testid="reply"]').click().catch(() => {});
-    await waitForAppShell(page);
+    await waitForAppShell(page, 'twitter');
   },
   async likePost(page) {
     await page.locator('article[data-testid="tweet"]').first().locator('button[data-testid="like"]').click().catch(() => {});

@@ -5,11 +5,13 @@ import {
   fillEditable,
   firstVisibleLocator,
   generateOutreachMessage,
+  minimalDelay,
   navigate,
   openAttachedPage,
   pageSnapshot,
   reviewQueue,
   summarizeAction,
+  submitComposer,
   tryClick,
   waitForAppShell,
 } from '../common.js';
@@ -66,9 +68,9 @@ async function fillGmailCompose(page, { to, subject, body }) {
 
     // Wait for autocomplete and press Enter to confirm
     if (recipientsFilled.ok) {
-      await page.waitForTimeout(500);
+      await minimalDelay(300);
       await page.keyboard.press('Enter').catch(() => {});
-      await page.waitForTimeout(300);
+      await minimalDelay(200);
     }
   }
 
@@ -91,14 +93,14 @@ async function fillGmailCompose(page, { to, subject, body }) {
 
 async function sendGmailMessage(page) {
   // Wait for any autocomplete to settle
-  await page.waitForTimeout(800);
+  await minimalDelay(500);
 
   // Try keyboard shortcut first (most reliable)
   const shortcut = process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter';
   await page.keyboard.press(shortcut).catch(() => {});
 
   // Wait longer for send to process
-  await page.waitForTimeout(1500);
+  await minimalDelay(1000);
 
   // Check if compose window is still open (send might have failed)
   const composeStillOpen = await firstVisibleLocator(page, [
@@ -126,7 +128,7 @@ async function sendGmailMessage(page) {
         const locator = page.locator(selector).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 3000 });
-          await page.waitForTimeout(1000);
+          await minimalDelay(500);
           sent = true;
           break;
         }
@@ -137,7 +139,7 @@ async function sendGmailMessage(page) {
     if (!sent) {
       const textClicked = await clickByText(page, ['div[role="button"]'], ['Send']);
       if (textClicked) {
-        await page.waitForTimeout(1000);
+        await minimalDelay(500);
         sent = true;
       }
     }
@@ -145,12 +147,12 @@ async function sendGmailMessage(page) {
     // Try shortcut again as last resort
     if (!sent) {
       await page.keyboard.press(shortcut);
-      await page.waitForTimeout(1000);
+      await minimalDelay(500);
     }
   }
 
   // Verify compose closed
-  await page.waitForTimeout(500);
+  await minimalDelay(300);
   return true;
 }
 

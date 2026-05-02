@@ -10141,6 +10141,1350 @@
         }
       ],
       "createdAt": "2026-05-01T13:55:59.297Z"
+    },
+    {
+      "id": "task_x5ar9ntg",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Just say hello like say anything you want to him and greet him normally",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_uicfcud6",
+          "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_x5ar9ntg",
+            "objective": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_cj4xoszp",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say hello like say anything you want to him and greet him normally",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_bf0777jb",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say hello like say anything you want to him and greet him normally",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_pgc8sdha",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say hello like say anything you want to him and greet him normally",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_k3y03dtd",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Just say hello like say anything you want to him and greet him normally. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Just say hello like say anything you want to him and greet him normally",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_cj4xoszp",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_cj4xoszp",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_bf0777jb",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_bf0777jb",
+          "message": "Opened @Jagadeesh on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_pgc8sdha",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_pgc8sdha",
+          "message": "Prepared message draft @Jagadeesh on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_k3y03dtd",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_k3y03dtd",
+          "message": "Sent message @Jagadeesh on whatsapp"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_vklahkl0",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_vklahkl0.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T19:37:00.508Z"
+    },
+    {
+      "id": "task_ceeo0ddq",
+      "status": "completed",
+      "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Iba",
+        "usernames": [],
+        "messageGoal": "Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_01sd43ia",
+          "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_ceeo0ddq",
+            "objective": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_0ywrwjfu",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_qekr5ojp",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_az91c872",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_0t8qj612",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Ask her if she loves me or not cause he signals have been mixed since the beginning and ask her why she didn't like message me before sleeping does she just wanna ignore me or like idk",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_0ywrwjfu",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_0ywrwjfu",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_qekr5ojp",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_qekr5ojp",
+          "message": "Opened @Iba on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_az91c872",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_az91c872",
+          "message": "Prepared message draft @Iba on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_0t8qj612",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_0t8qj612",
+          "message": "Sent message @Iba on whatsapp"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_d5vpw8qt",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_d5vpw8qt.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T19:39:01.248Z"
+    },
+    {
+      "id": "task_80sfep1u",
+      "status": "completed",
+      "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Iba",
+        "usernames": [],
+        "messageGoal": "Just say I love you to her",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_zrorlstb",
+          "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_80sfep1u",
+            "objective": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_in8slq13",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_hwpxqi30",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_eku63cbu",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_tsxvwnx0",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Iba on WhatsApp. Goal: Just say I love you to her. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_in8slq13",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_in8slq13",
+          "message": "Opened whatsapp workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_hwpxqi30",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_hwpxqi30",
+          "message": "Opened @Iba on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_eku63cbu",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_eku63cbu",
+          "message": "Prepared message draft @Iba on whatsapp"
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_tsxvwnx0",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_tsxvwnx0",
+          "message": "Sent message @Iba on whatsapp"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_mc9p5mpn",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_mc9p5mpn.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T19:40:32.053Z"
+    },
+    {
+      "id": "task_yem2ctrf",
+      "status": "completed",
+      "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "execute_deep_scrape",
+        "query": "fintech founders india",
+        "username": "Iba",
+        "usernames": [],
+        "messageGoal": "Just say I love you to her",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_2kfjj239",
+          "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_yem2ctrf",
+            "objective": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_8mnxeo7j",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_2t0x0ciu",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "search",
+                "args": {
+                  "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete search on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_sghswtgu",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "scrape_results",
+                "args": {
+                  "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scrape_results on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_pgbew3fp",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "extract_context",
+                "args": {
+                  "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete extract_context on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_4_zbkt06jr",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "export_artifact",
+                "args": {
+                  "prompt": "Execute a deep scrape on LinkedIn for keyword \"fintech founders india\". Limit: 15.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Iba",
+                  "usernames": [],
+                  "messageGoal": "Just say I love you to her",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete export_artifact on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_8mnxeo7j",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_8mnxeo7j",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_2t0x0ciu",
+          "label": "linkedin:search"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_2t0x0ciu",
+          "message": "Opened linkedin search for \"fintech founders india\""
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_sghswtgu",
+          "label": "linkedin:scrape_results"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_sghswtgu",
+          "message": "Collected visible linkedin search results for \"fintech founders india\""
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_pgbew3fp",
+          "label": "linkedin:extract_context"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_3_pgbew3fp",
+          "message": "Captured page context for \"fintech founders india\""
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_4_zbkt06jr",
+          "label": "linkedin:export_artifact"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_4_zbkt06jr",
+          "message": "Prepared artifact output"
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_z6uyquzd",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_z6uyquzd.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 5 steps"
+        }
+      ],
+      "createdAt": "2026-05-01T19:41:43.769Z"
+    },
+    {
+      "id": "task_vmqzci0l",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_t1fslehh",
+          "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_vmqzci0l",
+            "objective": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_wwqhqokg",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_ep9fii5n",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_e27w4pz7",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_w9scsxy5",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_wwqhqokg",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_wwqhqokg",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_ep9fii5n",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_ep9fii5n",
+          "message": "Opened @Jagadeesh on linkedin"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_e27w4pz7",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_e27w4pz7",
+          "message": "Prepared message draft @Jagadeesh on linkedin"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_w9scsxy5",
+          "label": "linkedin:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_3_w9scsxy5",
+          "error": "minimalDelay is not defined",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "minimalDelay is not defined"
+        }
+      ],
+      "createdAt": "2026-05-01T21:46:01.376Z"
+    },
+    {
+      "id": "task_7nimclvy",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_yum8q09w",
+          "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_7nimclvy",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_moo7rk1q",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_z5x84ndx",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_7o1fkx0l",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_mj35vi5p",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_moo7rk1q",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_moo7rk1q",
+          "message": "Opened linkedin workspace"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_z5x84ndx",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_z5x84ndx",
+          "message": "Opened @Jagadeesh K on linkedin"
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_7o1fkx0l",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_2_7o1fkx0l",
+          "error": "Please log in to LinkedIn",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Please log in to LinkedIn"
+        }
+      ],
+      "createdAt": "2026-05-01T22:03:34.289Z"
+    },
+    {
+      "id": "task_tuaur4zi",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_2xjpxb96",
+          "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_tuaur4zi",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_38aplpk1",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_fr79rodx",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_ahsx2w93",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_p99t0lbl",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_38aplpk1",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_38aplpk1",
+          "message": "Opened linkedin workspace",
+          "duration": 15163
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_fr79rodx",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_fr79rodx",
+          "message": "Opened @Jagadeesh K on linkedin",
+          "duration": 49000
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_ahsx2w93",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_ahsx2w93",
+          "message": "Prepared message draft @Jagadeesh K on linkedin",
+          "duration": 27430
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_p99t0lbl",
+          "label": "linkedin:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_3_p99t0lbl",
+          "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('div[role=\"textbox\"][contenteditable=\"true\"]').first()\u001b[22m\n\u001b[2m    - locator resolved to <div dir=\"auto\" role=\"textbox\" aria-multiline=\"true\" contenteditable=\"true\" aria-label=\"Write a message…\" class=\"msg-form__contenteditable t-14 t-black--light t-normal flex-grow-1 full-height notranslate↵          ↵          ↵          ↵          \">…</div>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('div[role=\"textbox\"][contenteditable=\"true\"]').first()\u001b[22m\n\u001b[2m    - locator resolved to <div dir=\"auto\" role=\"textbox\" aria-multiline=\"true\" contenteditable=\"true\" aria-label=\"Write a message…\" class=\"msg-form__contenteditable t-14 t-black--light t-normal flex-grow-1 full-height notranslate↵          ↵          ↵          ↵          \">…</div>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <dt class=\"t-14 t-black t-bold truncate\">…</dt> from <div class=\"msg-connections-typeahead-container full-width↵        \">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+        }
+      ],
+      "createdAt": "2026-05-01T22:10:31.994Z"
     }
   ],
   "campaigns": [],
@@ -10168,6 +11512,14 @@
     {
       "code": "Q8ELIL",
       "expiresAt": "2026-04-30T18:55:34.131Z"
+    },
+    {
+      "code": "GGDWK9",
+      "expiresAt": "2026-05-01T19:46:34.255Z"
+    },
+    {
+      "code": "F6RQKK",
+      "expiresAt": "2026-05-01T19:46:34.259Z"
     }
   ]
 }

@@ -139,20 +139,20 @@ const StealthEngine = {
     // Type the query naturally
     await this.simulateTyping(tabId, query);
     // Pause before hitting enter (like reading what you typed)
-    await this.sleep(Math.floor(Math.random() * 700) + 400);
+    await this.sleep(300);
     // Press Enter
     await CDPController.sendCommand(tabId, 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, code: 'Enter' });
-    await this.sleep(60);
+    await this.sleep(50);
     await CDPController.sendCommand(tabId, 'Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, code: 'Enter' });
     // Wait for results to load
-    await this.sleep(Math.floor(Math.random() * 2000) + 2500);
+    await this.sleep(2000); // Reduced from 2.5-4.5s
   },
 
   // Navigate back in browser history (like pressing Back button)
   async goBack(tabId) {
     this.checkAbort();
     await CDPController.sendCommand(tabId, 'Runtime.evaluate', { expression: 'window.history.back();' });
-    await this.sleep(Math.floor(Math.random() * 1500) + 2000);
+    await this.sleep(1500); // Reduced from 2-3.5s
   },
 
   // Wait for page to settle (poll for document.readyState)

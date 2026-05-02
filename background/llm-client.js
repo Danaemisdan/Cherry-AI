@@ -66,13 +66,13 @@ const LLMClient = {
             stop_words: ["DM:", "</s>", "<|user|>", "<|assistant|>", "<start_of_turn>", "<end_of_turn>", "Constraints:"]
           });
           
-          // Timeout local LLM after 15 seconds
+          // Timeout local LLM after 8 seconds
           setTimeout(() => {
             if (this.callbacks.has(msgId)) {
               this.callbacks.delete(msgId);
               resolve({ error: "Timeout" });
             }
-          }, 15000);
+          }, 8000);
         });
 
         if (response && !response.error && typeof response === 'string') {
