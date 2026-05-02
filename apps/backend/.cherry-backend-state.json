@@ -12021,6 +12021,395 @@
         }
       ],
       "createdAt": "2026-05-02T16:56:30.204Z"
+    },
+    {
+      "id": "task_iefulp71",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_mt1h8myq",
+          "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_iefulp71",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_s8orhk65",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_vyuplach",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_diiet1em",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_fgma7n58",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_s8orhk65",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_s8orhk65",
+          "message": "Opened linkedin workspace",
+          "duration": 15060
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_vyuplach",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_vyuplach",
+          "message": "Opened @Jagadeesh K on linkedin",
+          "duration": 48779
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_diiet1em",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_diiet1em",
+          "message": "Prepared message draft @Jagadeesh K on linkedin",
+          "duration": 25397
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_fgma7n58",
+          "label": "linkedin:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_3_fgma7n58",
+          "message": "Sent message @Jagadeesh K on linkedin",
+          "duration": 47076
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_i3ut6kto",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_i3ut6kto.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-02T17:50:55.639Z"
+    },
+    {
+      "id": "task_5oo36dvw",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Just be rude",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_2vyk32ho",
+          "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_5oo36dvw",
+            "objective": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_ggua1mz2",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Just be rude",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_o1cgdi7e",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Just be rude",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_i68bkypb",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Just be rude",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_46upcjao",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on WhatsApp. Goal: Just be rude. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Just be rude",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_ggua1mz2",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_ggua1mz2",
+          "message": "Opened whatsapp workspace",
+          "duration": 39
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_o1cgdi7e",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_o1cgdi7e",
+          "message": "Opened @Jagadeesh K on whatsapp",
+          "duration": 1201
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_i68bkypb",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_i68bkypb",
+          "message": "Prepared message draft @Jagadeesh K on whatsapp",
+          "duration": 2196
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_46upcjao",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_46upcjao",
+          "message": "Sent message @Jagadeesh K on whatsapp",
+          "duration": 4548
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_rusel61c",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_rusel61c.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-02T18:00:20.126Z"
     }
   ],
   "campaigns": [],

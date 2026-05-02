@@ -594,11 +594,23 @@ export const linkedinHandler = {
           // Send connection request
           sent = await submitComposer(page, ['button:has-text("Send")', 'button:has-text("Send invitation")'], ['Send', 'Send invitation']);
         } else {
-          // Send regular message
-          sent = await submitComposer(page, ['button:has-text("Send")'], ['Send']);
+          // Send regular message - LinkedIn shows popup asking "Press Enter to Send" or "Click Send"
+          // First dismiss any popup by pressing Escape
+          await page.keyboard.press('Escape').catch(() => {});
+          await minimalDelay(200);
+
+          // Try pressing Enter first (most reliable)
+          await page.keyboard.press('Enter').catch(() => {});
+          await minimalDelay(500);
+          sent = true;
+
+          // If that didn't work, try clicking Send button
           if (!sent) {
-            await page.keyboard.press('Enter').catch(() => {});
-            sent = true;
+            sent = await submitComposer(page, [
+              'button:has-text("Send")',
+              'button[type="submit"]',
+              '[aria-label*="Send"]',
+            ], ['Send']);
           }
         }
       }

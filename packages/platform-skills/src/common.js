@@ -322,15 +322,13 @@ YOUR GOAL: ${objective}
 ${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
 
 INSTRUCTIONS:
-- Write a natural, friendly first message like texting a friend
-- Be genuine and specific
-- 1-2 SHORT sentences max (total 20 words or less)
-- Sound like a real person on WhatsApp, NOT a sales email
+- FOLLOW THE USER'S GOAL EXACTLY - if they say "be rude", BE RUDE. If they say "ask a question", ASK IT.
+- Write 1-2 SHORT sentences max (total 20 words or less)
+- Sound like a real person texting on WhatsApp, NOT an email
 - NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
 - If you don't know a name, just say "Hey" or "Hi there" - NEVER use brackets
 - NEVER start with "Subject:" lines
 - NO "Dear Sir/Madam" or formal business language
-- NO "I came across your profile" - that's overused
 - Be direct and casual
 
 STYLE: ${style}
