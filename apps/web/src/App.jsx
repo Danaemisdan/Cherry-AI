@@ -18,7 +18,13 @@ import {
 } from 'lucide-react';
 import { IntegrationShowcase } from './components/ui/IntegrationShowcase';
 import { AdvancedAIChatInput } from './components/ui/AdvancedAIChatInput';
-import logo from './assets/logo.svg';
+// Simple inline logo to avoid 3.5MB SVG parse issue
+const Logo = () => (
+  <svg viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
+    <circle cx="20" cy="20" r="18" fill="#dc2626"/>
+    <text x="45" y="28" fill="white" fontSize="24" fontWeight="bold" fontFamily="system-ui">Cherry</text>
+  </svg>
+);
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8787';
 
@@ -136,7 +142,7 @@ function Shell({ agentOnline, agentState, children }) {
     <div className="layout">
       <aside className="sidebar">
         <div className="brand flex items-center justify-start px-4">
-          <img src={logo} alt="Cherry AI" className="h-10 w-auto object-contain" />
+          <Logo />
         </div>
 
         <div className="sidebar-card mt-6">
