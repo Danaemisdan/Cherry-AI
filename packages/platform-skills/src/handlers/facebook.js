@@ -295,11 +295,71 @@ const baseHandler = createSocialHandler('facebook', {
     await page.keyboard.press('Enter').catch(() => {});
   },
   async openPostComposer(page) {
-    await clickByText(page, ['div[role="button"]', 'button'], [`What's on your mind`, 'Create post']).catch(() => {});
+    // Try multiple strategies to open Facebook post composer
+    const createSelectors = [
+      'div[role="button"][aria-label*="Create"]',
+      'div[role="button"]:has-text("What")',
+      'div[role="button"]:has-text("Create post")',
+      '[aria-label="Create a post"]',
+      '[data-testid="status-attachment-input"]',
+    ];
+    for (const selector of createSelectors) {
+      try {
+        const el = await page.locator(selector).first();
+        if (await el.count() > 0 && await el.isVisible()) {
+          await el.click({ timeout: 3000 });
+          await minimalDelay(1000);
+          break;
+        }
+      } catch { /* continue */ }
+    }
     await waitForAppShell(page, 'facebook');
   },
-  postComposerSelectors: ['div[role="textbox"][contenteditable="true"]'],
-  publishPostLabels: ['Post'],
+  postComposerSelectors: [
+    'div[role="textbox"][contenteditable="true"]',
+    'div[aria-label="What"][contenteditable]',
+    '[data-testid="react-composer-post-button"]',
+  ],
+  publishPostSelectors: [
+    'button:has-text("Post")',
+    'div[role="button"]:has-text("Post")',
+    '[aria-label="Post"]',
+    '[data-testid="react-composer-post-button"]',
+  ],
+  publishPostLabels: ['Post', 'Share'],
+  async attachMedia(page, filePath) {
+    // Facebook-specific media upload
+    try {
+      // Look for file input directly
+      const fileInput = await page.locator('input[type="file"]').first();
+      if (await fileInput.count() > 0) {
+        await fileInput.setInputFiles(filePath);
+        await minimalDelay(3000);
+        return true;
+      }
+      
+      // Try clicking photo/video button first
+      const photoBtn = await page.locator('button[aria-label*="photo"], button[aria-label*="video"], input[accept*="image"]').first();
+      if (await photoBtn.count() > 0) {
+        const isInput = await photoBtn.evaluate(el => el.tagName === 'INPUT').catch(() => false);
+        if (isInput) {
+          await photoBtn.setInputFiles(filePath);
+        } else {
+          await photoBtn.click();
+          await minimalDelay(1000);
+          const input = await page.locator('input[type="file"]').first();
+          if (await input.count() > 0) {
+            await input.setInputFiles(filePath);
+          }
+        }
+        await minimalDelay(3000);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[Facebook] Media upload failed:', e.message);
+    }
+    return false;
+  },
 });
 
 // Enhanced handler with proper Facebook-specific DM flow
@@ -358,9 +418,21 @@ export const facebookHandler = {
     }
 
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview } = args;
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.facebook, { platform: 'facebook' });
+      
+      // Extract profile info FIRST (before opening message)
+      console.log(`[Facebook] Extracting profile context for ${username}...`);
+      let profileInfo = {};
+      try {
+        await navigateToFacebookProfile(page, username);
+        const rawProfileInfo = await extractProfileContext(page, 'facebook', username);
+        profileInfo = formatProfileContext(rawProfileInfo, 'facebook');
+        console.log(`[Facebook] Profile context: ${rawProfileInfo.work || 'no work info'}, ${rawProfileInfo.education || 'no education info'}`);
+      } catch (e) {
+        console.log(`[Facebook] Could not extract profile info: ${e.message}`);
+      }
       
       // Strategy: Try Messenger inbox search FIRST
       // Only use direct profile URL as fallback
@@ -380,14 +452,8 @@ export const facebookHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'messenger_search' };
       }
 
-      // Extract chat context AND full profile context
+      // Extract chat context from the conversation
       const chatContext = await extractChatContext(page, 'facebook', 6);
-      
-      // Extract comprehensive profile info (work, education, bio)
-      console.log(`[Facebook] Extracting full profile context for ${username}...`);
-      const rawProfileInfo = await extractProfileContext(page, 'facebook', username);
-      const profileInfo = formatProfileContext(rawProfileInfo, 'facebook');
-      console.log(`[Facebook] Profile context: ${rawProfileInfo.work || 'no work info'}, ${rawProfileInfo.education || 'no education info'}`);
 
       // Generate message with FULL context
       const message = await generateOutreachMessage({

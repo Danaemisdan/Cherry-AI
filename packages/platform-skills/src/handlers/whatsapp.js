@@ -519,16 +519,42 @@ async function sendMessage(attachedBrowser, step, usernameOverride) {
     profileInfo: {}, // WhatsApp has no public profile
   });
 
-  const filled = await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]'], message);
+  // Type the message
+  const filled = await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]', 'div[contenteditable="true"]'], message);
   if (!filled.ok) {
-    throw new Error(`Could not open the WhatsApp composer for "${username}"`);
+    throw new Error(`Could not type message for "${username}"`);
   }
 
+  // Wait for message to be typed
+  await minimalDelay(500);
+
+  // Send if not manual review
+  let sent = false;
   if (!step.args.requireManualReview) {
+    // Try pressing Enter first
     await page.keyboard.press('Enter').catch(() => {});
+    await minimalDelay(300);
+    
+    // Verify message was sent by checking if composer is empty
+    const composer = await page.locator('div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]').first();
+    if (await composer.count() > 0) {
+      const text = await composer.textContent().catch(() => '');
+      if (!text || text.trim() === '') {
+        sent = true;
+      } else {
+        // Try clicking send button if Enter didn't work
+        const sendBtn = await page.locator('button[aria-label="Send"], button[data-testid="send"], button:has-text("Send")').first();
+        if (await sendBtn.count() > 0) {
+          await sendBtn.click().catch(() => {});
+          sent = true;
+        }
+      }
+    } else {
+      sent = true; // Assume sent if composer not found
+    }
   }
 
-  return { page, message, sent: !step.args.requireManualReview };
+  return { page, message, sent };
 }
 
 export const whatsappHandler = {

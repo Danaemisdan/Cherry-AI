@@ -471,6 +471,18 @@ export const linkedinHandler = {
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
       
+      // Extract profile info FIRST (before opening message)
+      console.log(`[LinkedIn] Extracting profile context for ${username}...`);
+      let profileInfo = {};
+      try {
+        await navigateToLinkedInProfile(page, username);
+        const rawProfileInfo = await extractProfileContext(page, 'linkedin', username);
+        profileInfo = formatProfileContext(rawProfileInfo, 'linkedin');
+        console.log(`[LinkedIn] Profile context: ${rawProfileInfo.company || 'no company'}, ${rawProfileInfo.jobTitle || 'no title'}`);
+      } catch (e) {
+        console.log(`[LinkedIn] Could not extract profile info: ${e.message}`);
+      }
+      
       // Try multiple strategies to find the person - SEARCH FIRST, never use direct URL
       let foundVia = null;
       let messageType = null;
@@ -516,14 +528,8 @@ export const linkedinHandler = {
         }
       }
 
-      // Extract chat context AND full profile context
+      // Extract chat context from the conversation
       const chatContext = await extractChatContext(page, 'linkedin', 6);
-      
-      // Extract comprehensive profile info (job, company, bio, recent posts)
-      console.log(`[LinkedIn] Extracting full profile context for ${username}...`);
-      const rawProfileInfo = await extractProfileContext(page, 'linkedin', username);
-      const profileInfo = formatProfileContext(rawProfileInfo, 'linkedin');
-      console.log(`[LinkedIn] Profile context: ${rawProfileInfo.company || 'no company'}, ${rawProfileInfo.jobTitle || 'no title'}`);
 
       // Generate message with FULL context (chat + profile + posts)
       const message = await generateOutreachMessage({

@@ -298,10 +298,50 @@ const baseHandler = createSocialHandler('instagram', {
   ],
   commentSubmitLabels: ['Post', 'Share'],
   async openPostComposer(page) {
-    await clickByText(page, ['a', 'div[role="button"]', 'button'], ['Create']).catch(() => {});
+    // Click Create button to open post composer
+    const createSelectors = [
+      'a[href="/create"]',
+      'svg[aria-label="New post"]',
+      'a:has-text("Create")',
+      'div[role="button"]:has-text("Create")',
+    ];
+    for (const selector of createSelectors) {
+      try {
+        const el = await page.locator(selector).first();
+        if (await el.count() > 0 && await el.isVisible()) {
+          await el.click({ timeout: 3000 });
+          await minimalDelay(1000);
+          break;
+        }
+      } catch { /* continue */ }
+    }
     await waitForAppShell(page, 'instagram');
   },
-  postComposerSelectors: ['textarea', 'div[contenteditable="true"][role="textbox"]'],
+  postComposerSelectors: [
+    'textarea[aria-label="Write a caption..."]',
+    '[data-testid="caption-input"]',
+    'textarea[placeholder*="caption"]',
+    'div[contenteditable="true"]',
+  ],
+  publishPostSelectors: [
+    'button:has-text("Share")',
+    'button:has-text("Post")',
+    'div[role="button"]:has-text("Share")',
+    'div[role="button"]:has-text("Post")',
+    '[data-testid="share-button"]',
+    '[data-testid="post-button"]',
+  ],
+  publishPostLabels: ['Share', 'Post'],
+  async attachMedia(page, filePath) {
+    // Instagram-specific media upload
+    const fileInput = await page.locator('input[type="file"]').first();
+    if (await fileInput.count() > 0) {
+      await fileInput.setInputFiles(filePath);
+      await minimalDelay(3000);
+      return true;
+    }
+    return false;
+  },
   async sendComment(page) {
     // Instagram-specific comment submission with multiple strategies
     const submitSelectors = [
@@ -396,7 +436,19 @@ export const instagramHandler = {
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
       
-      // Strategy: Try DM inbox search FIRST (works for all account types)
+      // Extract profile info FIRST (before opening message, so we don't navigate away)
+      console.log(`[Instagram] Extracting profile context for ${username}...`);
+      let profileInfo = {};
+      try {
+        await navigateToProfile(page, username);
+        const rawProfileInfo = await extractProfileContext(page, 'instagram', username);
+        profileInfo = formatProfileContext(rawProfileInfo, 'instagram');
+        console.log(`[Instagram] Profile context: ${rawProfileInfo.category || 'no category'}, ${rawProfileInfo.followers || 'unknown followers'}`);
+      } catch (e) {
+        console.log(`[Instagram] Could not extract profile info: ${e.message}`);
+      }
+      
+      // Strategy: Try DM inbox search (works for all account types)
       // Only use direct profile URL as fallback
       let openedViaInbox = await openInstagramMessageFromInbox(page, username);
       let messageStatus;
@@ -414,14 +466,8 @@ export const instagramHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
       }
 
-      // Extract chat context AND full profile context
+      // Extract chat context from the conversation
       const chatContext = await extractChatContext(page, 'instagram', 8);
-      
-      // Extract comprehensive profile info (bio, category, recent posts)
-      console.log(`[Instagram] Extracting full profile context for ${username}...`);
-      const rawProfileInfo = await extractProfileContext(page, 'instagram', username);
-      const profileInfo = formatProfileContext(rawProfileInfo, 'instagram');
-      console.log(`[Instagram] Profile context: ${rawProfileInfo.category || 'no category'}, ${rawProfileInfo.followers || 'unknown followers'}`);
 
       // Generate message with FULL context (chat + profile + posts)
       const message = await generateOutreachMessage({
