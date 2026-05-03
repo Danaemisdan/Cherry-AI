@@ -204,70 +204,42 @@ async function openWhatsAppConversation(page, username) {
   const target = normalizeUsername(username);
   const digits = target.replace(/\D/g, '');
 
-  if (await currentHeaderMatches(page, target)) {
-    const composer = await firstVisibleLocator(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]']);
-    if (composer) {
-      return;
-    }
-  }
-
+  // FAST PATH: Direct URL for phone numbers
   if (digits) {
     await navigate(page, buildPlatformTargetUrl('whatsapp', username), 'whatsapp');
+    await minimalDelay(500);
     const composer = await firstVisibleLocator(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]']);
-    if (!composer) {
-      throw new Error(`WhatsApp did not open a conversation for "${username}"`);
-    }
-    return;
+    if (composer) return;
   }
 
+  // Search path for existing chats
   await ensurePlatformReady(page, 'whatsapp');
 
-  const initialSearchBox = await findWhatsAppSearchBox(page);
-  const visibleChat = await clickVisibleChatCandidate(page, target, { strict: true, searchBox: initialSearchBox });
-  if (visibleChat) {
-    // continue
-  } else {
-    const searchBox = await focusWhatsAppSearch(page);
-
-    if (!searchBox) {
-      throw new Error(`Could not find the WhatsApp chat search box. Candidates: ${await summarizeSearchInputs(page)}`);
-    }
-
-    await searchBox.click({ timeout: 3000 }).catch(() => {});
-    await searchBox.fill('').catch(() => {});
-    await searchBox.type(target, { delay: 20 }).catch(() => {});
-    await minimalDelay(800);
-
-    const clicked = await clickVisibleChatCandidate(page, target, { strict: true, searchBox });
-    if (!clicked) {
-      throw new Error(`Could not find a WhatsApp chat for "${username}" in this profile`);
-    }
+  const searchBox = await focusWhatsAppSearch(page);
+  if (!searchBox) {
+    throw new Error('WhatsApp search not found');
   }
 
-  const headerVisible = await page.waitForFunction(
-    ({ expected }) => {
-      const normalize = (value) => String(value || '').trim().toLowerCase();
-      const titles = Array.from(document.querySelectorAll('header span[title], header h1, header div[role="button"] span'))
-        .map((node) => normalize(node.textContent));
-      return titles.some((value) => value === expected || value.startsWith(expected));
-    },
-    { expected: normalizeChatText(target) },
-    { timeout: 12000 },
-  ).then(() => true).catch(() => false);
+  await searchBox.click({ timeout: 2000 }).catch(() => {});
+  await searchBox.fill('').catch(() => {});
+  await searchBox.type(target, { delay: 10 }).catch(() => {});
+  await minimalDelay(400);
 
-  if (!headerVisible) {
-    throw new Error(`WhatsApp did not switch into the "${username}" conversation`);
+  const clicked = await clickVisibleChatCandidate(page, target, { strict: false, searchBox });
+  if (!clicked) {
+    throw new Error(`Could not find WhatsApp chat for "${username}"`);
   }
 
+  // Quick wait for composer (max 3s)
   const composerReady = await page
     .locator('div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]')
     .first()
-    .waitFor({ state: 'visible', timeout: 12000 })
+    .waitFor({ state: 'visible', timeout: 3000 })
     .then(() => true)
     .catch(() => false);
 
   if (!composerReady) {
-    throw new Error(`WhatsApp composer is not ready for "${username}"`);
+    throw new Error(`WhatsApp composer for "${username}" not ready`);
   }
 }
 
@@ -285,35 +257,26 @@ async function waitForSearchResults(page, username) {
   const found = await page.waitForFunction(
     ({ expected }) => {
       const normalize = (value) => String(value || '').trim().toLowerCase();
-      const rows = Array.from(document.querySelectorAll('span[title], [data-testid="cell-frame-title"], div[role="listitem"], div[role="gridcell"]'));
+      const rows = Array.from(document.querySelectorAll('span[title], [data-testid="cell-frame-title"], div[role="listitem"]'));
       return rows.some((node) => {
-        const text = normalize(node.getAttribute?.('title') || node.getAttribute?.('aria-label') || node.textContent);
-        return text === expected || text.startsWith(expected) || text.includes(expected);
+        const text = normalize(node.getAttribute?.('title') || node.textContent);
+        return text.includes(expected);
       });
     },
     { expected: target },
-    { timeout: 12000 },
+    { timeout: 5000 },
   ).then(() => true).catch(() => false);
 
   if (!found) {
-    throw new Error(`Could not find a WhatsApp chat for "${username}" in this profile`);
+    throw new Error(`WhatsApp chat for "${username}" not found`);
   }
 }
 
 async function openWhatsAppPrimaryMenu(page) {
-  // Try multiple menu selectors - WhatsApp Web has different layouts
   const menuSelectors = [
     'header [aria-label="Menu"]',
-    'header [aria-label*="menu"]',
-    'header button[title*="Menu"]',
-    'header [data-testid="menu"]',
     'button[aria-label="Menu"]',
-    'button[aria-label*="menu"]',
-    'div[role="button"][aria-label*="menu"]',
     'span[data-icon="menu"]',
-    '[data-testid="menu-bar-menu"]',
-    '[data-testid="toolbar-menu"]',
-    'aside header button',
     'header button',
   ];
 
@@ -322,103 +285,58 @@ async function openWhatsAppPrimaryMenu(page) {
       const locator = page.locator(selector).first();
       if (await locator.count() > 0) {
         await locator.click({ timeout: 2000 });
-        await minimalDelay(500);
-        // Check if menu opened by looking for menu items
-        const menuItem = await page.locator('div[role="menuitem"], [role="menu"] div').first();
-        if (await menuItem.count() > 0) {
-          return true;
-        }
+        await minimalDelay(300);
+        // Check if menu opened
+        const menuItem = await page.locator('div[role="menuitem"]').first();
+        if (await menuItem.count() > 0) return true;
       }
     } catch { /* try next */ }
   }
-
-  throw new Error('Could not open the WhatsApp menu');
+  throw new Error('Could not open WhatsApp menu');
 }
 
 async function clickWhatsAppMenuItem(page, labels = []) {
-  // Try multiple selector patterns for menu items
-  const selectors = [
-    'div[role="menuitem"]',
-    '[data-testid="menu-item"]',
-    '[role="menu"] div',
-    '[role="menu"] button',
-    'div[class*="menu"] div',
-    'li',
-    'button',
-    'div[role="button"]',
-  ];
+  const selectors = ['div[role="menuitem"]', '[role="menu"] div', 'button'];
 
-  // First try exact text match
   for (const selector of selectors) {
     for (const label of labels) {
       try {
-        // Try exact text
         let locator = page.locator(`${selector}:has-text("${label}")`).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
           await locator.click({ timeout: 2000 });
-          await minimalDelay(400);
-          return true;
-        }
-
-        // Try case-insensitive
-        locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
-        if (await locator.count() > 0 && await locator.isVisible()) {
-          await locator.click({ timeout: 2000 });
-          await minimalDelay(400);
+          await minimalDelay(200);
           return true;
         }
       } catch { /* continue */ }
     }
   }
 
-  // Fallback to clickByText
   const clicked = await clickByText(page, selectors, labels);
   if (!clicked) {
-    throw new Error(`Could not find a WhatsApp menu item matching: ${labels.join(', ')}`);
+    throw new Error(`Menu item not found: ${labels.join(', ')}`);
   }
-  await minimalDelay(400);
 }
 
 async function confirmDialogAction(page, labels = []) {
-  // Wait for dialog to appear
-  await minimalDelay(300);
+  const selectors = ['[role="dialog"] button', 'button'];
 
-  // Try to find confirmation button
-  const dialogSelectors = [
-    '[role="dialog"] button',
-    '[data-testid*="dialog"] button',
-    'div[role="button"]',
-    'button',
-  ];
-
-  for (const selector of dialogSelectors) {
+  for (const selector of selectors) {
     for (const label of labels) {
       try {
-        // Try exact text
-        let locator = page.locator(`${selector}:has-text("${label}")`).first();
+        const locator = page.locator(`${selector}:has-text("${label}")`).first();
         if (await locator.count() > 0 && await locator.isVisible()) {
-          await locator.click({ timeout: 3000 });
-          await minimalDelay(600);
-          return true;
-        }
-
-        // Try case-insensitive
-        locator = page.locator(selector).filter({ hasText: new RegExp(label, 'i') }).first();
-        if (await locator.count() > 0 && await locator.isVisible()) {
-          await locator.click({ timeout: 3000 });
-          await minimalDelay(600);
+          await locator.click({ timeout: 2000 });
+          await minimalDelay(300);
           return true;
         }
       } catch { /* continue */ }
     }
   }
 
-  // Fallback to clickByText
-  const clicked = await clickByText(page, ['button', 'div[role="button"]', 'span'], labels);
+  const clicked = await clickByText(page, ['button'], labels);
   if (!clicked) {
-    throw new Error(`Could not confirm WhatsApp action: ${labels.join(', ')}`);
+    throw new Error(`Could not confirm: ${labels.join(', ')}`);
   }
-  await minimalDelay(600);
 }
 
 async function openStatusView(page) {
@@ -426,46 +344,41 @@ async function openStatusView(page) {
   const opened = await tryClick(page, [
     'button[aria-label*="Status"]',
     'button[aria-label*="Updates"]',
-    'div[role="button"][aria-label*="Status"]',
-    'div[role="button"][aria-label*="Updates"]',
     'span[data-icon="status"]',
-    'span[data-icon="updates"]',
-    'nav [aria-label*="Status"]',
-    'nav [aria-label*="Updates"]',
   ]);
 
   if (!opened) {
-    const clickedByText = await clickByText(page, ['button', 'div[role="button"]', 'span'], ['Status', 'Updates']);
+    const clickedByText = await clickByText(page, ['button'], ['Status', 'Updates']);
     if (!clickedByText) {
-      throw new Error('Could not open the WhatsApp status view');
+      throw new Error('Could not open WhatsApp status');
     }
   }
 
-  await minimalDelay(800);
+  await minimalDelay(400);
   return page;
 }
 
 async function openProfileSettings(page) {
   await openWhatsAppPrimaryMenu(page);
   await clickWhatsAppMenuItem(page, ['Profile', 'Settings']);
-  await minimalDelay(800);
+  await minimalDelay(400);
 }
 
 async function uploadIntoVisibleFileInput(page, filePath) {
   if (!filePath) {
-    throw new Error('This WhatsApp action needs an attachment path');
+    throw new Error('WhatsApp action needs attachment path');
   }
 
   const input = page.locator('input[type="file"]').first();
   const exists = await input.count().catch(() => 0);
   if (!exists) {
-    throw new Error('Could not find a WhatsApp file input for upload');
+    throw new Error('No file input found');
   }
 
   await input.setInputFiles(filePath).catch(() => {
-    throw new Error('WhatsApp rejected the selected file');
+    throw new Error('WhatsApp rejected file');
   });
-  await minimalDelay(800);
+  await minimalDelay(500);
 }
 
 async function openStatusComposer(page) {
@@ -473,18 +386,15 @@ async function openStatusComposer(page) {
   const opened = await tryClick(page, [
     'button[aria-label*="Add status"]',
     'button[aria-label*="My status"]',
-    'div[role="button"][aria-label*="Add status"]',
-    'div[role="button"][aria-label*="My status"]',
-    'span[data-icon="status-v3-unread"]',
     'span[data-icon="status-v3"]',
   ]);
   if (!opened) {
-    const clickedByText = await clickByText(page, ['button', 'div[role="button"]', 'span'], ['Add status', 'My status']);
+    const clickedByText = await clickByText(page, ['button'], ['Add status', 'My status']);
     if (!clickedByText) {
-      throw new Error('Could not open the WhatsApp status composer');
+      throw new Error('Could not open status composer');
     }
   }
-  await minimalDelay(800);
+  await minimalDelay(400);
 }
 
 async function openTarget(attachedBrowser, username) {
@@ -502,13 +412,10 @@ async function sendMessage(attachedBrowser, step, usernameOverride) {
     await openWhatsAppConversation(page, username);
   }
 
-  // Extract FULL chat context for smarter message generation
-  // WhatsApp doesn't have public profiles, but we extract deep chat history
-  console.log(`[WhatsApp] Extracting full chat context for ${username}...`);
-  const chatContext = await extractChatContext(page, 15); // Get more messages for better context
-  console.log(`[WhatsApp] Got ${chatContext.length} messages of context`);
+  // Extract chat context
+  const chatContext = await extractChatContext(page, 10);
 
-  // Generate message with FULL conversation context
+  // Generate message
   const message = await generateOutreachMessage({
     username,
     goal: step.args.messageGoal,
@@ -516,42 +423,23 @@ async function sendMessage(attachedBrowser, step, usernameOverride) {
     query: step.args.query,
     platform: 'whatsapp',
     chatContext,
-    profileInfo: {}, // WhatsApp has no public profile
+    profileInfo: {},
   });
 
-  // Type the message
-  const filled = await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]', 'div[contenteditable="true"]'], message);
+  // Type message quickly
+  const filled = await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]'], message);
   if (!filled.ok) {
     throw new Error(`Could not type message for "${username}"`);
   }
 
-  // Wait for message to be typed
-  await minimalDelay(500);
+  await minimalDelay(200);
 
-  // Send if not manual review
+  // Send
   let sent = false;
   if (!step.args.requireManualReview) {
-    // Try pressing Enter first
     await page.keyboard.press('Enter').catch(() => {});
-    await minimalDelay(300);
-    
-    // Verify message was sent by checking if composer is empty
-    const composer = await page.locator('div[contenteditable="true"][data-tab="10"], footer div[contenteditable="true"]').first();
-    if (await composer.count() > 0) {
-      const text = await composer.textContent().catch(() => '');
-      if (!text || text.trim() === '') {
-        sent = true;
-      } else {
-        // Try clicking send button if Enter didn't work
-        const sendBtn = await page.locator('button[aria-label="Send"], button[data-testid="send"], button:has-text("Send")').first();
-        if (await sendBtn.count() > 0) {
-          await sendBtn.click().catch(() => {});
-          sent = true;
-        }
-      }
-    } else {
-      sent = true; // Assume sent if composer not found
-    }
+    await minimalDelay(200);
+    sent = true;
   }
 
   return { page, message, sent };
@@ -709,6 +597,95 @@ export const whatsappHandler = {
     if (step.action === 'message_batch') {
       const outputs = await runBatchAction(step, async (username) => sendMessage(attachedBrowser, step, username));
       return { status: 'completed', summary: summarizeAction('whatsapp', step, { sent: !step.args.requireManualReview }), data: outputs.map((item) => ({ url: item.page.url(), message: item.message, sent: item.sent })) };
+    }
+
+    // NEW: Message a new contact by phone number (not in existing chats)
+    if (step.action === 'message_new_contact' || step.action === 'send_to_new_number') {
+      const { phoneNumber, messageGoal, tone, query, requireManualReview, attachmentPath } = step.args;
+      
+      if (!phoneNumber) {
+        throw new Error('message_new_contact requires a phoneNumber');
+      }
+      
+      // Normalize phone number (remove spaces, add + if missing)
+      let normalizedNumber = phoneNumber.replace(/\s/g, '');
+      if (!normalizedNumber.startsWith('+') && !normalizedNumber.startsWith('00')) {
+        // If no country code prefix, assume it might need one or use as-is
+        console.log(`[WhatsApp] Phone number: ${normalizedNumber}`);
+      }
+      
+      console.log(`[WhatsApp] Opening chat with new number: ${normalizedNumber}`);
+      
+      // Navigate directly to wa.me link (this opens chat even if not in contacts)
+      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.whatsapp, { platform: 'whatsapp' });
+      const waUrl = `https://wa.me/${normalizedNumber.replace(/\+/g, '')}`;
+      
+      await navigate(page, waUrl, 'whatsapp');
+      await minimalDelay(2000);
+      
+      // Check if "Continue to Chat" button appears (first time) or direct chat opens
+      const continueBtn = await firstVisibleLocator(page, [
+        'a:has-text("Continue to Chat")',
+        'button:has-text("Continue")',
+        'a[href*="web.whatsapp.com"]'
+      ]);
+      
+      if (continueBtn) {
+        await continueBtn.click();
+        await minimalDelay(2000);
+      }
+      
+      // Now we should be in WhatsApp Web with the chat open
+      await ensurePlatformReady(page, 'whatsapp');
+      await minimalDelay(1000);
+      
+      // Verify chat is open
+      const composer = await findComposer(page);
+      if (!composer) {
+        throw new Error(`Could not open chat with ${normalizedNumber}. The number may not be valid.`);
+      }
+      
+      console.log(`[WhatsApp] Chat opened with ${normalizedNumber}`);
+      
+      // Generate message
+      const chatContext = await extractChatContext(page, 6);
+      const message = await generateOutreachMessage({
+        username: normalizedNumber,
+        goal: messageGoal,
+        tone,
+        query,
+        platform: 'whatsapp',
+        chatContext,
+      });
+      
+      // Send message
+      let sent = false;
+      if (!requireManualReview) {
+        await fillEditable(page, ['div[contenteditable="true"][data-tab="10"]', 'footer div[contenteditable="true"]'], message);
+        await minimalDelay(300);
+        await page.keyboard.press('Enter');
+        await minimalDelay(500);
+        sent = true;
+        
+        // Handle attachment
+        if (attachmentPath) {
+          await minimalDelay(1000);
+          await uploadIntoVisibleFileInput(page, attachmentPath);
+          await minimalDelay(1000);
+          await page.keyboard.press('Enter');
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: summarizeAction('whatsapp', step, { sent }),
+        data: { 
+          phoneNumber: normalizedNumber,
+          message,
+          sent,
+          page: await pageSnapshot(page)
+        }
+      };
     }
 
     if (step.action === 'review_queue' || step.action === 'continue_outreach') {

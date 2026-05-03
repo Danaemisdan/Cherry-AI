@@ -12926,6 +12926,1255 @@
         }
       ],
       "createdAt": "2026-05-03T01:03:28.942Z"
+    },
+    {
+      "id": "task_g1rs61im",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_8hfkog6o",
+          "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_g1rs61im",
+            "objective": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_amroasii",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_kqqewd19",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_ft6aidnz",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_ah2p439f",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_amroasii",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_amroasii",
+          "message": "Opened whatsapp workspace",
+          "duration": 37
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_kqqewd19",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_kqqewd19",
+          "message": "Opened @Jagadeesh on whatsapp",
+          "duration": 1130
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_ft6aidnz",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_ft6aidnz",
+          "message": "Prepared message draft @Jagadeesh on whatsapp",
+          "duration": 6368
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_ah2p439f",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_ah2p439f",
+          "message": "Sent message @Jagadeesh on whatsapp",
+          "duration": 10670
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_qumzeya5",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_qumzeya5.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T14:28:59.695Z"
+    },
+    {
+      "id": "task_v5uvkekx",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "query": "fintech founders india",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_wiifz5mb",
+          "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_v5uvkekx",
+            "objective": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_ohs8o2ic",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_0ojwlkv7",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_i8i7gt7i",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_hi05hmk7",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_ohs8o2ic",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_ohs8o2ic",
+          "message": "Opened linkedin workspace",
+          "duration": 30097
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_0ojwlkv7",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_0ojwlkv7",
+          "message": "Opened @Jagadeesh on linkedin",
+          "duration": 37910
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_i8i7gt7i",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_i8i7gt7i",
+          "message": "Prepared message draft @Jagadeesh on linkedin",
+          "duration": 41660
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_hi05hmk7",
+          "label": "linkedin:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_3_hi05hmk7",
+          "message": "Sent message @Jagadeesh on linkedin",
+          "duration": 53719
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_2nubhvgf",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_2nubhvgf.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T14:29:17.152Z"
+    },
+    {
+      "id": "task_ubht95if",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_v8kz0qrx",
+          "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_ubht95if",
+            "objective": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_cbsjmd4k",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_fqmr60zl",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_5dspwih1",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_7hged93a",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_cbsjmd4k",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_cbsjmd4k",
+          "message": "Opened instagram workspace",
+          "duration": 2669
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_fqmr60zl",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_fqmr60zl",
+          "message": "Opened @Jagadeesh on instagram",
+          "duration": 8247
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_5dspwih1",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_5dspwih1",
+          "message": "Prepared message draft @Jagadeesh on instagram",
+          "duration": 12017
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_7hged93a",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_3_7hged93a",
+          "error": "Message composer not found",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Message composer not found"
+        }
+      ],
+      "createdAt": "2026-05-03T14:29:21.534Z"
+    },
+    {
+      "id": "task_gac6k9ss",
+      "status": "completed",
+      "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+      "context": {
+        "platform": "instagram",
+        "operation": "scrape_profiles",
+        "query": "founders in fintech",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_lzono0iw",
+          "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_gac6k9ss",
+            "objective": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_mh2wllmg",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_pzkkzs5j",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "search",
+                "args": {
+                  "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete search on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_icugpgcc",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "scrape_results",
+                "args": {
+                  "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scrape_results on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_zhyn6shy",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "export_artifact",
+                "args": {
+                  "prompt": "Scrape profile search results for \"founders in fintech\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete export_artifact on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_mh2wllmg",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_mh2wllmg",
+          "message": "Opened instagram workspace",
+          "duration": 2546
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_pzkkzs5j",
+          "label": "instagram:search"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_pzkkzs5j",
+          "message": "Searched Instagram for \"founders in fintech\"",
+          "duration": 2955
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_icugpgcc",
+          "label": "instagram:scrape_results"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_icugpgcc",
+          "message": "Collected visible instagram search results for \"founders in fintech\"",
+          "duration": 992
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_zhyn6shy",
+          "label": "instagram:export_artifact"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_zhyn6shy",
+          "message": "Prepared artifact output",
+          "duration": 4091
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_1369ctvp",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_1369ctvp.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T14:35:21.266Z"
+    },
+    {
+      "id": "task_4f04t3om",
+      "status": "completed",
+      "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+      "context": {
+        "platform": "instagram",
+        "operation": "scrape_profiles",
+        "query": "Bhojpuri",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_lklj72ag",
+          "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_4f04t3om",
+            "objective": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_04ciy9c8",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_fp1ots02",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "search",
+                "args": {
+                  "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete search on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_1649b7h8",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "scrape_results",
+                "args": {
+                  "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scrape_results on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_rvjlx8ty",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "export_artifact",
+                "args": {
+                  "prompt": "Scrape profile search results for \"Bhojpuri\" on Instagram. Limit: 15.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "scrape_profiles",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete export_artifact on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_04ciy9c8",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_04ciy9c8",
+          "message": "Opened instagram workspace",
+          "duration": 1920
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_fp1ots02",
+          "label": "instagram:search"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_fp1ots02",
+          "message": "Searched Instagram for \"Bhojpuri\"",
+          "duration": 2669
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_1649b7h8",
+          "label": "instagram:scrape_results"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_1649b7h8",
+          "message": "Collected visible instagram search results for \"Bhojpuri\"",
+          "duration": 1907
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_rvjlx8ty",
+          "label": "instagram:export_artifact"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_rvjlx8ty",
+          "message": "Prepared artifact output",
+          "duration": 3533
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_mqla6oro",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_mqla6oro.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T14:35:56.144Z"
+    },
+    {
+      "id": "task_624mdo27",
+      "status": "completed",
+      "prompt": "Follow Jagadeesh on Instagram.",
+      "context": {
+        "platform": "instagram",
+        "operation": "follow_user",
+        "query": "Bhojpuri",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_fm7hkgoz",
+          "prompt": "Follow Jagadeesh on Instagram."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_624mdo27",
+            "objective": "Follow Jagadeesh on Instagram.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_nyin8tu6",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Follow Jagadeesh on Instagram.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_nez5ymbx",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Follow Jagadeesh on Instagram.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_55ey23hh",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "follow_user",
+                "args": {
+                  "prompt": "Follow Jagadeesh on Instagram.",
+                  "platform": "instagram",
+                  "query": "Bhojpuri",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete follow_user on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_nyin8tu6",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_nyin8tu6",
+          "message": "Opened instagram workspace",
+          "duration": 29
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_nez5ymbx",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_nez5ymbx",
+          "message": "Opened @Jagadeesh on instagram",
+          "duration": 9057
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_55ey23hh",
+          "label": "instagram:follow_user"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_55ey23hh",
+          "message": "Triggered follow/connect @Jagadeesh on instagram",
+          "duration": 8075
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_whti198j",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_whti198j.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 3 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T14:36:04.575Z"
+    },
+    {
+      "id": "task_47lcuwi0",
+      "status": "dispatched",
+      "prompt": "Follow Jagadeesh on LinkedIn.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "follow_user",
+        "query": "fintech founders india",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_mdra6noy",
+          "prompt": "Follow Jagadeesh on LinkedIn."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_47lcuwi0",
+            "objective": "Follow Jagadeesh on LinkedIn.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_ah7b8h7m",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_0nfcbhq1",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_a2f967ru",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "follow_user",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete follow_user on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_ah7b8h7m",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_ah7b8h7m",
+          "message": "Opened linkedin workspace",
+          "duration": 33274
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_0nfcbhq1",
+          "label": "linkedin:open_target"
+        }
+      ],
+      "createdAt": "2026-05-03T14:39:21.252Z"
     }
   ],
   "campaigns": [],

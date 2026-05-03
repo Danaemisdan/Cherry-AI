@@ -297,6 +297,184 @@ export const gmailHandler = {
       return { status: 'ready', summary: summarizeAction('gmail', step), data: await pageSnapshot(page) };
     }
 
+    // ACTION: Read emails from inbox
+    if (action === 'read_emails') {
+      const { maxResults = 10, filter = 'all' } = args;
+      
+      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.gmail, { platform: 'gmail' });
+      await waitForAppShell(page);
+      
+      console.log(`[Gmail] Reading emails (filter: ${filter}, max: ${maxResults})...`);
+      
+      // Navigate to inbox if needed
+      await navigate(page, 'https://mail.google.com/mail/u/0/#inbox', 'gmail');
+      await minimalDelay(1000);
+      
+      // Extract email data from the page
+      const emails = await page.evaluate((maxCount) => {
+        const results = [];
+        
+        // Try multiple selectors for Gmail email rows
+        const emailRows = document.querySelectorAll('tr[role="row"], .zA, [data-legacy-thread-id]');
+        
+        for (let i = 0; i < Math.min(emailRows.length, maxCount); i++) {
+          const row = emailRows[i];
+          
+          // Extract sender
+          const senderEl = row.querySelector('[email], .yW .yP, .bA4 span');
+          const sender = senderEl?.getAttribute('email') || senderEl?.textContent?.trim() || 'Unknown';
+          
+          // Extract subject
+          const subjectEl = row.querySelector('.y6, .bog span, [data-legacy-thread-id] span');
+          const subject = subjectEl?.textContent?.trim() || '(no subject)';
+          
+          // Extract snippet/preview
+          const snippetEl = row.querySelector('.y2, .Zt, .a4W');
+          const snippet = snippetEl?.textContent?.trim() || '';
+          
+          // Extract timestamp
+          const timeEl = row.querySelector('.xY .bq3, .xY .yO, time');
+          const timestamp = timeEl?.textContent?.trim() || '';
+          
+          // Check if unread
+          const isUnread = row.classList.contains('zE') || row.getAttribute('role') === 'row' && !row.classList.contains('yO');
+          
+          // Get thread ID for replying
+          const threadId = row.getAttribute('data-legacy-thread-id') || row.getAttribute('data-thread-id') || '';
+          
+          if (sender && subject) {
+            results.push({
+              sender,
+              subject,
+              snippet,
+              timestamp,
+              isUnread,
+              threadId
+            });
+          }
+        }
+        
+        return results;
+      }, maxResults);
+      
+      console.log(`[Gmail] Found ${emails.length} emails`);
+      
+      return {
+        status: 'completed',
+        summary: `Read ${emails.length} emails from Gmail inbox`,
+        data: {
+          emails,
+          count: emails.length,
+          filter
+        }
+      };
+    }
+
+    // ACTION: Reply to an email
+    if (action === 'reply_to_email') {
+      const { threadId, sender, messageGoal, tone, query, requireManualReview } = args;
+      
+      if (!threadId && !sender) {
+        throw new Error('reply_to_email requires threadId or sender to identify the email');
+      }
+      
+      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.gmail, { platform: 'gmail' });
+      await waitForAppShell(page);
+      
+      console.log(`[Gmail] Opening email to reply...`);
+      
+      // Search for the email if threadId provided
+      if (threadId) {
+        await navigate(page, `https://mail.google.com/mail/u/0/#all/${threadId}`, 'gmail');
+      } else if (sender) {
+        // Search by sender
+        const searchUrl = `https://mail.google.com/mail/u/0/#search/from:${encodeURIComponent(sender)}`;
+        await navigate(page, searchUrl, 'gmail');
+        await minimalDelay(1000);
+        
+        // Click first result
+        const firstEmail = await firstVisibleLocator(page, ['tr[role="row"]', '.zA']);
+        if (firstEmail) {
+          await firstEmail.click();
+          await minimalDelay(800);
+        }
+      }
+      
+      await minimalDelay(1500);
+      
+      // Extract email content for context
+      const emailContent = await page.evaluate(() => {
+        const subject = document.querySelector('h2[data-legacy-thread-id], .ha h2')?.textContent?.trim() || '';
+        const body = document.querySelector('.a3s.aiL, .ii.gt .a3s')?.textContent?.trim() || '';
+        const originalSender = document.querySelector('.gD, .iw .gD')?.getAttribute('email') || '';
+        return { subject, body, originalSender };
+      });
+      
+      console.log(`[Gmail] Email content extracted: ${emailContent.subject.slice(0, 50)}...`);
+      
+      // Click Reply button
+      const replyClicked = await tryClick(page, [
+        'div[role="button"][aria-label="Reply"]',
+        'div[role="button"][data-tooltip="Reply"]',
+        'div[aria-label="Reply"]',
+        'div.T-I.J-J5-Ji.T-I-Js-IF.ahr'
+      ]);
+      
+      if (!replyClicked) {
+        // Try text-based click
+        const replyByText = await clickByText(page, ['div[role="button"]'], ['Reply']);
+        if (!replyByText) {
+          throw new Error('Could not find Reply button');
+        }
+      }
+      
+      await minimalDelay(800);
+      
+      // Generate reply message
+      const replyMessage = await generateOutreachMessage({
+        username: emailContent.originalSender || sender,
+        goal: messageGoal || 'reply to email',
+        tone,
+        query,
+        platform: 'gmail',
+        chatContext: [{ role: 'them', text: emailContent.body }],
+        profileInfo: {}
+      });
+      
+      // Fill reply body
+      const bodyFilled = await fillEditable(page, [
+        'div[aria-label="Message Body"][contenteditable="true"]',
+        'div[contenteditable="true"][role="textbox"]',
+        'div[aria-label*="message"][contenteditable="true"]'
+      ], replyMessage);
+      
+      if (!bodyFilled.ok) {
+        throw new Error('Could not fill reply body');
+      }
+      
+      await minimalDelay(300);
+      
+      // Send reply if not manual review
+      let sent = false;
+      if (!requireManualReview) {
+        const shortcut = process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter';
+        await page.keyboard.press(shortcut).catch(() => {});
+        await minimalDelay(800);
+        sent = true;
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Replied to email from ${emailContent.originalSender || sender}`,
+        data: {
+          replyTo: emailContent.originalSender || sender,
+          subject: emailContent.subject,
+          replyMessage,
+          sent
+        }
+      };
+    }
+
     throw new Error(`gmail does not support the "${action}" action in Cherry yet`);
   },
 };

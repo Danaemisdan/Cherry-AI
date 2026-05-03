@@ -19,456 +19,113 @@ import { extractPageContent, findElementsByText, parseProfileFromContent, detect
 import { createSocialHandler } from '../social-base.js';
 
 /**
- * LinkedIn Handler - Smart UI-based automation with job role matching
- * Uses full page extraction + intelligent parsing for name disambiguation
+ * LinkedIn Handler - Simplified messaging flow
+ * Key principle: Go to messaging, search, select first match, send message
  */
 
-// Navigate to LinkedIn home via UI
-async function navigateToLinkedInHome(page) {
-  console.log('[LinkedIn] Navigating to home via UI...');
+// Simple function to open LinkedIn messaging and find a person
+async function openLinkedInChat(page, searchName) {
+  console.log(`[LinkedIn] Opening chat with "${searchName}"...`);
   
-  // Method 1: Click LinkedIn logo
-  const logoFound = await tryClick(page, [
-    'svg[aria-label="LinkedIn"]',
-    'a[href="/feed/"] svg',
-    '.global-nav__logo',
-  ]);
-  
-  if (logoFound) {
-    await waitForAppShell(page, 'linkedin');
-    await minimalDelay(500);
-    return true;
-  }
-  
-  // Method 2: Navigate to base URL
-  await navigate(page, PLATFORM_URLS.linkedin, 'linkedin');
-  await waitForAppShell(page, 'linkedin');
-  return true;
-}
-
-// Search for person via UI with job role matching for disambiguation
-async function linkedinSearchPeople(page, query, roleHint = '') {
-  console.log(`[LinkedIn] Searching for "${query}"${roleHint ? ` with role hint: "${roleHint}"` : ''}`);
-  
-  await navigateToLinkedInHome(page);
-  
-  // Click search bar
-  const searchClicked = await tryClick(page, [
-    'input[placeholder*="Search"]',
-    '.search-global-typeahead__input',
-    'input[role="combobox"]',
-  ]);
-  
-  if (!searchClicked) {
-    // Try via text
-    const searchEl = await findElementsByText(page, 'Search', {
-      tagNames: ['input', 'div'],
-      fuzzy: true
-    });
-    if (searchEl.length > 0) {
-      await page.evaluate((idx) => {
-        document.querySelectorAll('input, div')[idx]?.click();
-      }, searchEl[0].index);
-    }
-  }
-  
-  await minimalDelay(300);
-  await page.keyboard.type(query, { delay: 20 });
-  await minimalDelay(800);
-  await page.keyboard.press('Enter');
-  await minimalDelay(1500);
-  
-  // Extract search results
-  const content = await extractPageContent(page);
-  
-  // Parse people results
-  const people = [];
-  const lines = content.fullText.split('\n').filter(l => l.trim());
-  
-  // LinkedIn search results have pattern: Name, Headline, Location
-  for (let i = 0; i < lines.length - 2; i++) {
-    const line = lines[i];
-    const nextLine = lines[i + 1];
-    const thirdLine = lines[i + 2];
-    
-    // Name usually doesn't contain special chars and is followed by headline
-    if (line.length < 40 && !line.includes('|') && !line.includes('@')) {
-      // Check if next line looks like a headline (contains job words)
-      const jobKeywords = ['engineer', 'manager', 'director', 'ceo', 'founder', 'lead', 'head', 'scientist', 'developer', 'analyst', 'consultant', 'specialist', 'coordinator', 'at', 'with'];
-      const isHeadline = jobKeywords.some(kw => nextLine.toLowerCase().includes(kw));
-      
-      if (isHeadline || thirdLine?.includes('connection') || thirdLine?.includes('connections')) {
-        people.push({
-          name: line,
-          headline: nextLine,
-          location: thirdLine,
-          index: i
-        });
-      }
-    }
-  }
-  
-  console.log(`[LinkedIn] Found ${people.length} people results`);
-  
-  // If role hint provided, score and rank matches
-  if (roleHint && people.length > 0) {
-    const hintWords = roleHint.toLowerCase().split(/\s+/);
-    
-    people.forEach(p => {
-      p.score = 0;
-      const headlineLower = p.headline.toLowerCase();
-      
-      hintWords.forEach(word => {
-        if (headlineLower.includes(word)) p.score += 10;
-      });
-      
-      // Boost exact name match
-      if (p.name.toLowerCase().includes(query.toLowerCase())) p.score += 5;
-    });
-    
-    people.sort((a, b) => b.score - a.score);
-    console.log(`[LinkedIn] Ranked by role match. Best: ${people[0].name} - ${people[0].headline}`);
-  }
-  
-  return people;
-}
-
-// Get comprehensive LinkedIn profile context
-async function getLinkedInProfileContext(page, identifier) {
-  console.log(`[LinkedIn] Extracting full profile context for ${identifier}...`);
-  
-  const content = await extractPageContent(page);
-  const profile = parseProfileFromContent(content, 'linkedin');
-  const relationship = await detectRelationshipStatus(page, 'linkedin');
-  
-  // Extract experience and skills from text
-  const experiences = [];
-  const lines = content.fullText.split('\n');
-  let inExperience = false;
-  
-  for (const line of lines) {
-    if (line.includes('Experience') || line.includes('Work')) {
-      inExperience = true;
-      continue;
-    }
-    if (line.includes('Education') || line.includes('Skills')) {
-      inExperience = false;
-    }
-    if (inExperience && line.length > 5 && line.length < 50) {
-      experiences.push(line);
-    }
-  }
-  
-  const context = {
-    identifier,
-    name: profile.name,
-    headline: profile.headline,
-    jobTitle: profile.jobTitle,
-    company: profile.company,
-    location: profile.location,
-    bio: profile.bio,
-    followers: profile.followers,
-    relationship: relationship.relationship,
-    isConnected: relationship.isConnected,
-    canConnect: relationship.canFollow,
-    isPending: relationship.requestPending,
-    experiences: experiences.slice(0, 5),
-    openToWork: profile.openToWork,
-    hiring: profile.hiring,
-    rawText: content.fullText?.slice(0, 1500) || ''
-  };
-  
-  console.log(`[LinkedIn] Context: ${context.name}, ${context.jobTitle} at ${context.company}, ${context.relationship}`);
-  return context;
-}
-
-// Method 1: Message via LinkedIn Messaging (existing conversations)
-async function messageViaMessaging(page, username) {
-  console.log(`[LinkedIn] Method 1: Messaging via LinkedIn Messaging...`);
-  
-  // Navigate to messaging
-  const msgClicked = await tryClick(page, [
-    'svg[aria-label="Messaging"]',
-    'a[href="/messaging/"]',
-    '.global-nav__nav-item--jobs + .global-nav__nav-item', // Messaging icon near Jobs
-  ]);
-  
-  if (!msgClicked) {
-    await navigate(page, 'https://www.linkedin.com/messaging/', 'linkedin');
-  }
-  
+  // Navigate directly to messaging
+  await navigate(page, 'https://www.linkedin.com/messaging/', 'linkedin');
   await waitForAppShell(page, 'linkedin');
   await minimalDelay(800);
   
-  // Click "New message"
+  // Click "New message" or compose button
   const newMsgClicked = await tryClick(page, [
     'button:has-text("New message")',
     'button[aria-label*="New message"]',
     '.msg-new-conversation-compose__trigger',
+    'button:has-text("Compose")',
   ]);
   
   if (!newMsgClicked) {
-    // Try via text
-    const newMsgBtn = await findElementsByText(page, 'New message', {
-      tagNames: ['button', 'div'],
+    // Try finding by text
+    const composeBtn = await findElementsByText(page, 'New message', {
+      tagNames: ['button'],
       fuzzy: true
     });
-    if (newMsgBtn.length > 0) {
+    if (composeBtn.length > 0) {
       await page.evaluate((idx) => {
-        document.querySelectorAll('button, div')[idx]?.click();
-      }, newMsgBtn[0].index);
+        document.querySelectorAll('button')[idx]?.click();
+      }, composeBtn[0].index);
     }
   }
   
   await minimalDelay(500);
   
-  // Type username in search
-  await page.keyboard.type(username, { delay: 20 });
-  await minimalDelay(1000);
+  // Type the name in search
+  await page.keyboard.type(searchName, { delay: 20 });
+  await minimalDelay(1500); // Wait for suggestions
   
-  // Find and click result
-  const results = await findElementsByText(page, username, {
-    tagNames: ['div', 'li', 'button'],
-    fuzzy: true
-  });
+  // Extract page to see search results
+  const content = await extractPageContent(page);
   
-  for (const result of results) {
-    if (result.text.toLowerCase().includes(username.toLowerCase())) {
-      await page.evaluate((idx) => {
-        document.querySelectorAll('div, li, button')[idx]?.click();
-      }, result.index);
-      
-      await minimalDelay(800);
-      
-      // Check if composer opened
-      const composer = await findElementsByText(page, '', {
-        tagNames: ['textarea', 'div[contenteditable="true"]'],
-        fuzzy: true
-      });
-      
-      if (composer.length > 0) {
-        console.log('[LinkedIn] Chat opened via messaging');
-        return { success: true, method: 'messaging' };
-      }
-    }
-  }
+  // Find the first matching result - look for elements containing the search name
+  // LinkedIn shows: Name, headline/connection info, profile pic
+  const matches = content.interactiveElements.filter(e => 
+    e.text.toLowerCase().includes(searchName.toLowerCase()) &&
+    e.visible !== false &&
+    e.text.length > searchName.length // Should have more info than just name
+  );
   
-  return false;
-}
-
-// Method 2: Message via Connections
-async function messageViaConnections(page, username) {
-  console.log(`[LinkedIn] Method 2: Messaging via Connections...`);
-  
-  // Navigate to connections
-  const connClicked = await tryClick(page, [
-    'svg[aria-label="My Network"]',
-    'a[href*="/mynetwork/"]',
-  ]);
-  
-  if (!connClicked) {
-    await navigate(page, 'https://www.linkedin.com/mynetwork/invite-connect/connections/', 'linkedin');
-  }
-  
-  await waitForAppShell(page, 'linkedin');
-  await minimalDelay(800);
-  
-  // Search in connections
-  const searchEl = await findElementsByText(page, 'Search', {
-    tagNames: ['input'],
-    fuzzy: true
-  });
-  
-  if (searchEl.length > 0) {
-    await page.evaluate((idx) => {
-      const el = document.querySelectorAll('input')[idx];
-      el?.click();
-      el?.focus();
-    }, searchEl[0].index);
-    
-    await page.keyboard.type(username, { delay: 20 });
-    await minimalDelay(1000);
-    
-    // Find connection card
-    const content = await extractPageContent(page);
-    const matchingCards = content.interactiveElements.filter(e => 
-      e.text.toLowerCase().includes(username.toLowerCase()) &&
-      (e.text.includes('Message') || e.ariaLabel?.includes('Message'))
-    );
-    
-    for (const card of matchingCards) {
-      if (card.text.includes('Message')) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('button')[idx]?.click();
-        }, card.index);
-        
-        await minimalDelay(800);
-        
-        const composer = await findElementsByText(page, '', {
-          tagNames: ['textarea', 'div[contenteditable="true"]'],
-          fuzzy: true
-        });
-        
-        if (composer.length > 0) {
-          console.log('[LinkedIn] Chat opened via connections');
-          return { success: true, method: 'connections' };
-        }
-      }
-    }
-  }
-  
-  return false;
-}
-
-// Method 3: Message via profile (Connect -> Message)
-async function messageViaProfile(page, personInfo) {
-  console.log(`[LinkedIn] Method 3: Messaging via profile...`);
-  
-  const { name, headline, roleHint } = personInfo;
-  
-  // Search for person first
-  const searchResults = await linkedinSearchPeople(page, name, roleHint);
-  
-  if (searchResults.length === 0) {
+  if (matches.length === 0) {
+    console.log(`[LinkedIn] No matches found for "${searchName}"`);
     return false;
   }
   
-  // Get best match
-  const bestMatch = searchResults[0];
+  // Click the first good match
+  const bestMatch = matches[0];
+  console.log(`[LinkedIn] Clicking: ${bestMatch.text.slice(0, 60)}`);
   
-  // Click on their name to go to profile
-  const nameElements = await findElementsByText(page, bestMatch.name, {
-    tagNames: ['a', 'span'],
-    fuzzy: false
+  await page.evaluate((idx) => {
+    const elements = document.querySelectorAll('div, button, li');
+    if (elements[idx]) elements[idx].click();
+  }, bestMatch.index);
+  
+  await minimalDelay(1000);
+  
+  // Check if chat opened (composer visible)
+  const composerCheck = await findElementsByText(page, '', {
+    tagNames: ['textarea', 'div[contenteditable="true"]'],
+    fuzzy: true
   });
   
-  if (nameElements.length > 0) {
-    await page.evaluate((idx) => {
-      document.querySelectorAll('a, span')[idx]?.click();
-    }, nameElements[0].index);
-    
-    await minimalDelay(1500);
-    
-    // Check connection status and act accordingly
-    const content = await extractPageContent(page);
-    const relationship = await detectRelationshipStatus(page, 'linkedin');
-    
-    if (relationship.isConnected || relationship.canMessage) {
-      // Click Message button
-      const msgBtn = await findElementsByText(page, 'Message', {
-        tagNames: ['button', 'a'],
-        fuzzy: false
-      });
-      
-      if (msgBtn.length > 0) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('button, a')[idx]?.click();
-        }, msgBtn[0].index);
-        
-        await minimalDelay(1000);
-        
-        const composer = await findElementsByText(page, '', {
-          tagNames: ['textarea', 'div[contenteditable="true"]'],
-          fuzzy: true
-        });
-        
-        if (composer.length > 0) {
-          console.log('[LinkedIn] Chat opened via profile (Message)');
-          return { success: true, method: 'profile_message', relationship };
-        }
-      }
-    } else if (relationship.canConnect) {
-      // Click Connect and then Add note
-      const connectBtn = await findElementsByText(page, 'Connect', {
-        tagNames: ['button'],
-        fuzzy: false
-      });
-      
-      if (connectBtn.length > 0) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('button')[idx]?.click();
-        }, connectBtn[0].index);
-        
-        await minimalDelay(500);
-        
-        // Click "Add a note"
-        const addNoteBtn = await findElementsByText(page, 'Add a note', {
-          tagNames: ['button', 'span'],
-          fuzzy: true
-        });
-        
-        if (addNoteBtn.length > 0) {
-          await page.evaluate((idx) => {
-            document.querySelectorAll('button, span')[idx]?.click();
-          }, addNoteBtn[0].index);
-          
-          await minimalDelay(500);
-          
-          const composer = await findElementsByText(page, '', {
-            tagNames: ['textarea'],
-            fuzzy: true
-          });
-          
-          if (composer.length > 0) {
-            console.log('[LinkedIn] Connection request with note opened');
-            return { success: true, method: 'profile_connect_note', relationship };
-          }
-        }
-        
-        // Simple connect (no note)
-        return { success: true, method: 'profile_connect', relationship, noteAvailable: false };
-      }
-    }
+  if (composerCheck.length > 0) {
+    console.log('[LinkedIn] Chat opened successfully');
+    return { success: true, selectedMatch: bestMatch.text };
+  }
+  
+  // Alternative: check if we're in a conversation view
+  const currentContent = await extractPageContent(page);
+  if (currentContent.fullText.includes('Press Enter to Send') || 
+      currentContent.fullText.toLowerCase().includes('message')) {
+    console.log('[LinkedIn] Chat detected via page text');
+    return { success: true, selectedMatch: bestMatch.text };
   }
   
   return false;
 }
 
-// Extract chat history from LinkedIn conversation
-async function extractLinkedInChatHistory(page, limit = 10) {
-  console.log('[LinkedIn] Extracting chat history...');
-  
+// Extract basic context from current page
+async function getBasicContext(page) {
   const content = await extractPageContent(page);
-  const messages = [];
+  const profile = parseProfileFromContent(content, 'linkedin');
   
-  // LinkedIn messages appear in msg-s-event-listitem containers
-  // Parse from page content
-  const lines = content.fullText.split('\n').filter(l => l.trim());
-  
-  // Look for message patterns (sender name + message text pairs)
-  let lastSender = null;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Skip UI elements
-    if (line.includes('Seen') || line.includes('Delivered') || line.match(/^\d+:\d+$/)) {
-      continue;
-    }
-    
-    // Check if this looks like a sender name
-    if (line.length < 30 && !line.includes(':') && i < lines.length - 1) {
-      const nextLine = lines[i + 1];
-      // If next line is longer, it's probably a message
-      if (nextLine.length > 10 && nextLine.length < 500) {
-        messages.push({
-          sender: line,
-          text: nextLine,
-          role: line === 'You' ? 'me' : 'them'
-        });
-        i++; // Skip next line as we used it
-      }
-    }
-  }
-  
-  console.log(`[LinkedIn] Found ${messages.length} messages in chat`);
-  return messages.slice(-limit);
+  return {
+    name: profile.name,
+    headline: profile.headline,
+    jobTitle: profile.jobTitle,
+    company: profile.company,
+    bio: profile.bio,
+    rawText: content.fullText?.slice(0, 800) || ''
+  };
 }
 
-// Send LinkedIn message
+// Send a LinkedIn message
 async function sendLinkedInMessage(page, message, options = {}) {
-  const { attachmentPath, requireManualReview, messageType = 'message' } = options;
-  
-  console.log('[LinkedIn] Sending message...');
+  const { attachmentPath, requireManualReview } = options;
   
   // Find composer
   const composer = await findElementsByText(page, '', {
@@ -491,7 +148,7 @@ async function sendLinkedInMessage(page, message, options = {}) {
   await page.keyboard.type(message, { delay: 10 });
   
   // Handle attachment
-  if (attachmentPath && messageType !== 'connection_request') {
+  if (attachmentPath) {
     try {
       const attachBtn = await findElementsByText(page, 'Attach', {
         tagNames: ['button', 'svg'],
@@ -516,103 +173,14 @@ async function sendLinkedInMessage(page, message, options = {}) {
     }
   }
   
-  // Send or review
+  // Send
   if (!requireManualReview) {
-    if (messageType === 'connection_request') {
-      // Click Send for connection request
-      const sendBtn = await findElementsByText(page, 'Send', {
-        tagNames: ['button'],
-        fuzzy: false
-      });
-      
-      if (sendBtn.length > 0) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('button')[idx]?.click();
-        }, sendBtn[0].index);
-      }
-    } else {
-      // Press Enter for regular message
-      await page.keyboard.press('Enter');
-    }
-    
+    await page.keyboard.press('Enter');
     await minimalDelay(500);
-    console.log('[LinkedIn] Message sent');
     return { sent: true };
   }
   
   return { sent: false, waitingForReview: true };
-}
-
-// Like LinkedIn post
-async function likeLinkedInPost(page, postUrl) {
-  console.log('[LinkedIn] Liking post...');
-  
-  if (postUrl) {
-    await navigate(page, postUrl, 'linkedin');
-    await waitForAppShell(page, 'linkedin');
-    await minimalDelay(800);
-  }
-  
-  // Find like button
-  const likeBtn = await findElementsByText(page, 'Like', {
-    tagNames: ['button', 'span'],
-    fuzzy: true
-  });
-  
-  // Also check aria-label
-  const content = await extractPageContent(page);
-  const likeEl = content.interactiveElements.find(e => 
-    e.ariaLabel?.includes('Like') || e.text === 'Like'
-  );
-  
-  if (likeEl) {
-    await page.evaluate((idx) => {
-      document.querySelectorAll('button, span')[idx]?.click();
-    }, likeEl.index);
-    
-    await minimalDelay(500);
-    return { liked: true };
-  }
-  
-  return { liked: false };
-}
-
-// Comment on LinkedIn post
-async function commentOnLinkedInPost(page, comment, postUrl) {
-  console.log('[LinkedIn] Commenting on post...');
-  
-  if (postUrl) {
-    await navigate(page, postUrl, 'linkedin');
-    await waitForAppShell(page, 'linkedin');
-    await minimalDelay(800);
-  }
-  
-  // Find comment box
-  const commentBox = await findElementsByText(page, 'Add a comment', {
-    tagNames: ['div[contenteditable="true"]'],
-    fuzzy: true
-  });
-  
-  if (commentBox.length === 0) {
-    throw new Error('Comment box not found');
-  }
-  
-  // Click and type
-  await page.evaluate((idx) => {
-    const el = document.querySelectorAll('div[contenteditable="true"]')[idx];
-    el?.click();
-    el?.focus();
-  }, commentBox[0].index);
-  
-  await minimalDelay(200);
-  await page.keyboard.type(comment, { delay: 10 });
-  await minimalDelay(300);
-  
-  // Post comment
-  await page.keyboard.press('Enter');
-  await minimalDelay(500);
-  
-  return { commented: true };
 }
 
 // Main handler
@@ -623,7 +191,7 @@ export const linkedinHandler = {
     const { action, args } = step;
     
     // Check login state
-    if (['send_message', 'draft_message', 'open_target', 'message_batch', 'like_post', 'comment_post'].includes(action)) {
+    if (['send_message', 'draft_message', 'open_target', 'message_batch'].includes(action)) {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
       const state = await checkLoginState(page, 'linkedin');
       if (!state.ready) {
@@ -633,137 +201,29 @@ export const linkedinHandler = {
     
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.linkedin, { platform: 'linkedin' });
     
-    // ACTION: Open profile with search
-    if (action === 'open_target') {
-      const { username, roleHint } = args;
-      if (!username) throw new Error('LinkedIn open_target requires a username');
-      
-      const results = await linkedinSearchPeople(page, username, roleHint);
-      
-      if (results.length === 0) {
-        throw new Error(`Could not find "${username}" on LinkedIn`);
-      }
-      
-      // Click first result to open profile
-      const nameEl = await findElementsByText(page, results[0].name, {
-        tagNames: ['a', 'span'],
-        fuzzy: false
-      });
-      
-      if (nameEl.length > 0) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('a, span')[idx]?.click();
-        }, nameEl[0].index);
-        await minimalDelay(1000);
-      }
-      
-      const context = await getLinkedInProfileContext(page, username);
-      
-      return {
-        status: 'ready',
-        summary: summarizeAction('linkedin', step),
-        data: { profile: context, searchResults: results, snapshot: await pageSnapshot(page) }
-      };
-    }
-    
-    // ACTION: Draft message with profile context
-    if (action === 'draft_message') {
-      const { username, roleHint, messageGoal, tone, query } = args;
-      
-      // Search and get context
-      const results = await linkedinSearchPeople(page, username, roleHint);
-      let context = {};
-      
-      if (results.length > 0) {
-        // Open first match to get detailed context
-        const nameEl = await findElementsByText(page, results[0].name, {
-          tagNames: ['a', 'span'],
-          fuzzy: false
-        });
-        if (nameEl.length > 0) {
-          await page.evaluate((idx) => {
-            document.querySelectorAll('a, span')[idx]?.click();
-          }, nameEl[0].index);
-          await minimalDelay(1000);
-          context = await getLinkedInProfileContext(page, username);
-        }
-      }
-      
-      const message = await generateOutreachMessage({
-        username,
-        goal: messageGoal,
-        tone,
-        query,
-        platform: 'linkedin',
-        chatContext: [],
-        profileInfo: context
-      });
-      
-      return {
-        status: 'ready',
-        summary: summarizeAction('linkedin', step),
-        data: { preview: message, profile: context, searchResults: results }
-      };
-    }
-    
-    // ACTION: Send message (with 3 methods + role matching)
+    // ACTION: Send message - SIMPLIFIED FLOW
     if (action === 'send_message') {
-      const { username, roleHint, messageGoal, tone, query, requireManualReview, attachmentPath } = args;
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath } = args;
       
-      console.log(`[LinkedIn] Starting DM to ${username}${roleHint ? ` (${roleHint})` : ''}`);
+      console.log(`[LinkedIn] Starting DM to "${username}"`);
       
-      // STEP 1: Search for person with role hint for disambiguation
-      const searchResults = await linkedinSearchPeople(page, username, roleHint);
+      // Step 1: Open chat via messaging
+      const chatOpened = await openLinkedInChat(page, username);
       
-      if (searchResults.length === 0) {
-        throw new Error(`Could not find "${username}" on LinkedIn`);
-      }
-      
-      // Open best match profile
-      const nameEl = await findElementsByText(page, searchResults[0].name, {
-        tagNames: ['a', 'span'],
-        fuzzy: false
-      });
-      
-      if (nameEl.length > 0) {
-        await page.evaluate((idx) => {
-          document.querySelectorAll('a, span')[idx]?.click();
-        }, nameEl[0].index);
-        await minimalDelay(1000);
-      }
-      
-      const profileContext = await getLinkedInProfileContext(page, username);
-      
-      // STEP 2: Try 3 messaging methods
-      let chatOpened = null;
-      let methodUsed = null;
-      
-      // Method 1: Messaging (for connected people)
-      chatOpened = await messageViaMessaging(page, username);
-      if (chatOpened) methodUsed = 'messaging';
-      
-      // Method 2: Connections
-      if (!chatOpened && profileContext.isConnected) {
-        chatOpened = await messageViaConnections(page, username);
-        if (chatOpened) methodUsed = 'connections';
-      }
-      
-      // Method 3: Profile (Connect/Message)
       if (!chatOpened) {
-        chatOpened = await messageViaProfile(page, { name: username, roleHint });
-        if (chatOpened) methodUsed = chatOpened.method;
+        throw new Error(`Could not find "${username}" in LinkedIn messaging. You may need to connect with them first.`);
       }
       
-      if (!chatOpened || !chatOpened.success) {
-        throw new Error(`Could not open chat with ${username}. You may need to connect first.`);
-      }
+      console.log(`[LinkedIn] Chat opened with: ${chatOpened.selectedMatch.slice(0, 60)}`);
       
-      console.log(`[LinkedIn] Chat opened via: ${methodUsed}`);
+      // Step 2: Get basic context from the page
+      const context = await getBasicContext(page);
+      console.log(`[LinkedIn] Context: ${context.name || username}, ${context.headline?.slice(0, 50) || 'no headline'}`);
       
-      // STEP 3: Extract chat history
-      const chatHistory = await extractLinkedInChatHistory(page, 6);
+      // Step 3: Extract any existing chat history
+      const chatHistory = await extractChatContext(page, 'linkedin', 6);
       
-      // STEP 4: Generate personalized message
+      // Step 4: Generate message
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -771,112 +231,262 @@ export const linkedinHandler = {
         query,
         platform: 'linkedin',
         chatContext: chatHistory,
-        profileInfo: profileContext
+        profileInfo: context
       });
       
-      // Truncate for LinkedIn connection note limit (280 chars)
-      const isConnectionNote = methodUsed?.includes('connect');
-      const finalMessage = isConnectionNote ? message.slice(0, 280) : message;
+      console.log(`[LinkedIn] Generated: "${message.slice(0, 50)}..."`);
       
-      console.log(`[LinkedIn] Message: "${finalMessage.slice(0, 50)}..."`);
-      
-      // STEP 5: Send
-      const result = await sendLinkedInMessage(page, finalMessage, {
+      // Step 5: Send
+      const result = await sendLinkedInMessage(page, message, {
         attachmentPath,
-        requireManualReview,
-        messageType: isConnectionNote ? 'connection_request' : 'message'
+        requireManualReview
       });
       
       return {
         status: 'completed',
         summary: summarizeAction('linkedin', step, { sent: result.sent }),
         data: {
-          message: finalMessage,
+          message,
           sent: result.sent,
-          method: methodUsed,
-          profile: profileContext,
-          chatHistory: chatHistory.length > 0 ? chatHistory : undefined,
-          searchResults
+          recipient: chatOpened.selectedMatch,
+          profile: context
         }
+      };
+    }
+    
+    // ACTION: Draft message
+    if (action === 'draft_message') {
+      const { username, messageGoal, tone, query } = args;
+      
+      // Just generate the message without navigating
+      const message = await generateOutreachMessage({
+        username,
+        goal: messageGoal,
+        tone,
+        query,
+        platform: 'linkedin',
+        chatContext: [],
+        profileInfo: {}
+      });
+      
+      return {
+        status: 'ready',
+        summary: summarizeAction('linkedin', step),
+        data: { preview: message }
+      };
+    }
+    
+    // ACTION: Open target (simple - just navigate to messaging)
+    if (action === 'open_target') {
+      const { username } = args;
+      
+      await navigate(page, 'https://www.linkedin.com/messaging/', 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      
+      return {
+        status: 'ready',
+        summary: summarizeAction('linkedin', step),
+        data: await pageSnapshot(page)
       };
     }
     
     // ACTION: Message batch
     if (action === 'message_batch') {
-      const people = (args.people || []).slice(0, 15); // Array of {name, roleHint}
+      const usernames = (args.usernames || []).slice(0, 10);
       const results = [];
       
-      for (const person of people) {
+      for (const username of usernames) {
         try {
           const result = await this.execute({
             step: {
               action: 'send_message',
               platform: 'linkedin',
-              args: { ...args, username: person.name, roleHint: person.roleHint }
+              args: { ...args, username }
             },
             attachedBrowser
           });
-          results.push({ person, ...result });
+          results.push({ username, ...result });
           await minimalDelay(3000 + Math.random() * 2000);
         } catch (error) {
-          results.push({ person, error: error.message, status: 'failed' });
+          results.push({ username, error: error.message, status: 'failed' });
         }
       }
       
       return {
         status: 'completed',
-        summary: `Messaged ${people.length} LinkedIn contacts`,
+        summary: `Messaged ${usernames.length} LinkedIn contacts`,
         data: results
       };
     }
     
-    // ACTION: Like post
-    if (action === 'like_post') {
-      const { postUrl } = args;
-      const result = await likeLinkedInPost(page, postUrl);
+    // ACTION: Follow user
+    if (action === 'follow_user') {
+      const { username } = args;
+      console.log(`[LinkedIn] Following ${username}...`);
       
-      return {
-        status: 'completed',
-        summary: summarizeAction('linkedin', step),
-        data: result
-      };
-    }
-    
-    // ACTION: Comment on post
-    if (action === 'comment_post') {
-      const { postUrl, comment, messageGoal, tone, query } = args;
+      // Navigate to profile
+      await navigate(page, `https://www.linkedin.com/in/${username}/`, 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(500);
       
-      let finalComment = comment;
-      if (!finalComment && messageGoal) {
-        finalComment = await generateOutreachMessage({
-          username: 'post',
-          goal: messageGoal,
-          tone,
-          query,
-          platform: 'linkedin',
-          chatContext: [],
-          profileInfo: {}
-        });
+      // Find and click Follow button
+      const followBtn = await findElementsByText(page, 'Follow', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (followBtn.length > 0) {
+        await page.evaluate((index) => {
+          document.querySelectorAll('button')[index]?.click();
+        }, followBtn[0].index);
+        await minimalDelay(500);
+        
+        return {
+          status: 'completed',
+          summary: `Followed ${username} on LinkedIn`,
+          data: { username, action: 'followed' }
+        };
       }
       
-      const result = await commentOnLinkedInPost(page, finalComment, postUrl);
-      
-      return {
-        status: 'completed',
-        summary: summarizeAction('linkedin', step),
-        data: { comment: finalComment, ...result }
-      };
+      throw new Error(`Could not find Follow button for ${username}. You may already be following them.`);
     }
     
-    // ACTION: Search people
-    if (action === 'search_people') {
-      const { query, roleHint } = args;
-      const results = await linkedinSearchPeople(page, query, roleHint);
+    // ACTION: Connect user (without note)
+    if (action === 'connect_user') {
+      const { username } = args;
+      console.log(`[LinkedIn] Connecting with ${username}...`);
+      
+      // Navigate to profile
+      await navigate(page, `https://www.linkedin.com/in/${username}/`, 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(500);
+      
+      // Find and click Connect button
+      const connectBtn = await findElementsByText(page, 'Connect', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (connectBtn.length > 0) {
+        await page.evaluate((index) => {
+          document.querySelectorAll('button')[index]?.click();
+        }, connectBtn[0].index);
+        await minimalDelay(800);
+        
+        // Check if "Add a note" dialog appeared - if so, click Send without note
+        const sendBtn = await findElementsByText(page, 'Send', {
+          tagNames: ['button'],
+          fuzzy: false
+        });
+        
+        if (sendBtn.length > 0) {
+          await page.evaluate((index) => {
+            document.querySelectorAll('button')[index]?.click();
+          }, sendBtn[0].index);
+          await minimalDelay(500);
+        }
+        
+        return {
+          status: 'completed',
+          summary: `Sent connection request to ${username}`,
+          data: { username, action: 'connected', withNote: false }
+        };
+      }
+      
+      throw new Error(`Could not find Connect button for ${username}. You may already be connected.`);
+    }
+    
+    // ACTION: Connect with note
+    if (action === 'connect_with_note') {
+      const { username, messageGoal, tone, query } = args;
+      console.log(`[LinkedIn] Connecting with ${username} + note...`);
+      
+      // Navigate to profile
+      await navigate(page, `https://www.linkedin.com/in/${username}/`, 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(500);
+      
+      // Get context for personalization
+      const context = await getBasicContext(page);
+      
+      // Generate personalized note
+      const note = await generateOutreachMessage({
+        username,
+        goal: messageGoal || 'connect professionally',
+        tone,
+        query,
+        platform: 'linkedin',
+        chatContext: [],
+        profileInfo: context
+      });
+      
+      // Truncate to LinkedIn's 300 character limit for connection notes
+      const truncatedNote = note.slice(0, 300);
+      
+      // Find and click Connect button
+      const connectBtn = await findElementsByText(page, 'Connect', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (connectBtn.length === 0) {
+        throw new Error(`Could not find Connect button for ${username}`);
+      }
+      
+      await page.evaluate((index) => {
+        document.querySelectorAll('button')[index]?.click();
+      }, connectBtn[0].index);
+      await minimalDelay(800);
+      
+      // Click "Add a note"
+      const addNoteBtn = await findElementsByText(page, 'Add a note', {
+        tagNames: ['button', 'span'],
+        fuzzy: true
+      });
+      
+      if (addNoteBtn.length === 0) {
+        throw new Error('Could not find "Add a note" button');
+      }
+      
+      await page.evaluate((index) => {
+        document.querySelectorAll('button, span')[index]?.click();
+      }, addNoteBtn[0].index);
+      await minimalDelay(500);
+      
+      // Find note textarea and type message
+      const noteField = await findElementsByText(page, '', {
+        tagNames: ['textarea'],
+        fuzzy: true
+      });
+      
+      if (noteField.length > 0) {
+        await page.evaluate((index) => {
+          const el = document.querySelectorAll('textarea')[index];
+          el?.click();
+          el?.focus();
+        }, noteField[0].index);
+        
+        await page.keyboard.type(truncatedNote, { delay: 5 });
+        await minimalDelay(300);
+      }
+      
+      // Click Send
+      const sendBtn = await findElementsByText(page, 'Send', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (sendBtn.length > 0) {
+        await page.evaluate((index) => {
+          document.querySelectorAll('button')[index]?.click();
+        }, sendBtn[0].index);
+        await minimalDelay(500);
+      }
       
       return {
         status: 'completed',
-        summary: `Searched LinkedIn for "${query}"`,
-        data: { results, query, roleHint }
+        summary: `Sent connection request with note to ${username}`,
+        data: { username, action: 'connected', withNote: true, note: truncatedNote }
       };
     }
     

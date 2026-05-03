@@ -23,24 +23,11 @@ import { createSocialHandler } from '../social-base.js';
  * Uses full page extraction + intelligent parsing (resilient to UI changes)
  */
 
-// Navigate to Instagram home via UI (not direct URL)
+// Navigate to Instagram home via UI (not direct URL) - FAST
 async function navigateToInstagramHome(page) {
-  console.log('[Instagram] Navigating to home via UI...');
+  console.log('[Instagram] Navigating to home...');
   
-  // Method 1: Click Instagram logo
-  const logoFound = await tryClick(page, [
-    'svg[aria-label="Instagram"]',
-    'a[href="/"] svg',
-    'div:has-text("Instagram")',
-  ]);
-  
-  if (logoFound) {
-    await waitForAppShell(page, 'instagram');
-    await minimalDelay(500);
-    return true;
-  }
-  
-  // Method 2: Navigate to base URL
+  // Quick URL navigation - most reliable and fastest
   await navigate(page, PLATFORM_URLS.instagram, 'instagram');
   await waitForAppShell(page, 'instagram');
   return true;
@@ -139,188 +126,151 @@ async function getInstagramProfileContext(page, username) {
   return context;
 }
 
-// Method 1: Message via inbox search
+// Method 1: Message via inbox search - OPTIMIZED FOR SPEED
 async function messageViaInbox(page, username) {
-  console.log(`[Instagram] Method 1: Messaging via inbox...`);
+  console.log(`[Instagram] Method 1: Inbox messaging...`);
   
-  // Navigate to inbox via UI
-  const inboxClicked = await tryClick(page, [
-    'svg[aria-label="Messenger"]',
-    'svg[aria-label="Direct"]',
-    'a[href="/direct/inbox/"]',
-    'div[role="button"]:has(svg[aria-label="Messenger"])',
-  ]);
-  
-  if (!inboxClicked) {
-    // URL fallback
-    await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
-  }
-  
+  // Navigate directly to inbox - fastest
+  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
   await waitForAppShell(page, 'instagram');
-  await minimalDelay(800);
   
   // Click "New message"
   const newMsgClicked = await tryClick(page, [
     'button:has-text("New message")',
     'button[aria-label="New message"]',
     'svg[aria-label="New message"]',
-    'a[href="/direct/inbox/new/"]',
-    'div[role="button"]:has-text("New")',
   ]);
   
   if (!newMsgClicked) {
-    console.log('[Instagram] Could not find New message button');
+    console.log('[Instagram] New message button not found');
     return false;
   }
   
+  // Type username quickly
+  await page.keyboard.type(username, { delay: 10 });
+  await minimalDelay(800); // Just enough for results
+  
+  // Extract and find results
+  const content = await extractPageContent(page);
+  const userResults = content.interactiveElements.filter(e => 
+    e.text.toLowerCase().includes(username.toLowerCase()) && 
+    e.visible !== false
+  );
+  
+  if (userResults.length === 0) {
+    return false;
+  }
+  
+  // Click first valid result
+  const bestMatch = userResults.find(r => 
+    r.text.length > username.length && !r.text.includes('To:')
+  ) || userResults[0];
+  
+  await page.evaluate((index) => {
+    document.querySelectorAll('div[role="button"], div[role="dialog"] div')[index]?.click();
+  }, bestMatch.index);
+  
   await minimalDelay(500);
   
-  // Find search input
-  const searchResults = await findElementsByText(page, 'To:', {
-    tagNames: ['input', 'textarea', 'div'],
+  // Click Chat button if present
+  const chatButton = await findElementsByText(page, 'Chat', {
+    tagNames: ['button', 'div'],
+    fuzzy: false
+  });
+  
+  if (chatButton.length > 0) {
+    await page.evaluate((index) => {
+      document.querySelectorAll('button, div')[index]?.click();
+    }, chatButton[0].index);
+    await minimalDelay(300);
+  }
+  
+  // Quick composer check
+  const composer = await findElementsByText(page, '', {
+    tagNames: ['textarea', 'div[contenteditable="true"]'],
     fuzzy: true
   });
   
-  // Type username in search
-  await page.keyboard.type(username, { delay: 20 });
-  await minimalDelay(1000);
-  
-  // Find and click user result
-  const userResults = await findElementsByText(page, username, {
-    tagNames: ['div', 'button', 'span'],
-    fuzzy: true
-  });
-  
-  for (const result of userResults) {
-    if (result.text.toLowerCase().includes(username.toLowerCase())) {
-      await page.evaluate((index) => {
-        const elements = document.querySelectorAll('div, button, span');
-        if (elements[index]) elements[index].click();
-      }, result.index);
-      
-      await minimalDelay(800);
-      
-      // Check if chat opened (composer visible)
-      const composer = await findElementsByText(page, 'Message', {
-        tagNames: ['textarea', 'div', 'input'],
-        fuzzy: true
-      });
-      
-      if (composer.length > 0) {
-        console.log('[Instagram] Chat opened via inbox');
-        return { success: true, method: 'inbox' };
-      }
-    }
+  if (composer.length > 0) {
+    return { success: true, method: 'inbox' };
   }
   
   return false;
 }
 
-// Method 2: Message via profile Message button
+// Method 2: Message via profile - OPTIMIZED
 async function messageViaProfile(page, username) {
-  console.log(`[Instagram] Method 2: Messaging via profile...`);
+  console.log(`[Instagram] Method 2: Profile messaging...`);
   
-  // Navigate to profile via search
-  await navigateToProfileViaSearch(page, username);
+  // Direct URL to profile - fastest
+  await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
+  await waitForAppShell(page, 'instagram');
   
-  // Check relationship status
   const relationship = await detectRelationshipStatus(page, 'instagram');
   
   if (relationship.isOwnProfile) {
     throw new Error(`Cannot message yourself (@${username})`);
   }
   
-  // For private accounts we don't follow, inbox method is required
-  // This method works for: public accounts, accounts we follow
-  if (relationship.canMessage) {
-    // Click Message button
-    const msgClicked = await tryClick(page, [
-      'button:has-text("Message")',
-      'div[role="button"]:has-text("Message")',
-      'button[aria-label="Message"]',
-      'svg[aria-label="Direct"]',
-    ]);
-    
-    if (!msgClicked) {
-      // Try by text search
-      const msgButtons = await findElementsByText(page, 'Message', {
-        tagNames: ['button', 'div'],
-        fuzzy: false
-      });
-      
-      if (msgButtons.length > 0) {
-        await page.evaluate((index) => {
-          const elements = document.querySelectorAll('button, div');
-          if (elements[index]) elements[index].click();
-        }, msgButtons[0].index);
-      }
-    }
-    
-    await minimalDelay(1000);
-    
-    // Verify chat opened
-    const composer = await findElementsByText(page, '', {
-      tagNames: ['textarea', 'div[contenteditable="true"]'],
-      fuzzy: true
+  if (!relationship.canMessage) {
+    return false; // Can't message this profile
+  }
+  
+  // Click Message button
+  const msgClicked = await tryClick(page, [
+    'button:has-text("Message")',
+    'button[aria-label="Message"]',
+  ]);
+  
+  if (!msgClicked) {
+    const msgButtons = await findElementsByText(page, 'Message', {
+      tagNames: ['button'],
+      fuzzy: false
     });
-    
-    if (composer.length > 0) {
-      console.log('[Instagram] Chat opened via profile');
-      return { success: true, method: 'profile', relationship };
+    if (msgButtons.length > 0) {
+      await page.evaluate((index) => {
+        document.querySelectorAll('button')[index]?.click();
+      }, msgButtons[0].index);
     }
+  }
+  
+  await minimalDelay(600);
+  
+  // Verify chat opened
+  const composer = await findElementsByText(page, '', {
+    tagNames: ['textarea', 'div[contenteditable="true"]'],
+    fuzzy: true
+  });
+  
+  if (composer.length > 0) {
+    return { success: true, method: 'profile', relationship };
   }
   
   return false;
 }
 
-// Method 3: Message via explore search
+// Method 3: Message via explore - OPTIMIZED
 async function messageViaExplore(page, username) {
-  console.log(`[Instagram] Method 3: Messaging via explore...`);
+  console.log(`[Instagram] Method 3: Explore messaging...`);
   
-  // Navigate to explore via UI
-  const exploreClicked = await tryClick(page, [
-    'svg[aria-label="Explore"]',
-    'a[href="/explore/"]',
-    'div[role="button"]:has(svg[aria-label="Explore"])',
-  ]);
-  
-  if (!exploreClicked) {
-    await navigate(page, 'https://www.instagram.com/explore/', 'instagram');
-  }
-  
+  // Direct URL
+  await navigate(page, `https://www.instagram.com/explore/search/keyword/?q=${username}`, 'instagram');
   await waitForAppShell(page, 'instagram');
-  await minimalDelay(500);
+  await minimalDelay(800);
   
-  // Click search
-  const searchClicked = await tryClick(page, [
-    'input[placeholder*="Search"]',
-    'svg[aria-label="Search"]',
-  ]);
+  // Click first user result
+  const results = await findElementsByText(page, username, {
+    tagNames: ['a', 'div'],
+    fuzzy: true
+  });
   
-  if (searchClicked) {
-    await page.keyboard.type(username, { delay: 20 });
-    await minimalDelay(1500);
+  if (results.length > 0) {
+    await page.evaluate((index) => {
+      document.querySelectorAll('a, div')[index]?.click();
+    }, results[0].index);
     
-    // Find user in results
-    const results = await findElementsByText(page, username, {
-      tagNames: ['a', 'div'],
-      fuzzy: true
-    });
-    
-    for (const result of results) {
-      if (result.href?.includes(username) || result.text.toLowerCase().includes(username.toLowerCase())) {
-        // Click to go to profile
-        await page.evaluate((index) => {
-          const elements = document.querySelectorAll('a, div');
-          if (elements[index]) elements[index].click();
-        }, result.index);
-        
-        await minimalDelay(1000);
-        
-        // Now on profile, try to message
-        return await messageViaProfile(page, username);
-      }
-    }
+    await minimalDelay(800);
+    return await messageViaProfile(page, username);
   }
   
   return false;
