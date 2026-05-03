@@ -783,6 +783,160 @@ export const instagramHandler = {
       };
     }
     
+    // ACTION: Follow user
+    if (action === 'follow_user') {
+      const { username } = args;
+      console.log(`[Instagram] Following @${username}...`);
+      
+      // Navigate to profile
+      await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
+      await waitForAppShell(page, 'instagram');
+      await minimalDelay(500);
+      
+      // Find and click Follow button
+      const followBtn = await findElementsByText(page, 'Follow', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (followBtn.length > 0) {
+        await page.evaluate((index) => {
+          document.querySelectorAll('button')[index]?.click();
+        }, followBtn[0].index);
+        await minimalDelay(500);
+        
+        return {
+          status: 'completed',
+          summary: `Followed @${username} on Instagram`,
+          data: { username, action: 'followed' }
+        };
+      }
+      
+      // Check if already following
+      const followingBtn = await findElementsByText(page, 'Following', {
+        tagNames: ['button'],
+        fuzzy: false
+      });
+      
+      if (followingBtn.length > 0) {
+        return {
+          status: 'completed',
+          summary: `Already following @${username}`,
+          data: { username, action: 'already_following' }
+        };
+      }
+      
+      throw new Error(`Could not find Follow button for @${username}`);
+    }
+    
+    // ACTION: Bulk follow from search
+    if (action === 'bulk_follow_search') {
+      const { searchQuery, maxResults = 10 } = args;
+      console.log(`[Instagram] Bulk following from search: "${searchQuery}"`);
+      
+      // Navigate to search
+      await navigate(page, `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(searchQuery)}`, 'instagram');
+      await waitForAppShell(page, 'instagram');
+      await minimalDelay(1000);
+      
+      // Extract users from search results
+      const users = await page.evaluate((limit) => {
+        const results = [];
+        const userCards = document.querySelectorAll('a[href^="/"]');
+        
+        for (const card of userCards.slice(0, limit)) {
+          const href = card.getAttribute('href');
+          if (href && href.match(/^\/[a-zA-Z0-9._]+\/$/)) {
+            const username = href.replace(/\//g, '');
+            if (username && username.length > 1) {
+              results.push(username);
+            }
+          }
+        }
+        return [...new Set(results)].slice(0, limit);
+      }, maxResults);
+      
+      console.log(`[Instagram] Found ${users.length} users to follow`);
+      
+      const results = [];
+      for (const username of users) {
+        try {
+          const result = await this.execute({
+            step: {
+              action: 'follow_user',
+              platform: 'instagram',
+              args: { username }
+            },
+            attachedBrowser
+          });
+          results.push({ username, ...result });
+          await minimalDelay(1500 + Math.random() * 1000);
+        } catch (error) {
+          results.push({ username, error: error.message, status: 'failed' });
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Bulk followed ${results.filter(r => r.status === 'completed').length}/${users.length} users from search`,
+        data: { results, searchQuery }
+      };
+    }
+    
+    // ACTION: Bulk follow suggested users
+    if (action === 'bulk_follow_suggested') {
+      const { maxResults = 10 } = args;
+      console.log(`[Instagram] Bulk following suggested users...`);
+      
+      // Navigate to explore/suggested
+      await navigate(page, 'https://www.instagram.com/explore/people/', 'instagram');
+      await waitForAppShell(page, 'instagram');
+      await minimalDelay(1000);
+      
+      // Extract suggested users
+      const users = await page.evaluate((limit) => {
+        const results = [];
+        const suggestedCards = document.querySelectorAll('a[href^="/"]');
+        
+        for (const card of suggestedCards.slice(0, limit * 2)) {
+          const href = card.getAttribute('href');
+          if (href && href.match(/^\/[a-zA-Z0-9._]+\/$/)) {
+            const username = href.replace(/\//g, '');
+            if (username && username.length > 1 && !results.includes(username)) {
+              results.push(username);
+            }
+          }
+        }
+        return results.slice(0, limit);
+      }, maxResults);
+      
+      console.log(`[Instagram] Found ${users.length} suggested users to follow`);
+      
+      const results = [];
+      for (const username of users) {
+        try {
+          const result = await this.execute({
+            step: {
+              action: 'follow_user',
+              platform: 'instagram',
+              args: { username }
+            },
+            attachedBrowser
+          });
+          results.push({ username, ...result });
+          await minimalDelay(1500 + Math.random() * 1000);
+        } catch (error) {
+          results.push({ username, error: error.message, status: 'failed' });
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Bulk followed ${results.filter(r => r.status === 'completed').length}/${users.length} suggested users`,
+        data: { results }
+      };
+    }
+    
     // Delegate other actions to base handler
     const baseHandler = createSocialHandler('instagram', {});
     return baseHandler.execute({ step, attachedBrowser });

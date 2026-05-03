@@ -490,6 +490,149 @@ export const linkedinHandler = {
       };
     }
     
+    // ACTION: Bulk connect from search results
+    if (action === 'bulk_connect_search') {
+      const { searchQuery, maxResults = 10, withNote = false, messageGoal, tone } = args;
+      console.log(`[LinkedIn] Bulk connecting from search: "${searchQuery}"`);
+      
+      // Navigate to search
+      await navigate(page, `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(searchQuery)}`, 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(1500);
+      
+      // Extract profiles with Connect buttons
+      const profiles = await page.evaluate((limit) => {
+        const results = [];
+        const cards = document.querySelectorAll('.reusable-search__result-container, .search-result, [data-testid="search-result"]');
+        
+        for (let i = 0; i < Math.min(cards.length, limit); i++) {
+          const card = cards[i];
+          const nameEl = card.querySelector('a[href*="/in/"], .entity-result__title-text a');
+          const connectBtn = card.querySelector('button:has-text("Connect"), button[aria-label*="Connect"]');
+          
+          if (nameEl && connectBtn) {
+            const href = nameEl.getAttribute('href');
+            const username = href?.match(/\/in\/([^/?]+)/)?.[1];
+            if (username) {
+              results.push({ username, name: nameEl.textContent?.trim() });
+            }
+          }
+        }
+        return results;
+      }, maxResults);
+      
+      console.log(`[LinkedIn] Found ${profiles.length} connectable profiles`);
+      
+      const results = [];
+      for (const profile of profiles) {
+        try {
+          if (withNote) {
+            const result = await this.execute({
+              step: {
+                action: 'connect_with_note',
+                platform: 'linkedin',
+                args: { username: profile.username, messageGoal, tone }
+              },
+              attachedBrowser
+            });
+            results.push({ username: profile.username, ...result });
+          } else {
+            const result = await this.execute({
+              step: {
+                action: 'connect_user',
+                platform: 'linkedin',
+                args: { username: profile.username }
+              },
+              attachedBrowser
+            });
+            results.push({ username: profile.username, ...result });
+          }
+          await minimalDelay(2000 + Math.random() * 1000);
+        } catch (error) {
+          results.push({ username: profile.username, error: error.message, status: 'failed' });
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Bulk connected ${results.filter(r => r.status === 'completed').length}/${profiles.length} people from search`,
+        data: { results, searchQuery }
+      };
+    }
+    
+    // ACTION: Bulk connect from My Network / People You May Know
+    if (action === 'bulk_connect_network') {
+      const { maxResults = 10, withNote = false, messageGoal, tone } = args;
+      console.log(`[LinkedIn] Bulk connecting from My Network...`);
+      
+      // Navigate to My Network
+      await navigate(page, 'https://www.linkedin.com/mynetwork/', 'linkedin');
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(1500);
+      
+      // Extract "People you may know" with Connect buttons
+      const profiles = await page.evaluate((limit) => {
+        const results = [];
+        // Multiple selectors for "People you may know" cards
+        const cards = document.querySelectorAll('.mn-connection-card, .discover-entity-card, .artdeco-card .ember-view, [data-testid="people-you-may-know"] .artdeco-card');
+        
+        for (let i = 0; i < Math.min(cards.length, limit); i++) {
+          const card = cards[i];
+          // Try to find the name and profile link
+          const nameEl = card.querySelector('a[href*="/in/"], .discover-person-card__name, span[aria-hidden="true"]');
+          const connectBtn = card.querySelector('button:has-text("Connect"), button[aria-label*="Connect"]');
+          
+          if (nameEl && connectBtn) {
+            // Try to get username from href or text
+            const href = nameEl.closest('a')?.getAttribute('href');
+            const username = href?.match(/\/in\/([^/?]+)/)?.[1] || nameEl.textContent?.trim()?.toLowerCase()?.replace(/\s+/g, '-');
+            if (username) {
+              results.push({ username, name: nameEl.textContent?.trim() });
+            }
+          }
+        }
+        return results;
+      }, maxResults);
+      
+      console.log(`[LinkedIn] Found ${profiles.length} people in My Network to connect with`);
+      
+      const results = [];
+      for (const profile of profiles) {
+        try {
+          if (withNote) {
+            const result = await this.execute({
+              step: {
+                action: 'connect_with_note',
+                platform: 'linkedin',
+                args: { username: profile.username, messageGoal, tone }
+              },
+              attachedBrowser
+            });
+            results.push({ username: profile.username, ...result });
+          } else {
+            const result = await this.execute({
+              step: {
+                action: 'connect_user',
+                platform: 'linkedin',
+                args: { username: profile.username }
+              },
+              attachedBrowser
+            });
+            results.push({ username: profile.username, ...result });
+          }
+          await minimalDelay(2000 + Math.random() * 1000);
+        } catch (error) {
+          results.push({ username: profile.username, error: error.message, status: 'failed' });
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Bulk connected ${results.filter(r => r.status === 'completed').length}/${profiles.length} from My Network`,
+        data: { results }
+      };
+    }
+    
     // Delegate other actions to base handler
     const baseHandler = createSocialHandler('linkedin', {});
     return baseHandler.execute({ step, attachedBrowser });

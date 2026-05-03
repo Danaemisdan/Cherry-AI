@@ -520,6 +520,113 @@ export const facebookHandler = {
       };
     }
 
+    // ACTION: Add friend
+    if (action === 'add_friend') {
+      const { username } = args;
+      console.log(`[Facebook] Adding ${username} as friend...`);
+      
+      // Navigate to profile
+      await navigate(page, `https://www.facebook.com/${username}`, 'facebook');
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(1000);
+      
+      // Find and click Add Friend button
+      const addFriendBtn = await findElementsByText(page, 'Add Friend', {
+        tagNames: ['button', 'div'],
+        fuzzy: false
+      });
+      
+      if (addFriendBtn.length > 0) {
+        await page.evaluate((index) => {
+          document.querySelectorAll('button, div')[index]?.click();
+        }, addFriendBtn[0].index);
+        await minimalDelay(800);
+        
+        return {
+          status: 'completed',
+          summary: `Sent friend request to ${username}`,
+          data: { username, action: 'friend_request_sent' }
+        };
+      }
+      
+      // Check if already friends
+      const messageBtn = await findElementsByText(page, 'Message', {
+        tagNames: ['button', 'div'],
+        fuzzy: false
+      });
+      
+      if (messageBtn.length > 0) {
+        return {
+          status: 'completed',
+          summary: `Already friends with ${username}`,
+          data: { username, action: 'already_friends' }
+        };
+      }
+      
+      throw new Error(`Could not find Add Friend button for ${username}`);
+    }
+    
+    // ACTION: Bulk add friends from People You May Know
+    if (action === 'bulk_add_friends') {
+      const { maxResults = 10 } = args;
+      console.log(`[Facebook] Bulk adding friends from suggestions...`);
+      
+      // Navigate to People You May Know
+      await navigate(page, 'https://www.facebook.com/friends/suggestions', 'facebook');
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(1500);
+      
+      // Extract suggested friends
+      const profiles = await page.evaluate((limit) => {
+        const results = [];
+        // Look for friend suggestion cards
+        const cards = document.querySelectorAll('[data-testid="friend_list_item"], [role="article"], div[data-pagelet="PYMK"] > div > div');
+        
+        for (let i = 0; i < Math.min(cards.length, limit); i++) {
+          const card = cards[i];
+          // Try to find profile link
+          const linkEl = card.querySelector('a[href*="/"][role="link"]');
+          if (linkEl) {
+            const href = linkEl.getAttribute('href');
+            const match = href?.match(/\/([^/]+)\/?$/);
+            if (match) {
+              const username = match[1];
+              if (username && username !== 'friends' && username !== 'pages') {
+                results.push({ username, name: linkEl.textContent?.trim() });
+              }
+            }
+          }
+        }
+        return results;
+      }, maxResults);
+      
+      console.log(`[Facebook] Found ${profiles.length} people to add`);
+      
+      const results = [];
+      for (const profile of profiles) {
+        try {
+          const result = await this.execute({
+            step: {
+              action: 'add_friend',
+              platform: 'facebook',
+              args: { username: profile.username }
+            },
+            attachedBrowser
+          });
+          results.push({ username: profile.username, ...result });
+          await minimalDelay(2000 + Math.random() * 1000);
+        } catch (error) {
+          results.push({ username: profile.username, error: error.message, status: 'failed' });
+        }
+      }
+      
+      return {
+        status: 'completed',
+        summary: `Sent ${results.filter(r => r.status === 'completed').length}/${profiles.length} friend requests`,
+        data: { results }
+      };
+    }
+    
     // Delegate all other actions to base handler
     return baseHandler.execute({ step, attachedBrowser });
   },
