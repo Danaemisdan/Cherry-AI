@@ -1,13 +1,11 @@
 import {
   PLATFORM_URLS,
-  buildPlatformTargetUrl,
   clickByText,
   fillEditable,
   firstVisibleLocator,
   generateOutreachMessage,
   navigate,
   openAttachedPage,
-  openTargetPage,
   pageSnapshot,
   submitComposer,
   summarizeAction,
@@ -17,403 +15,654 @@ import {
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';
-import { extractProfileContext, formatProfileContext } from '../profile-context.js';
+import { extractPageContent, findElementsByText, parseProfileFromContent, detectRelationshipStatus } from '../page-extractor.js';
 import { createSocialHandler } from '../social-base.js';
 
-// Instagram DM Helper Functions
-async function navigateToProfile(page, username) {
-  const url = buildPlatformTargetUrl('instagram', username);
-  await navigate(page, url, 'instagram');
-  await waitForAppShell(page, 'instagram');
-}
+/**
+ * Instagram Handler - Smart UI-based automation
+ * Uses full page extraction + intelligent parsing (resilient to UI changes)
+ */
 
-async function checkInstagramFollowStatus(page) {
-  // Use parallel checks for better performance and accuracy
-  const checks = await Promise.allSettled([
-    // Already following
-    page.locator('button:has-text("Following"), div[role="button"]:has-text("Following"), button._acan._acao._acat').first().isVisible().catch(() => false),
-    // Requested (private account follow pending)
-    page.locator('button:has-text("Requested"), div[role="button"]:has-text("Requested")').first().isVisible().catch(() => false),
-    // Can follow
-    page.locator('button:has-text("Follow"), div[role="button"]:has-text("Follow"), button._acan._ap30').first().isVisible().catch(() => false),
-    // Check for private account badge/text
-    page.locator('text="This Account is Private", text="Private Account", svg[aria-label="Private Account"]').first().isVisible().catch(() => false),
-    // Check if this is our own profile (no follow/message buttons)
-    page.locator('text="Edit profile", text="Edit Profile"').first().isVisible().catch(() => false),
+// Navigate to Instagram home via UI (not direct URL)
+async function navigateToInstagramHome(page) {
+  console.log('[Instagram] Navigating to home via UI...');
+  
+  // Method 1: Click Instagram logo
+  const logoFound = await tryClick(page, [
+    'svg[aria-label="Instagram"]',
+    'a[href="/"] svg',
+    'div:has-text("Instagram")',
   ]);
-
-  const [isFollowingResult, isRequestedResult, canFollowResult, isPrivateResult, isOwnProfileResult] =
-    checks.map(r => r.status === 'fulfilled' ? r.value : false);
-
-  return {
-    isFollowing: isFollowingResult,
-    requestPending: isRequestedResult,
-    canFollow: canFollowResult,
-    isPrivate: isPrivateResult,
-    isOwnProfile: isOwnProfileResult,
-  };
-}
-
-async function openInstagramMessageFromInbox(page, username) {
-  // Primary method for private accounts: Go to inbox and search for user
-  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
-  await waitForAppShell(page, 'instagram');
-  await minimalDelay(800);
-
-  // Look for the "New message" or search button first
-  const newMessageSelectors = [
-    'button:has-text("New message")',
-    'a[href="/direct/inbox/new/"]',
-    'svg[aria-label="New message"]',
-    'button[aria-label="New message"]',
-    'div[role="button"]:has-text("New")',
-  ];
-
-  let openedSearch = await tryClick(page, newMessageSelectors);
-
-  if (!openedSearch) {
-    // Try clicking by text
-    openedSearch = await clickByText(page, ['button', 'a', 'div[role="button"]'], ['New message', 'New']);
-  }
-
-  if (openedSearch) {
+  
+  if (logoFound) {
     await waitForAppShell(page, 'instagram');
     await minimalDelay(500);
+    return true;
   }
+  
+  // Method 2: Navigate to base URL
+  await navigate(page, PLATFORM_URLS.instagram, 'instagram');
+  await waitForAppShell(page, 'instagram');
+  return true;
+}
 
-  // Look for search input (to: field)
-  const searchBox = await firstVisibleLocator(page, [
+// Navigate to profile via UI search (not direct URL)
+async function navigateToProfileViaSearch(page, username) {
+  console.log(`[Instagram] Searching for @${username} via UI...`);
+  
+  // Method 1: Use top search bar
+  const searchClicked = await tryClick(page, [
     'input[placeholder*="Search"]',
-    'input[aria-label*="Search"]',
-    'input[placeholder*="To:"]',
-    'input[name="queryBox"]',
-    'input[type="text"]',
-    'textarea[placeholder*="Search"]',
+    'svg[aria-label="Search"]',
+    'div[role="button"]:has(svg[aria-label="Search"])',
   ]);
-
-  if (!searchBox) {
-    return false;
-  }
-
-  // Click and type username
-  await searchBox.click({ timeout: 3000 }).catch(() => {});
-  await searchBox.fill('').catch(() => {});
-  await searchBox.type(username, { delay: 20 }).catch(() => {});
-  await minimalDelay(1000);
-
-  // Try to find and click on the user in search results
-  // Instagram shows results as clickable divs with the username
-  const userResultSelectors = [
-    `div[role="button"]:has-text("${username}")`,
-    `div:has-text("${username}"):has(div)`,
-    'div[role="dialog"] div[role="button"]',
-    'div.x1n2onr6 div[role="button"]',
-    'div._ab8w',
-    'div._aacl._aaco',
-  ];
-
-  for (const selector of userResultSelectors) {
-    const result = page.locator(selector).first();
-    if (await result.isVisible().catch(() => false)) {
-      await result.click().catch(() => {});
-
-      // Wait to see if a conversation opened
-      await minimalDelay(800);
-
-      // Check if composer appeared
-      const composer = await firstVisibleLocator(page, [
-        'textarea',
-        'div[contenteditable="true"]',
-        'div[role="textbox"]',
-        'input[placeholder*="Message"]',
-      ]);
-
-      if (composer) {
-        return true;
+  
+  if (searchClicked) {
+    await minimalDelay(300);
+    await page.keyboard.type(username, { delay: 20 });
+    await minimalDelay(1000);
+    
+    // Find and click user result
+    const results = await findElementsByText(page, username, {
+      tagNames: ['a', 'div', 'span'],
+      fuzzy: true
+    });
+    
+    for (const result of results) {
+      if (result.href?.includes(username) || result.text.toLowerCase().includes(username.toLowerCase())) {
+        await page.evaluate((index) => {
+          const elements = document.querySelectorAll('a, div, span');
+          if (elements[index]) elements[index].click();
+        }, result.index);
+        await minimalDelay(800);
+        
+        // Verify we're on profile page
+        const content = await extractPageContent(page);
+        const profile = parseProfileFromContent(content, 'instagram');
+        if (profile.name || content.fullText.toLowerCase().includes(username.toLowerCase())) {
+          console.log(`[Instagram] Found profile via search: ${profile.name || username}`);
+          return true;
+        }
       }
     }
   }
+  
+  // Method 2: Direct URL fallback (only if UI search fails)
+  console.log('[Instagram] UI search failed, using URL fallback');
+  await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(500);
+  
+  const content = await extractPageContent(page);
+  const profile = parseProfileFromContent(content, 'instagram');
+  return profile.name || content.fullText.length > 100;
+}
 
-  // Try finding by text with partial match
-  const results = await page.locator('div[role="button"], div[role="dialog"] div').all();
-  for (const result of results) {
-    const text = await result.textContent().catch(() => '');
-    if (text.toLowerCase().includes(username.toLowerCase())) {
-      await result.click().catch(() => {});
+// Get comprehensive profile context using smart extraction
+async function getInstagramProfileContext(page, username) {
+  console.log(`[Instagram] Extracting full profile context for @${username}...`);
+  
+  const content = await extractPageContent(page);
+  const profile = parseProfileFromContent(content, 'instagram');
+  const relationship = await detectRelationshipStatus(page, 'instagram');
+  
+  // Extract recent posts if available
+  const posts = [];
+  const postLinks = content.interactiveElements.filter(e => 
+    e.href?.includes('/p/') || e.href?.includes('/reel/')
+  ).slice(0, 3);
+  
+  for (const link of postLinks) {
+    posts.push({
+      url: link.href,
+      type: link.href.includes('/reel/') ? 'reel' : 'post'
+    });
+  }
+  
+  const context = {
+    username,
+    name: profile.name,
+    bio: profile.bio,
+    category: profile.category,
+    followers: profile.followers,
+    following: profile.following,
+    isPrivate: profile.isPrivate,
+    isBusiness: profile.isBusiness,
+    relationship: relationship.relationship,
+    isFollowing: relationship.isFollowing,
+    canMessage: relationship.canMessage,
+    recentPosts: posts,
+    rawText: profile.rawText?.slice(0, 1000) || ''
+  };
+  
+  console.log(`[Instagram] Context: ${context.name || username}, ${context.bio?.slice(0, 50) || 'no bio'}, ${context.relationship}`);
+  return context;
+}
+
+// Method 1: Message via inbox search
+async function messageViaInbox(page, username) {
+  console.log(`[Instagram] Method 1: Messaging via inbox...`);
+  
+  // Navigate to inbox via UI
+  const inboxClicked = await tryClick(page, [
+    'svg[aria-label="Messenger"]',
+    'svg[aria-label="Direct"]',
+    'a[href="/direct/inbox/"]',
+    'div[role="button"]:has(svg[aria-label="Messenger"])',
+  ]);
+  
+  if (!inboxClicked) {
+    // URL fallback
+    await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
+  }
+  
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(800);
+  
+  // Click "New message"
+  const newMsgClicked = await tryClick(page, [
+    'button:has-text("New message")',
+    'button[aria-label="New message"]',
+    'svg[aria-label="New message"]',
+    'a[href="/direct/inbox/new/"]',
+    'div[role="button"]:has-text("New")',
+  ]);
+  
+  if (!newMsgClicked) {
+    console.log('[Instagram] Could not find New message button');
+    return false;
+  }
+  
+  await minimalDelay(500);
+  
+  // Find search input
+  const searchResults = await findElementsByText(page, 'To:', {
+    tagNames: ['input', 'textarea', 'div'],
+    fuzzy: true
+  });
+  
+  // Type username in search
+  await page.keyboard.type(username, { delay: 20 });
+  await minimalDelay(1000);
+  
+  // Find and click user result
+  const userResults = await findElementsByText(page, username, {
+    tagNames: ['div', 'button', 'span'],
+    fuzzy: true
+  });
+  
+  for (const result of userResults) {
+    if (result.text.toLowerCase().includes(username.toLowerCase())) {
+      await page.evaluate((index) => {
+        const elements = document.querySelectorAll('div, button, span');
+        if (elements[index]) elements[index].click();
+      }, result.index);
+      
       await minimalDelay(800);
-
-      const composer = await firstVisibleLocator(page, [
-        'textarea',
-        'div[contenteditable="true"]',
-        'div[role="textbox"]',
-      ]);
-
-      if (composer) return true;
+      
+      // Check if chat opened (composer visible)
+      const composer = await findElementsByText(page, 'Message', {
+        tagNames: ['textarea', 'div', 'input'],
+        fuzzy: true
+      });
+      
+      if (composer.length > 0) {
+        console.log('[Instagram] Chat opened via inbox');
+        return { success: true, method: 'inbox' };
+      }
     }
   }
-
+  
   return false;
 }
 
-async function openInstagramMessage(page, username) {
-  // Instagram DM rules:
-  // 1. Public accounts: Can message directly from profile
-  // 2. Private accounts you follow: Can message directly from profile
-  // 3. Private accounts you DON'T follow: MUST go through inbox search
-  // 4. Your own profile: Cannot message yourself
-
-  const followStatus = await checkInstagramFollowStatus(page);
-
-  if (followStatus.isOwnProfile) {
+// Method 2: Message via profile Message button
+async function messageViaProfile(page, username) {
+  console.log(`[Instagram] Method 2: Messaging via profile...`);
+  
+  // Navigate to profile via search
+  await navigateToProfileViaSearch(page, username);
+  
+  // Check relationship status
+  const relationship = await detectRelationshipStatus(page, 'instagram');
+  
+  if (relationship.isOwnProfile) {
     throw new Error(`Cannot message yourself (@${username})`);
   }
-
-  // For private accounts we don't follow - go straight to inbox method
-  if (followStatus.isPrivate && !followStatus.isFollowing) {
-    // Try inbox method first (this sends a message request to private accounts)
-    const inboxOpened = await openInstagramMessageFromInbox(page, username);
-
-    if (inboxOpened) {
-      await waitForAppShell(page, 'instagram');
-      await minimalDelay(500);
-
-      // Verify composer is available
-      const composer = await firstVisibleLocator(page, [
-        'textarea',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-        'div[role="textbox"]',
-      ]);
-
-      if (composer) {
-        return {
-          type: 'message_request',
-          canSend: true,
-          isFollowing: false,
-          isPrivate: true,
-          method: 'inbox_search',
-        };
+  
+  // For private accounts we don't follow, inbox method is required
+  // This method works for: public accounts, accounts we follow
+  if (relationship.canMessage) {
+    // Click Message button
+    const msgClicked = await tryClick(page, [
+      'button:has-text("Message")',
+      'div[role="button"]:has-text("Message")',
+      'button[aria-label="Message"]',
+      'svg[aria-label="Direct"]',
+    ]);
+    
+    if (!msgClicked) {
+      // Try by text search
+      const msgButtons = await findElementsByText(page, 'Message', {
+        tagNames: ['button', 'div'],
+        fuzzy: false
+      });
+      
+      if (msgButtons.length > 0) {
+        await page.evaluate((index) => {
+          const elements = document.querySelectorAll('button, div');
+          if (elements[index]) elements[index].click();
+        }, msgButtons[0].index);
       }
     }
-
-    // If inbox method failed, offer to follow them
-    // Note: For private accounts, you can send a message request via inbox
-    // even without following - but if inbox search didn't work, suggest following
-    throw new Error(
-      `Cannot message @${username}. This is a private account. ` +
-      `Try following them first, or search for them directly in your Instagram inbox.`
-    );
-  }
-
-  // For public accounts or accounts we follow - try profile Message button first
-  const messageSelectors = [
-    'button:has-text("Message")',
-    'div[role="button"]:has-text("Message")',
-    'button[type="button"]:has-text("Message")',
-    'a[href*="/direct/t/"]',
-    '[aria-label="Message"]',
-    'svg[aria-label="Direct"]',
-    'button._acan._acao._acas',
-    'button._abl-',
-  ];
-
-  let clicked = await tryClick(page, messageSelectors);
-
-  if (!clicked) {
-    clicked = await clickByText(page, ['button', 'div[role="button"]', 'a', 'span'], ['Message', 'Message ']);
-  }
-
-  // If profile method failed, try inbox method as fallback
-  if (!clicked) {
-    const inboxOpened = await openInstagramMessageFromInbox(page, username);
-    if (inboxOpened) {
-      clicked = true;
+    
+    await minimalDelay(1000);
+    
+    // Verify chat opened
+    const composer = await findElementsByText(page, '', {
+      tagNames: ['textarea', 'div[contenteditable="true"]'],
+      fuzzy: true
+    });
+    
+    if (composer.length > 0) {
+      console.log('[Instagram] Chat opened via profile');
+      return { success: true, method: 'profile', relationship };
     }
   }
-
-  if (!clicked) {
-    throw new Error(`Could not open Instagram message for "${username}". Message button not found.`);
-  }
-
-  await waitForAppShell(page);
-  await page.waitForTimeout(1500);
-
-  // Verify composer is available
-  const composer = await firstVisibleLocator(page, [
-    'textarea',
-    'div[contenteditable="true"][role="textbox"]',
-    'div[contenteditable="true"]',
-    'div._abl-',
-    'div[aria-label="Message"]',
-    'div[role="textbox"]',
-  ]);
-
-  if (!composer) {
-    throw new Error(`Could not open Instagram message composer for "${username}".`);
-  }
-
-  return {
-    type: 'message',
-    canSend: true,
-    isFollowing: followStatus.isFollowing,
-    isPrivate: followStatus.isPrivate,
-  };
+  
+  return false;
 }
 
-// Base social handler for non-DM actions
-const baseHandler = createSocialHandler('instagram', {
-  async openMessage(page, username) {
-    await openInstagramMessage(page, username);
-  },
-  messageComposerSelectors: [
-    'textarea',
-    'div[contenteditable="true"][role="textbox"]',
-    'div[contenteditable="true"]',
-  ],
-  sendMessageSelectors: ['button:has-text("Send")'],
-  sendMessageLabels: ['Send'],
-  followLabels: ['Follow'],
-  async openLatestPost(page) {
-    await page.locator('a[href*="/p/"], a[href*="/reel/"]').first().click().catch(() => {});
-    await waitForAppShell(page, 'instagram');
-  },
-  async likePost(page) {
-    await tryClick(page, ['svg[aria-label="Like"]', 'button svg[aria-label="Like"]']);
-  },
-  commentSelectors: [
-    'textarea[placeholder*="comment"]', 
-    'textarea[placeholder*="Add a comment"]',
-    'textarea',
-    'div[contenteditable="true"][aria-label*="comment"]',
-    'div[contenteditable="true"]',
-  ],
-  commentSubmitSelectors: [
-    'button[type="submit"]',
-    'button:has-text("Post")',
-    'div[role="button"]:has-text("Post")',
-    'button:has-text("Share")',
-    'button:has-svg[aria-label="Post"]',
-    '[data-testid="post-button"]',
-    '[data-testid="submit-button"]',
-  ],
-  commentSubmitLabels: ['Post', 'Share'],
-  async openPostComposer(page) {
-    // Click Create button to open post composer
-    const createSelectors = [
-      'a[href="/create"]',
-      'svg[aria-label="New post"]',
-      'a:has-text("Create")',
-      'div[role="button"]:has-text("Create")',
-    ];
-    for (const selector of createSelectors) {
-      try {
-        const el = await page.locator(selector).first();
-        if (await el.count() > 0 && await el.isVisible()) {
-          await el.click({ timeout: 3000 });
-          await minimalDelay(1000);
-          break;
-        }
-      } catch { /* continue */ }
+// Method 3: Message via explore search
+async function messageViaExplore(page, username) {
+  console.log(`[Instagram] Method 3: Messaging via explore...`);
+  
+  // Navigate to explore via UI
+  const exploreClicked = await tryClick(page, [
+    'svg[aria-label="Explore"]',
+    'a[href="/explore/"]',
+    'div[role="button"]:has(svg[aria-label="Explore"])',
+  ]);
+  
+  if (!exploreClicked) {
+    await navigate(page, 'https://www.instagram.com/explore/', 'instagram');
+  }
+  
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(500);
+  
+  // Click search
+  const searchClicked = await tryClick(page, [
+    'input[placeholder*="Search"]',
+    'svg[aria-label="Search"]',
+  ]);
+  
+  if (searchClicked) {
+    await page.keyboard.type(username, { delay: 20 });
+    await minimalDelay(1500);
+    
+    // Find user in results
+    const results = await findElementsByText(page, username, {
+      tagNames: ['a', 'div'],
+      fuzzy: true
+    });
+    
+    for (const result of results) {
+      if (result.href?.includes(username) || result.text.toLowerCase().includes(username.toLowerCase())) {
+        // Click to go to profile
+        await page.evaluate((index) => {
+          const elements = document.querySelectorAll('a, div');
+          if (elements[index]) elements[index].click();
+        }, result.index);
+        
+        await minimalDelay(1000);
+        
+        // Now on profile, try to message
+        return await messageViaProfile(page, username);
+      }
     }
-    await waitForAppShell(page, 'instagram');
-  },
-  postComposerSelectors: [
-    'textarea[aria-label="Write a caption..."]',
-    '[data-testid="caption-input"]',
-    'textarea[placeholder*="caption"]',
-    'div[contenteditable="true"]',
-  ],
-  publishPostSelectors: [
-    'button:has-text("Share")',
-    'button:has-text("Post")',
-    'div[role="button"]:has-text("Share")',
-    'div[role="button"]:has-text("Post")',
-    '[data-testid="share-button"]',
-    '[data-testid="post-button"]',
-  ],
-  publishPostLabels: ['Share', 'Post'],
-  async attachMedia(page, filePath) {
-    // Instagram-specific media upload
-    const fileInput = await page.locator('input[type="file"]').first();
-    if (await fileInput.count() > 0) {
-      await fileInput.setInputFiles(filePath);
-      await minimalDelay(3000);
-      return true;
-    }
-    return false;
-  },
-  async sendComment(page) {
-    // Instagram-specific comment submission with multiple strategies
-    const submitSelectors = [
-      'button[type="submit"]',
-      'button:has-text("Post")',
-      'div[role="button"]:has-text("Post")',
-      'button:has-text("Share")',
-      'svg[aria-label="Post"]',
-      'svg[aria-label="Share"]',
-      '[data-testid="post-button"]',
-      '[data-testid="submit-button"]',
-      'button._abl-',
-    ];
+  }
+  
+  return false;
+}
 
-    // Try clicking submit button
-    for (const selector of submitSelectors) {
-      try {
-        const locator = page.locator(selector).first();
-        if (await locator.count() > 0 && await locator.isVisible()) {
-          await locator.click({ timeout: 3000 });
-          await minimalDelay(300);
-          return true;
-        }
-      } catch { /* continue */ }
+// Extract chat history from current conversation
+async function extractInstagramChatHistory(page, limit = 10) {
+  console.log('[Instagram] Extracting chat history...');
+  
+  const content = await extractPageContent(page);
+  const messages = [];
+  
+  // Look for message patterns in the page
+  const lines = content.fullText.split('\n').filter(l => l.trim());
+  
+  // Instagram messages appear as blocks with sender info
+  // Try to identify message bubbles
+  const messageElements = content.interactiveElements.filter(e => 
+    e.tag === 'div' && 
+    !e.href && 
+    e.text.length > 0 && 
+    e.text.length < 500
+  );
+  
+  // Parse messages (this is a heuristic approach)
+  let lastSender = null;
+  for (const line of lines) {
+    // Skip timestamps and UI elements
+    if (line.match(/\d+:\d+/) || line.includes('Seen') || line.includes('Delivered')) {
+      continue;
     }
+    
+    // Check if this looks like a username/sender
+    if (line.length < 30 && !line.includes(' ')) {
+      lastSender = line;
+      continue;
+    }
+    
+    // This might be a message
+    if (line.length > 5 && lastSender) {
+      messages.push({
+        sender: lastSender,
+        text: line,
+        role: lastSender === 'You' ? 'me' : 'them'
+      });
+    }
+  }
+  
+  console.log(`[Instagram] Found ${messages.length} messages in chat`);
+  return messages.slice(-limit);
+}
 
-    // Try pressing Enter as fallback
+// Send message with attachment support
+async function sendInstagramMessage(page, message, options = {}) {
+  const { attachmentPath, requireManualReview } = options;
+  
+  console.log('[Instagram] Sending message...');
+  
+  // Find composer
+  const composerResults = await findElementsByText(page, '', {
+    tagNames: ['textarea', 'div[contenteditable="true"]'],
+    fuzzy: true
+  });
+  
+  if (composerResults.length === 0) {
+    throw new Error('Message composer not found');
+  }
+  
+  // Click composer and type
+  await page.evaluate((index) => {
+    const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
+    if (elements[index]) {
+      elements[index].click();
+      elements[index].focus();
+    }
+  }, composerResults[0].index);
+  
+  await minimalDelay(200);
+  await page.keyboard.type(message, { delay: 10 });
+  
+  // Handle attachment if provided
+  if (attachmentPath) {
+    console.log('[Instagram] Attaching media...');
     try {
+      // Look for attachment button
+      const attachBtn = await findElementsByText(page, 'Gallery', {
+        tagNames: ['button', 'svg', 'div'],
+        fuzzy: true
+      });
+      
+      if (attachBtn.length > 0) {
+        await page.evaluate((index) => {
+          const elements = document.querySelectorAll('button, svg, div');
+          if (elements[index]) elements[index].click();
+        }, attachBtn[0].index);
+        
+        await minimalDelay(500);
+        
+        // Find file input
+        const fileInput = await page.locator('input[type="file"]').first();
+        if (fileInput) {
+          await fileInput.setInputFiles(attachmentPath);
+          await minimalDelay(2000);
+        }
+      }
+    } catch (e) {
+      console.warn('[Instagram] Attachment failed:', e.message);
+    }
+  }
+  
+  // Send or wait for review
+  if (!requireManualReview) {
+    // Try send button
+    const sendBtn = await findElementsByText(page, 'Send', {
+      tagNames: ['button', 'div'],
+      fuzzy: false
+    });
+    
+    if (sendBtn.length > 0) {
+      await page.evaluate((index) => {
+        const elements = document.querySelectorAll('button, div');
+        if (elements[index]) elements[index].click();
+      }, sendBtn[0].index);
+    } else {
+      // Fallback to Enter key
       await page.keyboard.press('Enter');
-      await minimalDelay(300);
-      return true;
-    } catch { /* fail silently */ }
+    }
+    
+    await minimalDelay(500);
+    console.log('[Instagram] Message sent');
+    return { sent: true };
+  }
+  
+  return { sent: false, waitingForReview: true };
+}
 
-    return false;
-  },
-});
+// Like post via UI
+async function likeInstagramPost(page, postUrl) {
+  console.log('[Instagram] Liking post...');
+  
+  if (postUrl) {
+    await navigate(page, postUrl, 'instagram');
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(800);
+  }
+  
+  // Find like button
+  const likeBtn = await findElementsByText(page, 'Like', {
+    tagNames: ['button', 'svg', 'span'],
+    fuzzy: true
+  });
+  
+  // Also try aria-label
+  const content = await extractPageContent(page);
+  const likeElement = content.interactiveElements.find(e => 
+    e.ariaLabel?.includes('Like') || e.text === 'Like'
+  );
+  
+  if (likeElement) {
+    await page.evaluate((index) => {
+      const elements = document.querySelectorAll('button, svg, span');
+      if (elements[index]) elements[index].click();
+    }, likeElement.index);
+    
+    await minimalDelay(500);
+    console.log('[Instagram] Post liked');
+    return { liked: true };
+  }
+  
+  return { liked: false };
+}
 
-// Enhanced handler with proper Instagram-specific DM flow
+// Comment on post
+async function commentOnInstagramPost(page, comment, postUrl) {
+  console.log('[Instagram] Commenting on post...');
+  
+  if (postUrl) {
+    await navigate(page, postUrl, 'instagram');
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(800);
+  }
+  
+  // Find comment box
+  const commentBox = await findElementsByText(page, 'Add a comment', {
+    tagNames: ['textarea', 'div[contenteditable="true"]'],
+    fuzzy: true
+  });
+  
+  if (commentBox.length === 0) {
+    throw new Error('Comment box not found');
+  }
+  
+  // Click and type comment
+  await page.evaluate((index) => {
+    const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
+    if (elements[index]) {
+      elements[index].click();
+      elements[index].focus();
+    }
+  }, commentBox[0].index);
+  
+  await minimalDelay(200);
+  await page.keyboard.type(comment, { delay: 10 });
+  await minimalDelay(300);
+  
+  // Find Post button (NOT Share)
+  const postBtn = await findElementsByText(page, 'Post', {
+    tagNames: ['button', 'div'],
+    fuzzy: false
+  });
+  
+  if (postBtn.length > 0) {
+    await page.evaluate((index) => {
+      const elements = document.querySelectorAll('button, div');
+      if (elements[index]) elements[index].click();
+    }, postBtn[0].index);
+    
+    await minimalDelay(500);
+    console.log('[Instagram] Comment posted');
+    return { commented: true };
+  }
+  
+  // Fallback to Enter
+  await page.keyboard.press('Enter');
+  await minimalDelay(500);
+  
+  return { commented: true };
+}
+
+// Search for content/users via UI
+async function instagramSearch(page, query, type = 'all') {
+  console.log(`[Instagram] Searching for "${query}"...`);
+  
+  await navigateToInstagramHome(page);
+  
+  // Click search
+  const searchClicked = await tryClick(page, [
+    'input[placeholder*="Search"]',
+    'svg[aria-label="Search"]',
+  ]);
+  
+  if (!searchClicked) {
+    // Try to find search via text
+    const searchElements = await findElementsByText(page, 'Search', {
+      tagNames: ['input', 'div', 'button'],
+      fuzzy: true
+    });
+    
+    if (searchElements.length > 0) {
+      await page.evaluate((index) => {
+        const elements = document.querySelectorAll('input, div, button');
+        if (elements[index]) elements[index].click();
+      }, searchElements[0].index);
+    }
+  }
+  
+  await minimalDelay(300);
+  await page.keyboard.type(query, { delay: 20 });
+  await minimalDelay(1500);
+  
+  // Extract search results
+  const content = await extractPageContent(page);
+  const results = [];
+  
+  // Parse results based on type
+  if (type === 'users' || type === 'all') {
+    const userElements = content.interactiveElements.filter(e => 
+      (e.href?.includes('/p/') || !e.href) && 
+      e.text && 
+      e.text.length > 0 && 
+      e.text.length < 30
+    );
+    
+    for (const el of userElements.slice(0, 10)) {
+      results.push({
+        type: 'user',
+        username: el.text,
+        url: el.href,
+        element: el
+      });
+    }
+  }
+  
+  if (type === 'posts' || type === 'all') {
+    const postElements = content.interactiveElements.filter(e => 
+      e.href?.includes('/p/') || e.href?.includes('/reel/')
+    );
+    
+    for (const el of postElements.slice(0, 10)) {
+      results.push({
+        type: el.href?.includes('/reel/') ? 'reel' : 'post',
+        url: el.href,
+        element: el
+      });
+    }
+  }
+  
+  console.log(`[Instagram] Found ${results.length} results`);
+  return results;
+}
+
+// Main handler
 export const instagramHandler = {
   platform: 'instagram',
+  
   async execute({ step, attachedBrowser }) {
     const { action, args } = step;
-
-    // Check login state for actions that require auth
-    if (['send_message', 'draft_message', 'open_target', 'message_batch'].includes(action)) {
+    
+    // Check login state
+    if (['send_message', 'draft_message', 'open_target', 'message_batch', 'like_post', 'comment_post'].includes(action)) {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
       const state = await checkLoginState(page, 'instagram');
       if (!state.ready) {
         throw new Error(state.message || 'Please log in to Instagram');
       }
     }
-
-    // Handle DM-specific actions with custom Instagram flow
+    
+    const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
+    
+    // ACTION: Open profile
     if (action === 'open_target') {
       const { username } = args;
-      if (!username) {
-        throw new Error('Instagram open_target requires a username');
-      }
-
-      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
-      await navigateToProfile(page, username);
-
+      if (!username) throw new Error('Instagram open_target requires a username');
+      
+      await navigateToProfileViaSearch(page, username);
+      const context = await getInstagramProfileContext(page, username);
+      
       return {
         status: 'ready',
         summary: summarizeAction('instagram', step),
-        data: await pageSnapshot(page),
+        data: { profile: context, snapshot: await pageSnapshot(page) }
       };
     }
-
+    
+    // ACTION: Draft message
     if (action === 'draft_message') {
       const { username, messageGoal, tone, query } = args;
-
+      
+      // Get profile context for better message generation
+      await navigateToProfileViaSearch(page, username);
+      const context = await getInstagramProfileContext(page, username);
+      
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -421,158 +670,171 @@ export const instagramHandler = {
         query,
         platform: 'instagram',
         chatContext: [],
-        profileInfo: {},
+        profileInfo: context
       });
-
+      
       return {
         status: 'ready',
         summary: summarizeAction('instagram', step),
-        data: { preview: message },
+        data: { preview: message, profile: context }
       };
     }
-
+    
+    // ACTION: Send message (with 3 methods)
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview, attachmentPath, attachmentType } = args;
-
-      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath } = args;
       
-      // Extract profile info FIRST (before opening message, so we don't navigate away)
-      console.log(`[Instagram] Extracting profile context for ${username}...`);
-      let profileInfo = {};
-      try {
-        await navigateToProfile(page, username);
-        const rawProfileInfo = await extractProfileContext(page, 'instagram', username);
-        profileInfo = formatProfileContext(rawProfileInfo, 'instagram');
-        console.log(`[Instagram] Profile context: ${rawProfileInfo.category || 'no category'}, ${rawProfileInfo.followers || 'unknown followers'}`);
-      } catch (e) {
-        console.log(`[Instagram] Could not extract profile info: ${e.message}`);
+      console.log(`[Instagram] Starting DM to @${username}`);
+      
+      // STEP 1: Get profile context FIRST
+      await navigateToProfileViaSearch(page, username);
+      const profileContext = await getInstagramProfileContext(page, username);
+      
+      // STEP 2: Try 3 messaging methods
+      let chatOpened = null;
+      let methodUsed = null;
+      
+      // Method 1: Inbox
+      chatOpened = await messageViaInbox(page, username);
+      if (chatOpened) {
+        methodUsed = 'inbox';
       }
       
-      // Strategy: Try DM inbox search (works for all account types)
-      // Only use direct profile URL as fallback
-      let openedViaInbox = await openInstagramMessageFromInbox(page, username);
-      let messageStatus;
-      
-      if (!openedViaInbox) {
-        // Fallback: Navigate to profile and try message button
-        console.log(`[Instagram] Inbox search failed for ${username}, trying profile...`);
-        try {
-          await navigateToProfile(page, username);
-          messageStatus = await openInstagramMessage(page, username);
-        } catch (profileError) {
-          throw new Error(`Could not message ${username} on Instagram. Try searching for them directly in your Instagram inbox first.`);
-        }
-      } else {
-        messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
+      // Method 2: Profile (if inbox failed or not suitable)
+      if (!chatOpened && profileContext.canMessage) {
+        chatOpened = await messageViaProfile(page, username);
+        if (chatOpened) methodUsed = 'profile';
       }
-
-      // Extract chat context from the conversation
-      const chatContext = await extractChatContext(page, 'instagram', 8);
-
-      // Generate message with FULL context (chat + profile + posts)
+      
+      // Method 3: Explore
+      if (!chatOpened) {
+        chatOpened = await messageViaExplore(page, username);
+        if (chatOpened) methodUsed = 'explore';
+      }
+      
+      if (!chatOpened) {
+        throw new Error(`Could not open chat with @${username}. They may have restricted messaging.`);
+      }
+      
+      console.log(`[Instagram] Chat opened via: ${methodUsed}`);
+      
+      // STEP 3: Extract chat history if existing conversation
+      const chatHistory = await extractInstagramChatHistory(page, 6);
+      
+      // STEP 4: Generate personalized message
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
         tone,
         query,
         platform: 'instagram',
-        chatContext,
-        profileInfo,
+        chatContext: chatHistory,
+        profileInfo: profileContext
       });
-
-      // Fill composer
-      const filled = await fillEditable(page, [
-        'textarea',
-        'div[contenteditable="true"][role="textbox"]',
-        'div[contenteditable="true"]',
-      ], message);
-
-      if (!filled.ok) {
-        throw new Error(`Could not fill Instagram message composer for "${username}"`);
-      }
-
-      // Handle file attachment if provided
-      if (attachmentPath) {
-        try {
-          // Look for attachment button (gallery/camera icon)
-          const attachBtn = await firstVisibleLocator(page, [
-            'button[aria-label*="Add"]', // Add photo/video
-            'button[aria-label*="Gallery"]', // Gallery
-            'button[aria-label*="Attachment"]', // Attachment
-            'svg[aria-label*="Gallery"]',
-            'svg[aria-label*="Add"]',
-            '[data-testid="add-attachment"]',
-            'input[type="file"]',
-          ]);
-
-          if (attachBtn) {
-            const isFileInput = await attachBtn.evaluate(el => el.tagName === 'INPUT').catch(() => false);
-            if (isFileInput) {
-              await attachBtn.setInputFiles(attachmentPath);
-            } else {
-              // Click the attachment button then find file input
-              await attachBtn.click();
-              await minimalDelay(500);
-              const fileInput = await page.locator('input[type="file"]').first();
-              if (fileInput) {
-                await fileInput.setInputFiles(attachmentPath);
-              }
-            }
-            await minimalDelay(1500); // Wait for upload
-          }
-        } catch (attachError) {
-          console.warn('Instagram attachment failed:', attachError.message);
-        }
-      }
-
-      // Send if not manual review
-      let sent = false;
-      if (!requireManualReview) {
-        sent = await submitComposer(page, ['button:has-text("Send")'], ['Send']);
-        if (!sent) {
-          // Try pressing Enter as fallback
-          await page.keyboard.press('Enter').catch(() => {});
-          sent = true;
-        }
-      }
-
+      
+      console.log(`[Instagram] Message: "${message.slice(0, 50)}..."`);
+      
+      // STEP 5: Send message
+      const result = await sendInstagramMessage(page, message, {
+        attachmentPath,
+        requireManualReview
+      });
+      
       return {
         status: 'completed',
-        summary: summarizeAction('instagram', step, { sent }),
-        data: { page: await pageSnapshot(page), message, sent },
+        summary: summarizeAction('instagram', step, { sent: result.sent }),
+        data: { 
+          message, 
+          sent: result.sent,
+          method: methodUsed,
+          profile: profileContext,
+          chatHistory: chatHistory.length > 0 ? chatHistory : undefined
+        }
       };
     }
-
+    
+    // ACTION: Message batch
     if (action === 'message_batch') {
-      const usernames = (args.usernames || []).slice(0, Math.max(1, Math.min(Number(args.maxResults) || 10, 20)));
+      const usernames = (args.usernames || []).slice(0, Math.min(Number(args.maxResults) || 10, 20));
       const results = [];
-
+      
       for (const username of usernames) {
         try {
           const result = await this.execute({
             step: {
               action: 'send_message',
               platform: 'instagram',
-              args: { ...args, username },
+              args: { ...args, username }
             },
-            attachedBrowser,
+            attachedBrowser
           });
           results.push({ username, ...result });
-          // Random delay between messages
-          await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
+          await minimalDelay(2000 + Math.random() * 2000);
         } catch (error) {
           results.push({ username, error: error.message, status: 'failed' });
         }
       }
-
+      
       return {
         status: 'completed',
-        summary: `Processed ${usernames.length} Instagram DM targets`,
-        data: results,
+        summary: `Messaged ${usernames.length} Instagram users`,
+        data: results
       };
     }
-
-    // Delegate all other actions to base handler
+    
+    // ACTION: Like post
+    if (action === 'like_post') {
+      const { postUrl } = args;
+      const result = await likeInstagramPost(page, postUrl);
+      
+      return {
+        status: 'completed',
+        summary: summarizeAction('instagram', step),
+        data: result
+      };
+    }
+    
+    // ACTION: Comment on post
+    if (action === 'comment_post') {
+      const { postUrl, comment, messageGoal, tone, query } = args;
+      
+      // Generate AI comment if not provided
+      let finalComment = comment;
+      if (!finalComment && messageGoal) {
+        finalComment = await generateOutreachMessage({
+          username: 'post',
+          goal: messageGoal,
+          tone,
+          query,
+          platform: 'instagram',
+          chatContext: [],
+          profileInfo: {}
+        });
+      }
+      
+      const result = await commentOnInstagramPost(page, finalComment, postUrl);
+      
+      return {
+        status: 'completed',
+        summary: summarizeAction('instagram', step),
+        data: { comment: finalComment, ...result }
+      };
+    }
+    
+    // ACTION: Search
+    if (action === 'search') {
+      const { query, type } = args;
+      const results = await instagramSearch(page, query, type || 'all');
+      
+      return {
+        status: 'completed',
+        summary: `Searched Instagram for "${query}"`,
+        data: { results, query }
+      };
+    }
+    
+    // Delegate other actions to base handler
+    const baseHandler = createSocialHandler('instagram', {});
     return baseHandler.execute({ step, attachedBrowser });
-  },
+  }
 };

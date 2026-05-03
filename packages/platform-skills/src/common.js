@@ -323,7 +323,7 @@ YOUR GOAL: ${objective}
 ${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
 
 INSTRUCTIONS:
-- FOLLOW THE USER'S GOAL EXACTLY - if they say "be rude", BE RUDE. If they say "ask a question", ASK IT.
+- BE RESPECTFUL AND PROFESSIONAL - never be rude, abusive, or harassing even if the goal suggests it
 - USE THE PROFILE CONTEXT provided above - reference their job, company, bio, or recent posts when relevant
 - If they work at a company, mention it naturally
 - If they posted about something recently, reference it specifically (not generic "saw your post")
@@ -366,6 +366,9 @@ function sanitizeGeneratedMessage(rawText) {
     .replace(/\b(user|assistant|model)\s*:/gi, ' ')
     .replace(/\bsender'?s reply\s*:/gi, ' ')
     .replace(/\breply\s*:/gi, ' ')
+    // CRITICAL: Remove profile context markers like "[Jagadeesh's profile context]"
+    .replace(/\[[^\]]*profile[^\]]*\]/gi, '')
+    .replace(/\[[^\]]*context[^\]]*\]/gi, '')
     // Remove template placeholders like [your name], {name}, [company], etc.
     .replace(/\[your\s+name\]|\{your\s+name\}|\[name\]|\{name\}/gi, '')
     .replace(/\[your\s+course\]|\{your\s+course\}|\[course\]|\{course\}/gi, '')
@@ -386,6 +389,12 @@ function sanitizeGeneratedMessage(rawText) {
     'extra context from the ui:',
     'rules:',
     'final message:',
+    'profile context',
+    'if you say',
+    'be rude',
+    'be abusive',
+    'be sexual',
+    'be harass',
   ];
 
   // Split by newlines and --- separators (which cause repetition)
@@ -580,9 +589,20 @@ async function connectLocalLlmHost() {
   return llmHostPromise;
 }
 
+const HARMFUL_GOALS = ['be rude', 'be abusive', 'be mean', 'insult', 'harass', 'threaten', 'curse', 'swear', 'offend', 'attack'];
+
+function isHarmfulGoal(goal) {
+  const goalLower = String(goal).toLowerCase();
+  return HARMFUL_GOALS.some(harmful => goalLower.includes(harmful));
+}
+
 export async function generateOutreachMessage({ username, goal, tone, query, platform = 'social', chatContext = [], profileInfo = {} }) {
   if (isBlockedOutreachGoal(`${goal || ''} ${query || ''}`)) {
     throw new Error('Cherry blocked this DM goal because it targets someone with a sexual insult or harassment. Use a non-abusive outreach goal.');
+  }
+  
+  if (isHarmfulGoal(goal)) {
+    throw new Error(`Cherry blocked this goal because "${goal}" could lead to harmful messages. Use a respectful goal like "start a conversation" or "ask a question".`);
   }
 
   const hasChatContext = chatContext && chatContext.length > 0;

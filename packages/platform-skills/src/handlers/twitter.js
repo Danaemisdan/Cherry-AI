@@ -334,18 +334,6 @@ export const twitterHandler = {
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.twitter, { platform: 'twitter' });
       
-      // Extract profile info FIRST (before opening message)
-      console.log(`[Twitter] Extracting profile context for ${username}...`);
-      let profileInfo = {};
-      try {
-        await navigateToTwitterProfile(page, username);
-        const rawProfileInfo = await extractProfileContext(page, 'twitter', username);
-        profileInfo = formatProfileContext(rawProfileInfo, 'twitter');
-        console.log(`[Twitter] Profile context: ${rawProfileInfo.isVerified ? 'verified' : 'not verified'}, ${rawProfileInfo.followers || 'unknown followers'}`);
-      } catch (e) {
-        console.log(`[Twitter] Could not extract profile info: ${e.message}`);
-      }
-      
       // Strategy: Try DM inbox search FIRST
       // Only use direct profile URL as fallback
       let openedViaInbox = await openTwitterMessageFromInbox(page, username);
@@ -364,8 +352,14 @@ export const twitterHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
       }
 
-      // Extract chat context from the conversation
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'twitter', 6);
+      
+      // Extract comprehensive profile info (bio, recent tweets, location)
+      console.log(`[Twitter] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'twitter', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'twitter');
+      console.log(`[Twitter] Profile context: ${rawProfileInfo.isVerified ? 'verified' : 'not verified'}, ${rawProfileInfo.followers || 'unknown followers'}`);
 
       // Generate message with FULL context
       const message = await generateOutreachMessage({

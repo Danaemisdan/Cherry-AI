@@ -7,8 +7,8 @@
       "os": "macos",
       "agentVersion": "0.1.0",
       "online": false,
-      "browserAttached": false,
-      "tabs": 0,
+      "browserAttached": true,
+      "tabs": 4,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -12410,6 +12410,522 @@
         }
       ],
       "createdAt": "2026-05-02T18:00:20.126Z"
+    },
+    {
+      "id": "task_51k2etza",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say fuck off",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_s8peqwlz",
+          "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_51k2etza",
+            "objective": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_c0l16q1m",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say fuck off",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_x3eq7ovr",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say fuck off",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_r1h3gd8p",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say fuck off",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_vxpcb7a4",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Say fuck off. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say fuck off",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_c0l16q1m",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_c0l16q1m",
+          "message": "Opened whatsapp workspace",
+          "duration": 43
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_x3eq7ovr",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_x3eq7ovr",
+          "message": "Opened @Jagadeesh on whatsapp",
+          "duration": 1025
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_r1h3gd8p",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_r1h3gd8p",
+          "message": "Prepared message draft @Jagadeesh on whatsapp",
+          "duration": 6052
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_vxpcb7a4",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_vxpcb7a4",
+          "message": "Sent message @Jagadeesh on whatsapp",
+          "duration": 7431
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_ih0d9b7u",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_ih0d9b7u.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-03T01:00:19.423Z"
+    },
+    {
+      "id": "task_ywl47bhv",
+      "status": "dispatched",
+      "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "auto_dm",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_kv6cjlfs",
+          "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_ywl47bhv",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_3h1pez0v",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_j8014rnx",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_t8r443yg",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_q4evfdxi",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_3h1pez0v",
+          "label": "linkedin:open_workspace"
+        }
+      ],
+      "createdAt": "2026-05-03T01:01:13.953Z"
+    },
+    {
+      "id": "task_834q7zq8",
+      "status": "dispatched",
+      "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Say hello",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_caj21xah",
+          "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_834q7zq8",
+            "objective": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_cbf9w2g0",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_lf2u6nxf",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_7q7igkfg",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_s6lr5mgr",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_cbf9w2g0",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_cbf9w2g0",
+          "message": "Opened instagram workspace",
+          "duration": 5082
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_lf2u6nxf",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_lf2u6nxf",
+          "message": "Opened @Jagadeesh on instagram",
+          "duration": 5860
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_7q7igkfg",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_7q7igkfg",
+          "message": "Prepared message draft @Jagadeesh on instagram",
+          "duration": 8333
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_s6lr5mgr",
+          "label": "instagram:send_message"
+        }
+      ],
+      "createdAt": "2026-05-03T01:03:28.942Z"
     }
   ],
   "campaigns": [],

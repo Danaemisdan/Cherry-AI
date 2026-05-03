@@ -5,6 +5,7 @@ import {
   fillEditable,
   firstVisibleLocator,
   generateOutreachMessage,
+  minimalDelay,
   navigate,
   openAttachedPage,
   pageSnapshot,
@@ -422,18 +423,6 @@ export const facebookHandler = {
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.facebook, { platform: 'facebook' });
       
-      // Extract profile info FIRST (before opening message)
-      console.log(`[Facebook] Extracting profile context for ${username}...`);
-      let profileInfo = {};
-      try {
-        await navigateToFacebookProfile(page, username);
-        const rawProfileInfo = await extractProfileContext(page, 'facebook', username);
-        profileInfo = formatProfileContext(rawProfileInfo, 'facebook');
-        console.log(`[Facebook] Profile context: ${rawProfileInfo.work || 'no work info'}, ${rawProfileInfo.education || 'no education info'}`);
-      } catch (e) {
-        console.log(`[Facebook] Could not extract profile info: ${e.message}`);
-      }
-      
       // Strategy: Try Messenger inbox search FIRST
       // Only use direct profile URL as fallback
       let openedViaInbox = await openFacebookMessageFromInbox(page, username);
@@ -452,8 +441,14 @@ export const facebookHandler = {
         messageStatus = { type: 'message', canSend: true, method: 'messenger_search' };
       }
 
-      // Extract chat context from the conversation
+      // Extract chat context AND full profile context
       const chatContext = await extractChatContext(page, 'facebook', 6);
+      
+      // Extract comprehensive profile info (work, education, bio)
+      console.log(`[Facebook] Extracting full profile context for ${username}...`);
+      const rawProfileInfo = await extractProfileContext(page, 'facebook', username);
+      const profileInfo = formatProfileContext(rawProfileInfo, 'facebook');
+      console.log(`[Facebook] Profile context: ${rawProfileInfo.work || 'no work info'}, ${rawProfileInfo.education || 'no education info'}`);
 
       // Generate message with FULL context
       const message = await generateOutreachMessage({

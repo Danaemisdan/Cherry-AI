@@ -94,29 +94,56 @@ export function createSocialHandler(platform, config) {
 
   async function engagePost(attachedBrowser, step, usernameOverride) {
     const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] engagePost starting for ${username}`);
+    
+    console.log(`[${platform}] Opening target page...`);
     const page = await openTargetPage(attachedBrowser, { platform, username });
+    console.log(`[${platform}] Opened profile page: ${page.url()}`);
+    
+    console.log(`[${platform}] Generating comment...`);
     const comment = await composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+    console.log(`[${platform}] Generated comment: "${comment.slice(0, 50)}..."`);
 
     if (config.openLatestPost) {
-      await config.openLatestPost(page);
+      console.log(`[${platform}] Opening latest post...`);
+      try {
+        await config.openLatestPost(page);
+        console.log(`[${platform}] Opened latest post`);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
     }
+    
     if (config.likePost) {
-      await config.likePost(page);
+      console.log(`[${platform}] Liking post...`);
+      try {
+        await config.likePost(page);
+        console.log(`[${platform}] Liked post`);
+      } catch (e) {
+        console.error(`[${platform}] Failed to like post: ${e.message}`);
+      }
     }
 
+    console.log(`[${platform}] Filling comment...`);
     const filled = await fillEditable(page, config.commentSelectors || [], comment);
     if (!filled.ok) {
       throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
     }
+    console.log(`[${platform}] Filled comment with selector: ${filled.selector}`);
 
     if (!step.args.requireManualReview) {
+      console.log(`[${platform}] Sending comment...`);
       if (config.sendComment) {
-        await config.sendComment(page);
+        console.log(`[${platform}] Using custom sendComment...`);
+        const sent = await config.sendComment(page);
+        console.log(`[${platform}] sendComment result: ${sent}`);
       } else {
+        console.log(`[${platform}] Using submitComposer...`);
         await submitComposer(page, config.commentSubmitSelectors || [], config.commentSubmitLabels || ['Post', 'Reply']);
       }
     }
 
+    console.log(`[${platform}] engagePost complete`);
     return { page, comment, sent: !step.args.requireManualReview };
   }
 
