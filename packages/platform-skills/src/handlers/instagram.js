@@ -938,7 +938,74 @@ export const instagramHandler = {
     }
     
     // Delegate other actions to base handler
-    const baseHandler = createSocialHandler('instagram', {});
+    const baseHandler = createSocialHandler('instagram', {
+      async openLatestPost(page) {
+        const postLinks = await page.locator('a[href*="/p/"], a[href*="/reel/"]').all();
+        if (postLinks.length > 0) {
+          await postLinks[0].click().catch(() => {});
+          await waitForAppShell(page, 'instagram');
+          await minimalDelay(1000);
+        }
+      },
+      async likePost(page) {
+        await likeInstagramPost(page, null);
+      },
+      async sendComment(page) {
+        const postBtn = await findElementsByText(page, 'Post', { tagNames: ['button', 'div'], fuzzy: false });
+        if (postBtn.length > 0) {
+          await page.evaluate((index) => {
+            const elements = document.querySelectorAll('button, div');
+            if (elements[index]) elements[index].click();
+          }, postBtn[0].index);
+          await minimalDelay(500);
+          return true;
+        }
+        await page.keyboard.press('Enter');
+        return true;
+      },
+      commentSelectors: ['textarea[aria-label="Add a comment…"]', 'textarea[placeholder="Add a comment…"]', 'textarea', 'div[role="textbox"][contenteditable="true"]'],
+      commentSubmitSelectors: ['button:has-text("Post")', 'div:has-text("Post")'],
+      commentSubmitLabels: ['Post'],
+      async openPostComposer(page) {
+        const createBtn = await page.locator('svg[aria-label="New post"]').first();
+        if (await createBtn.count() > 0) {
+          await createBtn.evaluate(el => {
+            const btn = el.closest('a') || el.closest('button') || el.closest('[role="link"]');
+            if (btn) btn.click();
+          }).catch(() => {});
+          await minimalDelay(1000);
+        } else {
+          await navigate(page, 'https://www.instagram.com/create/style/', 'instagram').catch(() => {});
+          await minimalDelay(1000);
+        }
+      },
+      postComposerSelectors: ['div[role="textbox"][contenteditable="true"]', 'textarea[aria-label="Write a caption..."]'],
+      publishPostSelectors: ['button:has-text("Share")'],
+      publishPostLabels: ['Share'],
+      async attachMedia(page, filePath) {
+        try {
+          const fileInput = await page.locator('input[type="file"]').first();
+          if (await fileInput.count() > 0) {
+            await fileInput.setInputFiles(filePath);
+            await minimalDelay(2000);
+            let nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
+            if (await nextBtn.isVisible()) {
+              await nextBtn.click();
+              await minimalDelay(1000);
+              nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
+              if (await nextBtn.isVisible()) {
+                await nextBtn.click();
+                await minimalDelay(1000);
+              }
+            }
+            return true;
+          }
+        } catch (e) {
+          console.warn('[Instagram] Media upload failed:', e.message);
+        }
+        return false;
+      }
+    });
     return baseHandler.execute({ step, attachedBrowser });
   }
 };

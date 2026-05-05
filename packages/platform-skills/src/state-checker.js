@@ -3,8 +3,14 @@ export async function checkLoginState(page, platform) {
   const checks = {
     instagram: async () => {
       try {
-        await page.waitForSelector('[data-testid="user-avatar"], a[href*="/direct/inbox"], nav a[href*="/accounts/edit"]', { timeout: 5000 });
-        return { loggedIn: true, ready: true };
+        const checks = await Promise.allSettled([
+          page.waitForSelector('[data-testid="user-avatar"], a[href*="/direct/inbox"], nav a[href*="/accounts/edit"]', { timeout: 3000 }),
+          page.waitForSelector('svg[aria-label="Home"], svg[aria-label="Search"], svg[aria-label="Explore"]', { timeout: 3000 }),
+          page.waitForSelector('a[href="/"], a[role="link"][tabindex="0"]', { timeout: 3000 })
+        ]);
+        const anySuccess = checks.some(c => c.status === 'fulfilled');
+        if (anySuccess) return { loggedIn: true, ready: true };
+        throw new Error('Not logged in');
       } catch {
         const hasLoginBtn = await page.locator('button:has-text("Log in"), a:has-text("Log in"), input[name="username"]').count() > 0;
         return { loggedIn: false, ready: false, needsLogin: hasLoginBtn, message: 'Please log in to Instagram' };
