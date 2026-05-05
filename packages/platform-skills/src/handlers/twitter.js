@@ -21,9 +21,49 @@ import { createSocialHandler } from '../social-base.js';
 
 // Twitter DM Helper Functions
 async function navigateToTwitterProfile(page, username) {
+  // Strategy: Try human-like search navigation first
+  try {
+    const searchInput = await firstVisibleLocator(page, [
+      'input[data-testid="SearchBox_Search_Input"]',
+      'input[aria-label="Search query"]',
+      'input[placeholder*="Search"]'
+    ]);
+    if (searchInput) {
+      await searchInput.click();
+      await searchInput.fill('');
+      await searchInput.type(username, { delay: 50 });
+      await page.keyboard.press('Enter');
+      await minimalDelay(2000);
+      
+      const peopleTab = await firstVisibleLocator(page, [
+        'a[role="tab"]:has-text("People")',
+        'span:has-text("People")'
+      ]);
+      if (peopleTab) {
+        await peopleTab.click();
+        await minimalDelay(1500);
+      }
+      
+      const userCell = await firstVisibleLocator(page, [
+        `div[data-testid="UserCell"]:has-text("@${username}")`,
+        'div[data-testid="UserCell"]'
+      ]);
+      if (userCell) {
+        await userCell.click();
+        await waitForAppShell(page, 'twitter');
+        await minimalDelay(1000);
+        return;
+      }
+    }
+  } catch (e) {
+    console.log('[Twitter] UI search failed, falling back to URL navigation', e.message);
+  }
+
+  // Fallback to URL
   const url = buildPlatformTargetUrl('twitter', username);
   await navigate(page, url, 'twitter');
   await waitForAppShell(page, 'twitter');
+  await minimalDelay(1000);
 }
 
 async function checkTwitterFollowStatus(page) {
@@ -93,24 +133,35 @@ async function openTwitterMessageFromInbox(page, username) {
     // Type username
     await searchBox.click().catch(() => {});
     await searchBox.fill('').catch(() => {});
-    await searchBox.type(username, { delay: 20 }).catch(() => {});
-    await minimalDelay(1000);
+    await searchBox.type(username, { delay: 50 }).catch(() => {});
+    await minimalDelay(2000);
+    // Force press Enter to trigger search if needed
+    await page.keyboard.press('Enter').catch(() => {});
+    await minimalDelay(1500);
 
     // Click on user result
     const userResultSelectors = [
-      `div[data-testid="TypeaheadUser"]:has-text("${username}")`,
-      'div[data-testid="TypeaheadUser"]',
+      `div[data-testid="TypeaheadUser"]:has-text("@${username}")`,
+      `div[data-testid="TypeaheadUser"]`,
       'div[role="option"]',
       'div[data-testid="cellInnerDiv"]',
     ];
 
+    let foundUser = false;
     for (const selector of userResultSelectors) {
       const result = page.locator(selector).first();
       if (await result.isVisible().catch(() => false)) {
         await result.click().catch(() => {});
-        await minimalDelay(500);
+        foundUser = true;
+        await minimalDelay(1000);
         break;
       }
+    }
+    
+    // Sometimes pressing Enter selects the first user automatically
+    if (!foundUser) {
+      await page.keyboard.press('Enter').catch(() => {});
+      await minimalDelay(1000);
     }
 
     // Look for "Next" button to proceed to conversation
@@ -239,17 +290,34 @@ const baseHandler = createSocialHandler('twitter', {
   async likePost(page) {
     await page.locator('article[data-testid="tweet"]').first().locator('button[data-testid="like"]').click().catch(() => {});
   },
-  commentSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]'],
-  commentSubmitSelectors: ['button[data-testid="tweetButton"]'],
+  commentSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]', 'div[aria-label="Post text"]'],
+  commentSubmitSelectors: ['button[data-testid="tweetButtonInline"]', 'button[data-testid="tweetButton"]', 'button[aria-label="Reply"]'],
   commentSubmitLabels: ['Reply'],
   async openPostComposer(page) {
+    // Try clicking human-like compose buttons first
+    const composeButtons = [
+      'a[data-testid="SideNav_NewTweet_Button"]',
+      'a[aria-label="Post"]',
+      'a[aria-label="Compose post"]',
+      'div[data-testid="tweetTextarea_0"]',
+      'div[aria-label="Post text"]'
+    ];
+    
+    let clicked = await tryClick(page, composeButtons);
+    
+    if (clicked) {
+      await minimalDelay(1000);
+      return;
+    }
+
+    // Fallback to URL
     await navigate(page, 'https://twitter.com/compose/tweet', 'twitter');
     await waitForAppShell(page, 'twitter');
     await minimalDelay(1000);
   },
-  postComposerSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]'],
-  publishPostSelectors: ['button[data-testid="tweetButtonInline"]', 'button[data-testid="tweetButton"]'],
-  publishPostLabels: ['Post'],
+  postComposerSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]', 'div[aria-label="Post text"]'],
+  publishPostSelectors: ['button[data-testid="tweetButtonInline"]', 'button[data-testid="tweetButton"]', 'button[aria-label="Post"]'],
+  publishPostLabels: ['Post', 'Tweet'],
   async attachMedia(page, filePath) {
     // Twitter/X-specific media upload
     try {
