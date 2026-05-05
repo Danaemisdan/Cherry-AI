@@ -57,10 +57,10 @@ async function navigateToProfileViaSearch(page, username) {
     
     for (const result of results) {
       if (result.href?.includes(username) || result.text.toLowerCase().includes(username.toLowerCase())) {
-        await page.evaluate((index) => {
-          const elements = document.querySelectorAll('a, div, span');
+        await page.evaluate(({ tag, index }) => {
+          const elements = document.querySelectorAll(tag);
           if (elements[index]) elements[index].click();
-        }, result.index);
+        }, { tag: result.tag, index: result.index });
         await minimalDelay(800);
         
         // Verify we're on profile page
@@ -166,9 +166,10 @@ async function messageViaInbox(page, username) {
     r.text.length > username.length && !r.text.includes('To:')
   ) || userResults[0];
   
-  await page.evaluate((index) => {
-    document.querySelectorAll('div[role="button"], div[role="dialog"] div')[index]?.click();
-  }, bestMatch.index);
+  await page.evaluate(({ tag, index }) => {
+    const elements = document.querySelectorAll(tag);
+    if (elements[index]) elements[index].click();
+  }, { tag: bestMatch.tag, index: bestMatch.index });
   
   await minimalDelay(500);
   
@@ -179,9 +180,10 @@ async function messageViaInbox(page, username) {
   });
   
   if (chatButton.length > 0) {
-    await page.evaluate((index) => {
-      document.querySelectorAll('button, div')[index]?.click();
-    }, chatButton[0].index);
+    await page.evaluate(({ tag, index }) => {
+      const elements = document.querySelectorAll(tag);
+      if (elements[index]) elements[index].click();
+    }, { tag: chatButton[0].tag, index: chatButton[0].index });
     await minimalDelay(300);
   }
   
@@ -218,19 +220,22 @@ async function messageViaProfile(page, username) {
   
   // Click Message button
   const msgClicked = await tryClick(page, [
+    'div[role="button"]:has-text("Message")',
     'button:has-text("Message")',
     'button[aria-label="Message"]',
+    'a[role="link"]:has-text("Message")',
   ]);
   
   if (!msgClicked) {
     const msgButtons = await findElementsByText(page, 'Message', {
-      tagNames: ['button', 'div'],
+      tagNames: ['button', 'div', 'a'],
       fuzzy: false
     });
     if (msgButtons.length > 0) {
-      await page.evaluate((index) => {
-        document.querySelectorAll('button')[index]?.click();
-      }, msgButtons[0].index);
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
+        if (elements[index]) elements[index].click();
+      }, { tag: msgButtons[0].tag, index: msgButtons[0].index });
     }
   }
   
@@ -265,9 +270,10 @@ async function messageViaExplore(page, username) {
   });
   
   if (results.length > 0) {
-    await page.evaluate((index) => {
-      document.querySelectorAll('a, div')[index]?.click();
-    }, results[0].index);
+    await page.evaluate(({ tag, index }) => {
+      const elements = document.querySelectorAll(tag);
+      if (elements[index]) elements[index].click();
+    }, { tag: results[0].tag, index: results[0].index });
     
     await minimalDelay(800);
     return await messageViaProfile(page, username);
@@ -340,13 +346,13 @@ async function sendInstagramMessage(page, message, options = {}) {
   }
   
   // Click composer and type
-  await page.evaluate((index) => {
-    const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
+  await page.evaluate(({ tag, index }) => {
+    const elements = document.querySelectorAll(tag);
     if (elements[index]) {
       elements[index].click();
       elements[index].focus();
     }
-  }, composerResults[0].index);
+  }, { tag: composerResults[0].tag, index: composerResults[0].index });
   
   await minimalDelay(200);
   await page.keyboard.type(message, { delay: 10 });
@@ -362,10 +368,10 @@ async function sendInstagramMessage(page, message, options = {}) {
       });
       
       if (attachBtn.length > 0) {
-        await page.evaluate((index) => {
-          const elements = document.querySelectorAll('button, svg, div');
+        await page.evaluate(({ tag, index }) => {
+          const elements = document.querySelectorAll(tag);
           if (elements[index]) elements[index].click();
-        }, attachBtn[0].index);
+        }, { tag: attachBtn[0].tag, index: attachBtn[0].index });
         
         await minimalDelay(500);
         
@@ -390,10 +396,10 @@ async function sendInstagramMessage(page, message, options = {}) {
     });
     
     if (sendBtn.length > 0) {
-      await page.evaluate((index) => {
-        const elements = document.querySelectorAll('button, div');
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
         if (elements[index]) elements[index].click();
-      }, sendBtn[0].index);
+      }, { tag: sendBtn[0].tag, index: sendBtn[0].index });
     } else {
       // Fallback to Enter key
       await page.keyboard.press('Enter');
@@ -432,10 +438,10 @@ async function likeInstagramPost(page, postUrl) {
   }
   
   if (likeElement) {
-    await page.evaluate((index) => {
-      const elements = document.querySelectorAll('button, svg, span');
+    await page.evaluate(({ tag, index }) => {
+      const elements = document.querySelectorAll(tag);
       if (elements[index]) elements[index].click();
-    }, likeElement.index);
+    }, { tag: likeElement.tag, index: likeElement.index });
     
     await minimalDelay(500);
     console.log('[Instagram] Post liked');
@@ -476,13 +482,13 @@ async function commentOnInstagramPost(page, comment, postUrl) {
     await commentBox[0].element.click().catch(() => {});
     await commentBox[0].element.focus().catch(() => {});
   } else {
-    await page.evaluate((index) => {
-      const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
+    await page.evaluate(({ tag, index }) => {
+      const elements = document.querySelectorAll(tag);
       if (elements[index]) {
         elements[index].click();
         elements[index].focus();
       }
-    }, commentBox[0].index);
+    }, { tag: commentBox[0].tag, index: commentBox[0].index });
   }
   
   await minimalDelay(200);
@@ -496,10 +502,10 @@ async function commentOnInstagramPost(page, comment, postUrl) {
   });
   
   if (postBtn.length > 0) {
-    await page.evaluate((index) => {
-      const elements = document.querySelectorAll('button, div');
+    await page.evaluate(({ tag, index }) => {
+      const elements = document.querySelectorAll(tag);
       if (elements[index]) elements[index].click();
-    }, postBtn[0].index);
+    }, { tag: postBtn[0].tag, index: postBtn[0].index });
     
     await minimalDelay(500);
     console.log('[Instagram] Comment posted');
@@ -533,10 +539,10 @@ async function instagramSearch(page, query, type = 'all') {
     });
     
     if (searchElements.length > 0) {
-      await page.evaluate((index) => {
-        const elements = document.querySelectorAll('input, div, button');
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
         if (elements[index]) elements[index].click();
-      }, searchElements[0].index);
+      }, { tag: searchElements[0].tag, index: searchElements[0].index });
     }
   }
   
@@ -813,9 +819,10 @@ export const instagramHandler = {
       });
       
       if (followBtn.length > 0) {
-        await page.evaluate((index) => {
-          document.querySelectorAll('button')[index]?.click();
-        }, followBtn[0].index);
+        await page.evaluate(({ tag, index }) => {
+          const elements = document.querySelectorAll(tag);
+          if (elements[index]) elements[index].click();
+        }, { tag: followBtn[0].tag, index: followBtn[0].index });
         await minimalDelay(500);
         
         return {
@@ -964,12 +971,12 @@ export const instagramHandler = {
         await likeInstagramPost(page, null);
       },
       async sendComment(page) {
-        const postBtn = await findElementsByText(page, 'Post', { tagNames: ['button', 'div'], fuzzy: false });
+        const postBtn = await findElementsByText(page, 'Post', { tagNames: ['div', 'button', 'span'], fuzzy: false });
         if (postBtn.length > 0) {
-          await page.evaluate((index) => {
-            const elements = document.querySelectorAll('button, div');
+          await page.evaluate(({ tag, index }) => {
+            const elements = document.querySelectorAll(tag);
             if (elements[index]) elements[index].click();
-          }, postBtn[0].index);
+          }, { tag: postBtn[0].tag, index: postBtn[0].index });
           await minimalDelay(500);
           return true;
         }
@@ -997,16 +1004,16 @@ export const instagramHandler = {
       publishPostLabels: ['Share'],
       async attachMedia(page, filePath) {
         try {
+          await minimalDelay(1500);
           const fileInput = await page.locator('input[type="file"]').first();
           if (await fileInput.count() > 0) {
             await fileInput.setInputFiles(filePath);
             await minimalDelay(2000);
-            let nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
-            if (await nextBtn.isVisible()) {
-              await nextBtn.click();
-              await minimalDelay(1000);
-              nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
-              if (await nextBtn.isVisible()) {
+            
+            // Navigate through the "Next" modal steps
+            for (let i = 0; i < 2; i++) {
+              let nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
+              if (await nextBtn.isVisible().catch(() => false)) {
                 await nextBtn.click();
                 await minimalDelay(1000);
               }
