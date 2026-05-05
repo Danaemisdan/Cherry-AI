@@ -224,7 +224,7 @@ async function messageViaProfile(page, username) {
   
   if (!msgClicked) {
     const msgButtons = await findElementsByText(page, 'Message', {
-      tagNames: ['button'],
+      tagNames: ['button', 'div'],
       fuzzy: false
     });
     if (msgButtons.length > 0) {
@@ -417,17 +417,19 @@ async function likeInstagramPost(page, postUrl) {
     await minimalDelay(800);
   }
   
-  // Find like button
-  const likeBtn = await findElementsByText(page, 'Like', {
-    tagNames: ['button', 'svg', 'span'],
-    fuzzy: true
-  });
-  
-  // Also try aria-label
   const content = await extractPageContent(page);
-  const likeElement = content.interactiveElements.find(e => 
-    e.ariaLabel?.includes('Like') || e.text === 'Like'
+  // Find like button (Accessibility-first)
+  let likeElement = content.interactiveElements.find(e => 
+    e.ariaLabel === 'Like' || e.ariaLabel?.includes('Like')
   );
+  
+  if (!likeElement) {
+    const likeBtns = await findElementsByText(page, 'Like', {
+      tagNames: ['button', 'svg', 'span'],
+      fuzzy: true
+    });
+    if (likeBtns.length > 0) likeElement = likeBtns[0];
+  }
   
   if (likeElement) {
     await page.evaluate((index) => {
@@ -453,24 +455,35 @@ async function commentOnInstagramPost(page, comment, postUrl) {
     await minimalDelay(800);
   }
   
-  // Find comment box
-  const commentBox = await findElementsByText(page, 'Add a comment', {
-    tagNames: ['textarea', 'div[contenteditable="true"]'],
-    fuzzy: true
-  });
+  // Find comment box (Accessibility-first)
+  let commentBox = [];
+  const textareas = await page.locator('textarea[aria-label*="Add a comment"], textarea[placeholder*="Add a comment"]').all();
+  if (textareas.length > 0) {
+    commentBox = [{ index: -1, element: textareas[0] }];
+  } else {
+    commentBox = await findElementsByText(page, 'Add a comment', {
+      tagNames: ['textarea', 'div[contenteditable="true"]'],
+      fuzzy: true
+    });
+  }
   
   if (commentBox.length === 0) {
     throw new Error('Comment box not found');
   }
   
   // Click and type comment
-  await page.evaluate((index) => {
-    const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
-    if (elements[index]) {
-      elements[index].click();
-      elements[index].focus();
-    }
-  }, commentBox[0].index);
+  if (commentBox[0].index === -1 && commentBox[0].element) {
+    await commentBox[0].element.click().catch(() => {});
+    await commentBox[0].element.focus().catch(() => {});
+  } else {
+    await page.evaluate((index) => {
+      const elements = document.querySelectorAll('textarea, div[contenteditable="true"]');
+      if (elements[index]) {
+        elements[index].click();
+        elements[index].focus();
+      }
+    }, commentBox[0].index);
+  }
   
   await minimalDelay(200);
   await page.keyboard.type(comment, { delay: 10 });
