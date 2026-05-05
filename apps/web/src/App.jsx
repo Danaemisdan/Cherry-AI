@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Route, Routes } from 'react-router-dom';
+import { PLATFORM_SKILL_CAPABILITIES, WORKFLOW_PRESETS } from '@cherry/shared';
 import { 
   Search, 
   Zap, 
@@ -27,16 +28,7 @@ const Logo = () => (
 );
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8787';
-
-const platformCapabilities = {
-  instagram: ['scrape', 'scrape_followers', 'dm', 'engage', 'follow', 'post', 'bulk_dm', 'bulk_engage', 'bulk_follow'],
-  twitter: ['scrape', 'dm', 'engage', 'follow', 'post', 'bulk_dm', 'bulk_engage', 'bulk_follow'],
-  linkedin: ['scrape', 'dm', 'engage', 'follow', 'post', 'bulk_dm', 'bulk_engage', 'bulk_follow'],
-  facebook: ['scrape', 'dm', 'engage', 'follow', 'post', 'bulk_dm', 'bulk_engage', 'bulk_follow'],
-  gmail: ['search', 'email', 'bulk_dm', 'queue'],
-  whatsapp: ['dm', 'bulk_dm', 'queue', 'status_view', 'status_post', 'profile_photo', 'delete_chat', 'block', 'report'],
-  research: ['scrape'],
-};
+const backendWsUrl = backendUrl.replace(/^http/i, 'ws');
 
 const platformMeta = [
   { id: 'instagram', label: 'Instagram', short: 'IG', icon: InstagramIcon, defaultQuery: 'founders in fintech', description: 'Direct outreach and scraping via attached session.' },
@@ -45,10 +37,12 @@ const platformMeta = [
   { id: 'facebook', label: 'Facebook', short: 'f', icon: FacebookIcon, defaultQuery: 'saas founders', description: 'Group engagement and lead prospecting.' },
   { id: 'gmail', label: 'Gmail', short: 'M', icon: GmailIcon, defaultQuery: 'warm follow up', description: 'Automated follow-ups and inbox monitoring.' },
   { id: 'whatsapp', label: 'WhatsApp', short: 'WA', icon: WhatsAppIcon, defaultQuery: 'customer follow up', description: 'One-to-one chat automation in a logged-in WhatsApp Web session.' },
+  { id: 'chatgpt', label: 'ChatGPT', short: 'GPT', icon: Lightbulb, defaultQuery: 'A cinematic landscape', description: 'Generate images via ChatGPT.' },
+  { id: 'gemini', label: 'Gemini', short: 'G', icon: Lightbulb, defaultQuery: 'A futuristic city', description: 'Generate images via Gemini.' },
   { id: 'research', label: 'Research', short: 'R', icon: SearchIcon, defaultQuery: 'best fintech founders in india', description: 'Deep research using managed stealth browser.' },
 ];
 
-const defaultCampaignPlatforms = ['instagram', 'twitter', 'linkedin', 'gmail', 'whatsapp', 'research'];
+const defaultCampaignPlatforms = ['instagram', 'twitter', 'linkedin', 'gmail', 'whatsapp', 'research', 'chatgpt', 'gemini'];
 
 function usePlatformData() {
   const [events, setEvents] = useState([]);
@@ -94,7 +88,7 @@ function usePlatformData() {
     refreshAgents().catch(() => {});
     refreshContactMetrics().catch(() => {});
 
-    const socket = new WebSocket('ws://localhost:8787/ws?role=web');
+    const socket = new WebSocket(`${backendWsUrl}/ws?role=web`);
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data);
       if (payload.type === 'agent.status') {
@@ -172,7 +166,7 @@ function Shell({ agentOnline, agentState, children }) {
   );
 }
 
-function DialogueBox({ dialogue, onSelect, selectedPlatforms, setSelectedPlatforms }) {
+function DialogueBox({ dialogue, onSelect, selectedPlatforms }) {
   if (!dialogue) return null;
   const isPlatformSelection = dialogue.type === 'platform_selection';
   return (
@@ -206,14 +200,14 @@ function DialogueBox({ dialogue, onSelect, selectedPlatforms, setSelectedPlatfor
   );
 }
 
-function Workspace({ agentOnline, events, refreshTasks, tasks }) {
+function Workspace({ refreshTasks, tasks }) {
   const [prompt, setPrompt] = useState('');
   const [dialogue, setDialogue] = useState(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [selectedPlatform, setSelectedPlatform] = useState('instagram');
   const [query, setQuery] = useState('fintech founders');
-  const [username, setUsername] = useState('');
-  const [batchUsernames, setBatchUsernames] = useState('');
+  const [username] = useState('');
+  const [batchUsernames] = useState('');
   const [goal, setGoal] = useState('Get a meeting');
   const [tone, setTone] = useState('Casual and brief');
   const [attachmentPath, setAttachmentPath] = useState('');
@@ -224,7 +218,8 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
 
   const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
   const selectedPlatformMeta = platformMeta.find((item) => item.id === selectedPlatform) || platformMeta[0];
-  const capabilities = platformCapabilities[selectedPlatform] || [];
+  const capabilities = PLATFORM_SKILL_CAPABILITIES[selectedPlatform] || [];
+  const supports = (action) => capabilities.includes(action);
 
   function cn(...classes) {
     return classes.filter(Boolean).join(' ');
@@ -263,6 +258,25 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
     setDialogue(result);
     setSelectedPlatforms([]);
     setPrompt('');
+  }
+
+  async function submitConversationText(text) {
+    const nextPrompt = String(text || '').trim();
+    if (!nextPrompt) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${backendUrl}/dialogue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'default', message: nextPrompt }),
+      });
+      const result = await response.json();
+      setDialogue(result);
+      setSelectedPlatforms([]);
+      setPrompt('');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleDialogueSelect(option, isMultiSelect) {
@@ -364,6 +378,14 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
         prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
         context: { ...baseContext, operation: 'follow_user' },
       },
+      follow_and_message: {
+        prompt: `Follow ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}, then send a contextual message. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'follow_and_message' },
+      },
+      scrape_and_message: {
+        prompt: `Scrape ${maxResults} ${selectedPlatformMeta.label} profiles for "${query}", then message the provided targets one by one. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'scrape_and_message', destination: 'sheet' },
+      },
       auto_post: {
         prompt: `Automatically create a post on ${selectedPlatformMeta.label}. Content goal: ${goal}. Tone: ${tone}. Asset: ${attachmentPath || 'none'}.`,
         context: { ...baseContext, operation: 'auto_post', attachmentPath },
@@ -407,6 +429,10 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
       scrape_followers: {
         prompt: `Scrape followers or competitor audience from ${targetHandle || query} on ${selectedPlatformMeta.label}. Limit: ${maxResults}.`,
         context: { ...baseContext, operation: 'scrape_followers', query: targetHandle || query },
+      },
+      map_contacts: {
+        prompt: `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
+        context: { ...baseContext, operation: 'map_contacts', destination: 'artifact' },
       },
     };
 
@@ -490,7 +516,6 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                 dialogue={dialogue}
                 onSelect={handleDialogueSelect}
                 selectedPlatforms={selectedPlatforms}
-                setSelectedPlatforms={setSelectedPlatforms}
               />
             </div>
           </div>
@@ -544,25 +569,25 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
             {/* Quick Starter Prompts */}
             <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
               <button
-                onClick={() => { setPrompt('I want more sales and customers'); submitConversation(); }}
+                onClick={() => submitConversationText('I want more sales and customers')}
                 className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
               >
                 💰 I want more sales
               </button>
               <button
-                onClick={() => { setPrompt('Help me grow my brand and followers'); submitConversation(); }}
+                onClick={() => submitConversationText('Help me grow my brand and followers')}
                 className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
               >
                 📢 Grow my brand
               </button>
               <button
-                onClick={() => { setPrompt('Monitor my messages and auto-respond'); submitConversation(); }}
+                onClick={() => submitConversationText('Monitor my messages and auto-respond')}
                 className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
               >
                 👁️ Monitor & respond
               </button>
               <button
-                onClick={() => { setPrompt('Research my competitors'); submitConversation(); }}
+                onClick={() => submitConversationText('Research my competitors')}
                 className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
               >
                 🔍 Research competitors
@@ -617,6 +642,30 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                 </div>
               </div>
 
+              <div className="relative mb-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {WORKFLOW_PRESETS.filter((preset) => {
+                  const workflowSupport = {
+                    find_leads: supports('scrape_results'),
+                    scrape_profiles: supports('scrape_results'),
+                    follow_user: supports('follow_user'),
+                    send_message: supports('send_message'),
+                    follow_and_message: supports('follow_user') && supports('send_message'),
+                    lead_and_message: supports('scrape_results') && supports('message_batch'),
+                    map_contacts: supports('map_contacts'),
+                  };
+                  return workflowSupport[preset.id];
+                }).map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => runPlatformAction(preset.id)}
+                    className="text-left p-5 rounded-2xl bg-black/60 border border-zinc-800 hover:border-red-500/50 hover:bg-zinc-950 transition-all"
+                  >
+                    <span className="block text-sm font-black text-white uppercase tracking-widest">{preset.label}</span>
+                    <span className="block mt-2 text-xs leading-relaxed text-zinc-500">{preset.description}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 {/* LEFT COLUMN: SCRAPER ENGINE */}
                 <div className="space-y-12">
@@ -631,18 +680,18 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                         <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Max Profiles to Scrape</label>
                         <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" type="number" value={maxResults} onChange={(event) => setMaxResults(event.target.value)} />
                       </div>
-                      {(capabilities.includes('scrape') || capabilities.includes('search')) ? (
+                      {(supports('scrape_results') || supports('search')) ? (
                         <button onClick={() => runPlatformAction('execute_deep_scrape')} className="w-full p-8 rounded-[2rem] bg-red-600 hover:bg-red-700 text-white font-black text-lg transition-all active:scale-95 shadow-2xl">Execute Deep Scrape</button>
                       ) : null}
                     </div>
                   </div>
 
                   <div className="space-y-6">
-                    {capabilities.includes('scrape') ? <button onClick={() => runPlatformAction('scrape_profiles')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
+                    {supports('scrape_results') ? <button onClick={() => runPlatformAction('scrape_profiles')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
                       <span className="text-lg">Search Results Scrape</span>
                       <Search className="w-6 h-6 text-zinc-700 group-hover:text-white transition-colors" />
                     </button> : null}
-                    {capabilities.includes('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
+                    {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
                       <span className="text-lg">Extract Competitor Audience</span>
                       <Plus className="w-6 h-6 text-zinc-700 group-hover:text-white transition-colors" />
                     </button> : null}
@@ -688,27 +737,27 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {capabilities.includes('dm') || capabilities.includes('email') ? <button onClick={() => runPlatformAction('auto_dm')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">{selectedPlatform === 'gmail' ? 'Auto-Email' : 'Auto-DM'}</button> : null}
-                      {capabilities.includes('engage') ? <button onClick={() => runPlatformAction('like_ai_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Like + AI Comment</button> : null}
-                      {capabilities.includes('follow') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
-                      {capabilities.includes('post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
+                      {supports('send_message') ? <button onClick={() => runPlatformAction('auto_dm')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">{selectedPlatform === 'gmail' ? 'Auto-Email' : 'Auto-DM'}</button> : null}
+                      {supports('engage_post') ? <button onClick={() => runPlatformAction('like_ai_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Like + AI Comment</button> : null}
+                      {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
+                      {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
                     </div>
 
                     {selectedPlatform === 'whatsapp' ? (
                       <div className="grid grid-cols-2 gap-4">
-                        {capabilities.includes('status_view') ? <button onClick={() => runPlatformAction('open_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">View Status</button> : null}
-                        {capabilities.includes('status_post') ? <button onClick={() => runPlatformAction('post_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Post Status</button> : null}
-                        {capabilities.includes('profile_photo') ? <button onClick={() => runPlatformAction('change_profile_photo')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Change Profile Pic</button> : null}
-                        {capabilities.includes('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
-                        {capabilities.includes('block') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
-                        {capabilities.includes('report') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
+                        {supports('open_status') ? <button onClick={() => runPlatformAction('open_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">View Status</button> : null}
+                        {supports('post_status') ? <button onClick={() => runPlatformAction('post_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Post Status</button> : null}
+                        {supports('change_profile_photo') ? <button onClick={() => runPlatformAction('change_profile_photo')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Change Profile Pic</button> : null}
+                        {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
+                        {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
+                        {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
                       </div>
                     ) : null}
 
                     <div className="grid grid-cols-1 gap-3">
-                      {capabilities.includes('bulk_dm') ? <button onClick={() => runPlatformAction('bulk_dm_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk {selectedPlatform === 'gmail' ? 'Email' : 'DM'} From CSV</button> : null}
-                      {capabilities.includes('bulk_engage') ? <button onClick={() => runPlatformAction('bulk_engage_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Engage From CSV</button> : null}
-                      {capabilities.includes('bulk_follow') ? <button onClick={() => runPlatformAction('bulk_follow_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Follow From CSV</button> : null}
+                      {supports('message_batch') ? <button onClick={() => runPlatformAction('bulk_dm_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk {selectedPlatform === 'gmail' ? 'Email' : 'DM'} From CSV</button> : null}
+                      {supports('engage_batch') ? <button onClick={() => runPlatformAction('bulk_engage_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Engage From CSV</button> : null}
+                      {supports('follow_batch') ? <button onClick={() => runPlatformAction('bulk_follow_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Follow From CSV</button> : null}
                     </div>
                   </div>
                 </div>
@@ -722,7 +771,7 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                     <span className="text-sm font-bold uppercase tracking-[0.3em]">Bridge Ready for {selectedPlatformMeta.label}</span>
                   </div>
                 </div>
-                <button onClick={() => runPlatformAction(capabilities.includes('dm') || capabilities.includes('email') ? 'send_message' : 'open_workspace')} className="w-full md:w-auto px-24 py-12 bg-white text-black rounded-[4rem] font-black text-3xl shadow-3xl hover:scale-105 transition-all active:scale-95">Initiate Protocol</button>
+                <button onClick={() => runPlatformAction(supports('send_message') ? 'send_message' : 'open_workspace')} className="w-full md:w-auto px-24 py-12 bg-white text-black rounded-[4rem] font-black text-3xl shadow-3xl hover:scale-105 transition-all active:scale-95">Initiate Protocol</button>
               </div>
             </section>
           </div>
@@ -745,7 +794,14 @@ function Workspace({ agentOnline, events, refreshTasks, tasks }) {
                 </div>
                 <div className="flex items-center gap-12">
                   <span className="text-xs text-zinc-700 font-black uppercase tracking-[0.2em]">{new Date(task.createdAt).toLocaleTimeString()}</span>
-                  <span className="px-6 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">{task.status}</span>
+                  <span className={cn(
+                    "px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.3em]",
+                    task.status === 'completed' ? "bg-green-900/30 border-green-800/50 text-green-500" :
+                    task.status === 'failed' ? "bg-red-900/30 border-red-800/50 text-red-500" :
+                    task.status === 'running' ? "bg-blue-900/30 border-blue-800/50 text-blue-500" :
+                    task.status === 'retrying' ? "bg-yellow-900/30 border-yellow-800/50 text-yellow-500" :
+                    "bg-zinc-900 border-zinc-800 text-zinc-500"
+                  )}>{task.status}</span>
                 </div>
               </div>
             )) : <p className="text-center text-zinc-600 py-20 text-2xl font-medium">No recorded operations.</p>}
@@ -1258,8 +1314,6 @@ function SearchIcon() {
     </svg>
   );
 }
-
-export { usePlatformData };
 
 export function App() {
   const { 

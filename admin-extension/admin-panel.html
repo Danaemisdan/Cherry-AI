@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cherry AI License Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+      background: #0a0a0a; 
+      color: #fff; 
+      padding: 40px;
+      min-height: 100vh;
+    }
+    h1 { color: #007AFF; margin-bottom: 10px; }
+    h3 { margin-bottom: 15px; }
+    .subtitle { color: #888; margin-bottom: 30px; }
+    .card { 
+      background: #1a1a1a; 
+      padding: 25px; 
+      border-radius: 12px; 
+      margin-bottom: 20px;
+      max-width: 1000px;
+    }
+    .stats { 
+      display: flex; 
+      gap: 20px; 
+      flex-wrap: wrap;
+    }
+    .stat-box { 
+      background: #252525; 
+      padding: 20px 30px; 
+      border-radius: 8px;
+      min-width: 140px;
+      flex: 1;
+    }
+    .stat-number { 
+      font-size: 28px; 
+      font-weight: bold; 
+      color: #007AFF; 
+    }
+    .stat-label { 
+      color: #888; 
+      font-size: 13px; 
+      margin-top: 5px;
+    }
+    .device-list, .code-list, .activity-list { 
+      max-height: 400px; 
+      overflow-y: auto;
+    }
+    .device, .code-item, .activity-item { 
+      background: #252525; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #34C759;
+    }
+    .device.revoked, .code-item.revoked {
+      border-left-color: #FF3B30;
+      opacity: 0.7;
+    }
+    .device-info, .code-info, .activity-info { flex: 1; }
+    .device-id, .code-text { 
+      font-family: monospace; 
+      font-size: 12px; 
+      color: #aaa;
+      margin-bottom: 5px;
+    }
+    .device-meta, .code-meta, .activity-meta { 
+      font-size: 12px; 
+      color: #666;
+    }
+    .device-actions, .code-actions { display: flex; gap: 10px; }
+    button { 
+      padding: 8px 16px; 
+      border-radius: 6px; 
+      border: none; 
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .btn-danger { background: #FF3B30; color: #fff; }
+    .btn-success { background: #34C759; color: #fff; }
+    .btn-primary { background: #007AFF; color: #fff; }
+    .btn-secondary { background: #3A3A3C; color: #fff; }
+    .btn-danger:hover { background: #ff5146; }
+    .btn-success:hover { background: #3bd660; }
+    .empty-state { 
+      text-align: center; 
+      padding: 40px; 
+      color: #666;
+    }
+    .code-box { 
+      background: #252525; 
+      padding: 12px 15px; 
+      border-radius: 8px;
+      font-family: monospace;
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input {
+      flex: 1;
+      padding: 10px 15px;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      background: #252525;
+      border: none;
+      border-radius: 8px;
+      color: #888;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #007AFF;
+      color: #fff;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .activity-type {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .activity-ACTIVATED { background: #34C759; color: #000; }
+    .activity-REVOKED { background: #FF3B30; color: #fff; }
+    .activity-REACTIVATED { background: #007AFF; color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>Cherry AI License Admin</h1>
+  <p class="subtitle">Manage licenses, devices, and monitor activity</p>
+  
+  <div class="tabs card" style="padding: 15px;">
+    <button class="tab active" data-tab="codes" id="tab-codes">License Codes</button>
+    <button class="tab" data-tab="devices" id="tab-devices">Devices</button>
+    <button class="tab" data-tab="activity" id="tab-activity">Activity Log</button>
+  </div>
+  
+  <!-- License Codes Tab -->
+  <div id="codes-tab" class="tab-content active">
+    <div class="card">
+      <h3>Generate New License Code</h3>
+      <div class="input-row">
+        <input type="text" id="newCodeName" placeholder="e.g., Customer John, VIP Tier 1">
+        <button class="btn-success" id="generateCodeBtn">Generate Code</button>
+      </div>
+      <p style="color: #888; font-size: 13px;">Create unique codes to share with different customers</p>
+    </div>
+    
+    <div class="card">
+      <h3>Active License Codes</h3>
+      <div id="codesList" class="code-list">
+        <div class="empty-state">Loading codes...</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Devices Tab -->
+  <div id="devices-tab" class="tab-content">
+    <div class="stats card">
+      <div class="stat-box">
+        <div class="stat-number" id="totalCount">0</div>
+        <div class="stat-label">Total Devices</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="activeCount" style="color: #34C759;">0</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number" id="revokedCount" style="color: #FF3B30;">0</div>
+        <div class="stat-label">Revoked</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>Connected Devices</h3>
+        <button class="btn-danger" id="revokeAllBtn">Revoke All</button>
+      </div>
+      <div id="deviceList" class="device-list">
+        <div class="empty-state">Loading devices...</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Activity Tab -->
+  <div id="activity-tab" class="tab-content">
+    <div class="card">
+      <h3>Recent Activity</h3>
+      <div id="activityList" class="activity-list">
+        <div class="empty-state">Loading activity...</div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="admin-panel.js"></script>
+</body>
+</html>

@@ -8,7 +8,10 @@ import {
   AgentClaimSchema,
   CampaignSchema,
   PairingCodeSchema,
+  PLATFORM_SKILL_CAPABILITIES,
   TaskRequestSchema,
+  WORKFLOW_PRESETS,
+  WORKFLOW_TEMPLATES,
   createId,
   safeParse,
 } from '@cherry/shared';
@@ -38,6 +41,11 @@ function loadState() {
       agents.set(agent.id, { ...agent, online: false, socket: null, browserAttached: false, tabs: 0 });
     }
     for (const task of raw.tasks || []) {
+      if (task.status === 'dispatched' || task.status === 'running') {
+        task.status = 'queued';
+        task.recoveredAt = new Date().toISOString();
+        task.assignedAgentId = undefined;
+      }
       tasks.set(task.id, task);
     }
     for (const campaign of raw.campaigns || []) {
@@ -102,9 +110,24 @@ function dispatchQueuedTasks(agent) {
     if (task.status === 'queued' && agent.online && agent.socket?.readyState === 1) {
       agent.socket.send(JSON.stringify({ type: 'task.dispatch', task }));
       task.status = 'dispatched';
+      task.assignedAgentId = agent.id;
+      task.dispatchedAt = new Date().toISOString();
       persistState();
     }
   }
+}
+
+function requeueAgentTasks(agentId) {
+  for (const task of tasks.values()) {
+    if ((task.status === 'dispatched' || task.status === 'running') && task.assignedAgentId === agentId) {
+      task.status = 'queued';
+      task.assignedAgentId = undefined;
+      task.recoveredAt = new Date().toISOString();
+      task.events = task.events || [];
+      task.events.push({ type: 'step.failed', stepId: 'agent_disconnect', error: 'Agent disconnected before this task completed', retrying: true });
+    }
+  }
+  persistState();
 }
 
 loadState();
@@ -115,6 +138,14 @@ app.get('/health', (_req, res) => {
     agents: agents.size,
     tasks: tasks.size,
     campaigns: campaigns.size,
+  });
+});
+
+app.get('/skills', (_req, res) => {
+  res.json({
+    platforms: PLATFORM_SKILL_CAPABILITIES,
+    workflows: WORKFLOW_TEMPLATES,
+    presets: WORKFLOW_PRESETS,
   });
 });
 
@@ -208,6 +239,8 @@ app.post('/tasks', (req, res) => {
     if (agent.online && agent.socket?.readyState === 1) {
       agent.socket.send(JSON.stringify({ type: 'task.dispatch', task }));
       task.status = 'dispatched';
+      task.assignedAgentId = agent.id;
+      task.dispatchedAt = new Date().toISOString();
       persistState();
       break;
     }
@@ -371,8 +404,10 @@ wss.on('connection', (socket, req) => {
       const task = tasks.get(event.taskId);
       if (task) {
         task.events.push(event.payload);
+        if (event.payload.type === 'step.started') task.status = 'running';
         if (event.payload.type === 'task.completed') task.status = 'completed';
         if (event.payload.type === 'task.failed') task.status = 'failed';
+        if (event.payload.type === 'step.failed' && event.payload.retrying) task.status = 'retrying';
         persistState();
       }
       broadcast(event.payload);
@@ -380,6 +415,7 @@ wss.on('connection', (socket, req) => {
   });
 
   socket.on('close', () => {
+    requeueAgentTasks(agent.id);
     agent.online = false;
     agent.socket = null;
     agent.browserAttached = false;

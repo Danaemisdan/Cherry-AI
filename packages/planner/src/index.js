@@ -1,4 +1,9 @@
-import { ExecutionPlanSchema, createId } from '@cherry/shared';
+import {
+  ExecutionPlanSchema,
+  PLATFORM_SKILL_CAPABILITIES,
+  WORKFLOW_TEMPLATES,
+  createId,
+} from '@cherry/shared';
 
 const PLATFORM_HINTS = {
   instagram: ['instagram', 'ig', 'dm', 'reel', 'comment'],
@@ -7,6 +12,8 @@ const PLATFORM_HINTS = {
   facebook: ['facebook', 'fb', 'page', 'group'],
   gmail: ['gmail', 'email', 'inbox', 'thread', 'reply'],
   whatsapp: ['whatsapp', 'wa', 'chat'],
+  chatgpt: ['chatgpt', 'gpt', 'openai', 'dalle'],
+  gemini: ['gemini', 'google ai', 'imagen'],
   research: ['lead', 'research', 'scrape', 'website', 'duckduckgo', 'google', 'search'],
 };
 
@@ -27,7 +34,9 @@ function detectOperation(prompt, context = {}) {
   const wantsLeads = /lead|scrape|search|find|prospect|list/i.test(lower);
   const wantsMessaging = /message|dm|reply|outreach|follow.?up|contact|reach out/i.test(lower);
   const wantsCampaign = /campaign|always-on|always on|monitor inbox|continue outreach/i.test(lower);
+  const wantsImage = /image|generate image|draw|picture|photo/i.test(lower);
 
+  if (wantsImage) return 'generate_image';
   if (wantsCampaign) return 'run_campaign';
   if (wantsLeads && wantsMessaging) return 'lead_and_message';
   if (wantsMessaging) return context.usernames?.length > 1 ? 'message_batch' : 'send_message';
@@ -42,10 +51,18 @@ function browserModeFor(platform) {
 
 function actionsFor(platform, prompt, context = {}) {
   const operation = detectOperation(prompt, context);
+  if (platform === 'research' && operation === 'open_workspace') {
+    return ['search', 'open_result'];
+  }
+
+  const template = WORKFLOW_TEMPLATES[operation];
+  if (template) {
+    const supportedTemplate = template.filter((action) => platformSupportsAction(platform, action));
+    return supportedTemplate.length ? supportedTemplate : ['open_workspace'].filter((action) => platformSupportsAction(platform, action));
+  }
 
   if (platform === 'research') {
-    if (operation === 'open_workspace') return ['search', 'open_result'];
-    return ['search', 'open_result', 'extract_context', 'export_artifact'];
+    return WORKFLOW_TEMPLATES.research.filter((action) => platformSupportsAction(platform, action));
   }
 
   if (operation === 'open_workspace') return ['open_workspace'];
@@ -79,7 +96,14 @@ function actionsFor(platform, prompt, context = {}) {
   if (/post|publish/i.test(prompt)) actions.push('post');
   if (/scrape|lead|search|find/i.test(prompt)) actions.push('search', 'scrape_results');
   if (!actions.length) actions.push('open_workspace', 'extract_context');
-  return [...new Set(actions)];
+  return [...new Set(actions)].filter((action) => platformSupportsAction(platform, action));
+}
+
+function platformSupportsAction(platform, action) {
+  const supported = PLATFORM_SKILL_CAPABILITIES[platform] || [];
+  if (supported.includes(action)) return true;
+  if (action === 'scrape_followers') return supported.includes('scrape_results');
+  return false;
 }
 
 function buildArgs({ prompt, platform, action, context = {} }) {

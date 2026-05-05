@@ -4,12 +4,21 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error
 
 import CDPController from './cdp-controller.js';
 import StealthEngine from './stealth-engine.js';
+import LicenseManager from './license-manager.js';
 
 import { InstagramScraper } from '../modules/instagram/search-scraper.js';
 import { InstagramDMSender } from '../modules/instagram/dm-sender.js';
 import { InstagramEngagementSuite } from '../modules/instagram/engage-sender.js';
 import { TwitterStealthEngine } from '../modules/twitter/twitter-stealth.js';
 import { LinkedInStealthEngine } from '../modules/linkedin/linkedin-stealth.js';
+
+// Check license on startup
+LicenseManager.checkStatus().then(status => {
+  console.log('[Cherry License] Initial status:', status);
+  if (status === 'active') {
+    LicenseManager.startChecking();
+  }
+});
 
 const PLATFORM_URLS = {
   ig: 'https://www.instagram.com/',
@@ -42,6 +51,46 @@ async function getPlatformTab(prefix) {
   const newTab = await chrome.tabs.create({ url, active: false }); // Don't focus
   await new Promise(r => setTimeout(r, 2000)); // Reduced from 5s
   return newTab.id;
+}
+
+// Keep-alive interval to prevent tab throttling
+let keepAliveIntervals = new Map();
+
+function startKeepAlive(tabId) {
+  // Clear any existing interval
+  if (keepAliveIntervals.has(tabId)) {
+    clearInterval(keepAliveIntervals.get(tabId));
+  }
+  
+  // Send periodic commands to keep tab from being suspended
+  const interval = setInterval(async () => {
+    try {
+      // Multiple techniques to keep tab active:
+      // 1. Runtime.evaluate
+      await CDPController.sendCommand(tabId, 'Runtime.evaluate', { 
+        expression: 'Date.now()',
+        returnByValue: true
+      });
+      // 2. Page.enable (re-enable to wake up)
+      await CDPController.sendCommand(tabId, 'Page.enable', {});
+      // 3. DOM.getDocument to force refresh
+      await CDPController.sendCommand(tabId, 'DOM.getDocument', {});
+    } catch (e) {
+      console.log('[Cherry IG] Keep-alive error:', e.message);
+      clearInterval(interval);
+      keepAliveIntervals.delete(tabId);
+    }
+  }, 2000); // Every 2 seconds (more aggressive)
+  
+  keepAliveIntervals.set(tabId, interval);
+  console.log('[Cherry IG] Keep-alive started for tab', tabId);
+}
+
+function stopKeepAlive(tabId) {
+  if (keepAliveIntervals.has(tabId)) {
+    clearInterval(keepAliveIntervals.get(tabId));
+    keepAliveIntervals.delete(tabId);
+  }
 }
 
 // ── CSV: generate string and trigger download via chrome.downloads API ──────────
@@ -92,6 +141,8 @@ async function runInstagramBulkAction(tabId, usernames, actionLabel, runner) {
     }
   }
 
+  stopKeepAlive(tabId); // Stop keep-alive when done
+
   return { successCount, totalCount: normalizedUsers.length };
 }
 
@@ -102,6 +153,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ status: 'OK' });
     return false;
   }
+  
+  if (request.action === 'ACTIVATE_LICENSE') {
+    (async () => {
+      console.log('[Cherry Main] Activating license with code:', request.code);
+      if (request.serverUrl) {
+        await LicenseManager.setServerUrl(request.serverUrl);
+      }
+      const result = await LicenseManager.activate(request.code);
+      console.log('[Cherry Main] Activation result:', result);
+      if (result.success) {
+        LicenseManager.startChecking();
+      }
+      sendResponse(result);
+    })();
+    return true;
+  }
+  
+  if (request.action === 'CHECK_LICENSE') {
+    (async () => {
+      const status = await LicenseManager.checkStatus();
+      sendResponse({ status, isActive: status === 'active' });
+    })();
+    return true;
+  }
+  
+  if (request.action === 'SET_LICENSE_SERVER') {
+    LicenseManager.setServerUrl(request.serverUrl);
+    sendResponse({ success: true });
+    return false;
+  }
 
   if (request.action === 'ABORT_ENGINE') {
     StealthEngine.abort();
@@ -110,14 +191,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'START_ENGINE') {
-    StealthEngine.reset();
-
+    // Check license before executing
     (async () => {
+      const isAllowed = await LicenseManager.isAllowed();
+      if (!isAllowed) {
+        sendResponse({ status: 'Extension not activated. Please enter your license code.' });
+        return;
+      }
+      
+      StealthEngine.reset();
       let activeTabId = null;
       try {
         const prefix = (request.type || '').split('_')[0];
         activeTabId = await getPlatformTab(prefix);
         await CDPController.attach(activeTabId);
+        startKeepAlive(activeTabId); // Keep tab active during automation
         await new Promise(r => setTimeout(r, 500)); // Reduced from 1.5s
 
         let result = null;
@@ -126,12 +214,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.type === 'ig_scrape') {
           const q = (request.payload.hashtag || '').trim();
           const maxLimit = request.payload.maxLimit || 15;
+          const minFollowers = request.payload.minFollowers || null;
+          const maxFollowers = request.payload.maxFollowers || null;
           const onProgress = (current, total) => {
              chrome.runtime.sendMessage({ action: 'PROGRESS', current, total });
           };
           const results = !q.includes(' ')
-            ? await InstagramScraper.scrapeHashtag(activeTabId, q, maxLimit, onProgress)
-            : await InstagramScraper.scrapeByKeyword(activeTabId, q, maxLimit, onProgress);
+            ? await InstagramScraper.scrapeHashtag(activeTabId, q, maxLimit, onProgress, minFollowers, maxFollowers)
+            : await InstagramScraper.scrapeByKeyword(activeTabId, q, maxLimit, onProgress, minFollowers, maxFollowers);
 
           if (results.length > 0) {
             await downloadCSV(results, 'ig_' + q.replace(/[^a-z0-9]/gi, ''));
@@ -141,24 +231,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
         } else if (request.type === 'ig_dm') {
-          await InstagramDMSender.sendDM(activeTabId, request.payload.username, {}, request.payload.userGoal, request.payload.tonePrompt, request.payload.attachmentUrl);
-          result = { status: 'DM dispatched.' };
+          const followFirst = request.payload.followFirst || false;
+          await InstagramDMSender.sendDM(activeTabId, request.payload.username, {}, request.payload.userGoal, request.payload.tonePrompt, request.payload.attachmentUrl, followFirst);
+          result = { status: followFirst ? 'Followed then DM dispatched.' : 'DM dispatched.' };
 
         } else if (request.type === 'ig_csv_dm') {
+          const followFirst = request.payload.followFirst || false;
           const bulkResult = await runInstagramBulkAction(
             activeTabId,
             request.payload.usernameList,
-            'Bulk DM',
+            followFirst ? 'Bulk Follow+DM' : 'Bulk DM',
             (username) => InstagramDMSender.sendDM(
               activeTabId,
               username,
               {},
               request.payload.userGoal,
               request.payload.tonePrompt,
-              request.payload.attachmentUrl
+              request.payload.attachmentUrl,
+              followFirst
             )
           );
-          result = { status: `Bulk DM complete. Reached ${bulkResult.successCount} / ${bulkResult.totalCount} users.` };
+          const actionDesc = followFirst ? 'Follow+DM' : 'DM';
+          result = { status: `Bulk ${actionDesc} complete. Reached ${bulkResult.successCount} / ${bulkResult.totalCount} users.` };
 
         } else if (request.type === 'ig_csv_engage') {
           const bulkResult = await runInstagramBulkAction(
@@ -233,6 +327,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       } finally {
         if (activeTabId) {
+          stopKeepAlive(activeTabId); // Stop keep-alive
           try { await CDPController.detach(activeTabId); } catch(e) {}
         }
       }

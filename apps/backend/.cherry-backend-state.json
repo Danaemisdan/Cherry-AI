@@ -8,7 +8,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 4,
+      "tabs": 5,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -8587,7 +8587,7 @@
     },
     {
       "id": "task_nm532hxl",
-      "status": "dispatched",
+      "status": "failed",
       "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
       "context": {
         "platform": "instagram",
@@ -8729,13 +8729,147 @@
           "type": "step.started",
           "stepId": "instagram_0_yle0wfz3",
           "label": "instagram:open_workspace"
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_nm532hxl",
+            "objective": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_vw4gyfe0",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_yrrotyve",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_rvn37sna",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_851hr55x",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Danaemisdan on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Danaemisdan",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_vw4gyfe0",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_0_vw4gyfe0",
+          "error": "page.goto: net::ERR_ABORTED at https://www.instagram.com/\nCall log:\n\u001b[2m  - navigating to \"https://www.instagram.com/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "page.goto: net::ERR_ABORTED at https://www.instagram.com/\nCall log:\n\u001b[2m  - navigating to \"https://www.instagram.com/\", waiting until \"domcontentloaded\"\u001b[22m\n"
         }
       ],
-      "createdAt": "2026-04-30T22:22:48.934Z"
+      "createdAt": "2026-04-30T22:22:48.934Z",
+      "recoveredAt": "2026-05-04T22:47:06.716Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-04T22:49:34.008Z"
     },
     {
       "id": "task_c8gv72ej",
-      "status": "dispatched",
+      "status": "failed",
       "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
       "context": {
         "platform": "twitter",
@@ -8887,9 +9021,314 @@
           "type": "step.started",
           "stepId": "twitter_1_gmvk8uxa",
           "label": "twitter:open_target"
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_c8gv72ej",
+            "objective": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "twitter"
+            ],
+            "steps": [
+              {
+                "id": "twitter_0_oiz64wr2",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_1_nd2uguh0",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_2_iuvz27fi",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_3_oht0o6vw",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_0_oiz64wr2",
+          "label": "twitter:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "twitter_0_oiz64wr2",
+          "message": "Opened twitter workspace",
+          "duration": 12714
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_1_nd2uguh0",
+          "label": "twitter:open_target"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "agent_disconnect",
+          "error": "Agent disconnected before this task completed",
+          "retrying": true
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_c8gv72ej",
+            "objective": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "twitter"
+            ],
+            "steps": [
+              {
+                "id": "twitter_0_u19gra5o",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_1_g81zs255",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_2_e51m8jfh",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "twitter_3_2p3ujpyy",
+                "platform": "twitter",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to @FanaticElon on X. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "twitter",
+                  "query": "fintech founders",
+                  "username": "@FanaticElon",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on twitter",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_0_u19gra5o",
+          "label": "twitter:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "twitter_0_u19gra5o",
+          "message": "Opened twitter workspace",
+          "duration": 4954
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_1_g81zs255",
+          "label": "twitter:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "twitter_1_g81zs255",
+          "message": "Opened @FanaticElon on twitter",
+          "duration": 2882
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_2_e51m8jfh",
+          "label": "twitter:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "twitter_2_e51m8jfh",
+          "message": "Prepared message draft @FanaticElon on twitter",
+          "duration": 8789
+        },
+        {
+          "type": "step.started",
+          "stepId": "twitter_3_2p3ujpyy",
+          "label": "twitter:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "twitter_3_2p3ujpyy",
+          "error": "Could not message @@FanaticElon on Twitter. They may have restricted DMs. Try following them first.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not message @@FanaticElon on Twitter. They may have restricted DMs. Try following them first."
         }
       ],
-      "createdAt": "2026-04-30T22:24:29.065Z"
+      "createdAt": "2026-04-30T22:24:29.065Z",
+      "recoveredAt": "2026-05-04T22:49:48.301Z",
+      "dispatchedAt": "2026-05-05T01:14:08.033Z",
+      "assignedAgentId": "agent_s0talsp3"
     },
     {
       "id": "task_0umy7dhs",
@@ -12605,7 +13044,7 @@
     },
     {
       "id": "task_ywl47bhv",
-      "status": "dispatched",
+      "status": "failed",
       "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
       "context": {
         "platform": "linkedin",
@@ -12742,13 +13181,299 @@
           "type": "step.started",
           "stepId": "linkedin_0_3h1pez0v",
           "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_ywl47bhv",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_nwb68oyt",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_emfhz1qv",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_ztas8rxz",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_bskws31u",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_nwb68oyt",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "agent_disconnect",
+          "error": "Agent disconnected before this task completed",
+          "retrying": true
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_ywl47bhv",
+            "objective": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_rkw1h4mi",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_wq1qfpee",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_x0e3nsbe",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_8pll1pff",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on LinkedIn. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "linkedin",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_rkw1h4mi",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_rkw1h4mi",
+          "message": "Opened linkedin workspace",
+          "duration": 35590
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_wq1qfpee",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_wq1qfpee",
+          "message": "Opened @Jagadeesh K on linkedin",
+          "duration": 36069
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_x0e3nsbe",
+          "label": "linkedin:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_2_x0e3nsbe",
+          "message": "Prepared message draft @Jagadeesh K on linkedin",
+          "duration": 37254
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_3_8pll1pff",
+          "label": "linkedin:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_3_8pll1pff",
+          "error": "Could not find \"Jagadeesh K\" in LinkedIn messaging. You may need to connect with them first.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not find \"Jagadeesh K\" in LinkedIn messaging. You may need to connect with them first."
         }
       ],
-      "createdAt": "2026-05-03T01:01:13.953Z"
+      "createdAt": "2026-05-03T01:01:13.953Z",
+      "recoveredAt": "2026-05-04T22:49:48.319Z",
+      "dispatchedAt": "2026-05-05T01:14:08.035Z",
+      "assignedAgentId": "agent_s0talsp3"
     },
     {
       "id": "task_834q7zq8",
-      "status": "dispatched",
+      "status": "failed",
       "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
       "context": {
         "platform": "instagram",
@@ -12923,9 +13648,314 @@
           "type": "step.started",
           "stepId": "instagram_3_s6lr5mgr",
           "label": "instagram:send_message"
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_834q7zq8",
+            "objective": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_7ucl8mcy",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_jr9wh0d2",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_6s2l2q55",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_my0uuho5",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_7ucl8mcy",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_7ucl8mcy",
+          "message": "Opened instagram workspace",
+          "duration": 12725
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_jr9wh0d2",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "agent_disconnect",
+          "error": "Agent disconnected before this task completed",
+          "retrying": true
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_834q7zq8",
+            "objective": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_odzf2hv3",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_re7y91rj",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_1m86l9lj",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_wv63wcf2",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Say hello. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_odzf2hv3",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_odzf2hv3",
+          "message": "Opened instagram workspace",
+          "duration": 4172
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_re7y91rj",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_re7y91rj",
+          "message": "Opened @Jagadeesh on instagram",
+          "duration": 6314
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_1m86l9lj",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_1m86l9lj",
+          "message": "Prepared message draft @Jagadeesh on instagram",
+          "duration": 13189
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_wv63wcf2",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_3_wv63wcf2",
+          "error": "page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://www.instagram.com/Jagadeesh/\", waiting until \"domcontentloaded\"\n",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://www.instagram.com/Jagadeesh/\", waiting until \"domcontentloaded\"\n"
         }
       ],
-      "createdAt": "2026-05-03T01:03:28.942Z"
+      "createdAt": "2026-05-03T01:03:28.942Z",
+      "recoveredAt": "2026-05-04T22:49:48.319Z",
+      "dispatchedAt": "2026-05-05T01:14:08.038Z",
+      "assignedAgentId": "agent_s0talsp3"
     },
     {
       "id": "task_g1rs61im",
@@ -14049,7 +15079,7 @@
     },
     {
       "id": "task_47lcuwi0",
-      "status": "dispatched",
+      "status": "failed",
       "prompt": "Follow Jagadeesh on LinkedIn.",
       "context": {
         "platform": "linkedin",
@@ -14172,9 +15202,308 @@
           "type": "step.started",
           "stepId": "linkedin_1_0nfcbhq1",
           "label": "linkedin:open_target"
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_47lcuwi0",
+            "objective": "Follow Jagadeesh on LinkedIn.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_yxoi9s15",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_aupujhai",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_mq9hp1es",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "follow_user",
+                "args": {
+                  "prompt": "Follow Jagadeesh on LinkedIn.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Say hello",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete follow_user on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_yxoi9s15",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_0_yxoi9s15",
+          "error": "page.goto: net::ERR_ABORTED at https://www.linkedin.com/feed/\nCall log:\n\u001b[2m  - navigating to \"https://www.linkedin.com/feed/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "page.goto: net::ERR_ABORTED at https://www.linkedin.com/feed/\nCall log:\n\u001b[2m  - navigating to \"https://www.linkedin.com/feed/\", waiting until \"domcontentloaded\"\u001b[22m\n"
         }
       ],
-      "createdAt": "2026-05-03T14:39:21.252Z"
+      "createdAt": "2026-05-03T14:39:21.252Z",
+      "recoveredAt": "2026-05-04T22:47:06.717Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-04T22:49:34.024Z"
+    },
+    {
+      "id": "task_dfz4wfgs",
+      "status": "completed",
+      "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "auto_dm",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_8itpwxab",
+          "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_dfz4wfgs",
+            "objective": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_c7tfmv75",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_gapmz1zq",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_2_xdh7e2lk",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_3_g6t5w8x4",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on WhatsApp. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "whatsapp",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_c7tfmv75",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_c7tfmv75",
+          "message": "Opened whatsapp workspace",
+          "duration": 7920
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_gapmz1zq",
+          "label": "whatsapp:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_1_gapmz1zq",
+          "message": "Opened @Jagadeesh on whatsapp",
+          "duration": 35072
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_2_xdh7e2lk",
+          "label": "whatsapp:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_2_xdh7e2lk",
+          "message": "Prepared message draft @Jagadeesh on whatsapp",
+          "duration": 4926
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_3_g6t5w8x4",
+          "label": "whatsapp:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_3_g6t5w8x4",
+          "message": "Sent message @Jagadeesh on whatsapp",
+          "duration": 10788
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_vmtq6y0f",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_vmtq6y0f.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-04T23:43:22.045Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-05T01:14:08.041Z"
     }
   ],
   "campaigns": [],

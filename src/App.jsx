@@ -51,8 +51,12 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
   const [tone, setTone] = useState('Casual and brief');
   const [attachmentAsset, setAttachmentAsset] = useState('');
   const [maxLimit, setMaxLimit] = useState(15);
+  const [bulkLimit, setBulkLimit] = useState(10);
+  const [minFollowers, setMinFollowers] = useState('');
+  const [maxFollowers, setMaxFollowers] = useState('');
   const [csvUsernames, setCsvUsernames] = useState([]);
   const [csvFileLabel, setCsvFileLabel] = useState('');
+  const [followBeforeDM, setFollowBeforeDM] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleCsvUpload = (e) => {
@@ -74,12 +78,16 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
       return;
     }
 
+    const limit = Math.min(bulkLimit, csvUsernames.length);
+    const limitedUsernames = csvUsernames.slice(0, limit);
+
     onStart('engage', `${platformId}_${type}`, {
-      usernameList: csvUsernames,
+      usernameList: limitedUsernames,
       userGoal: goal,
       tonePrompt: tone,
       attachmentUrl: attachmentAsset,
-      maxLimit: csvUsernames.length,
+      maxLimit: limit,
+      followFirst: followBeforeDM && type.includes('dm'),
     });
   };
   
@@ -96,8 +104,18 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
             <label>Max Profiles to Scrape</label>
             <input type="number" className="input-field" value={maxLimit} onChange={(e)=>setMaxLimit(parseInt(e.target.value)||1)} min="1" max="1000" />
           </div>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Min Followers</label>
+              <input type="number" className="input-field" value={minFollowers} onChange={(e)=>setMinFollowers(e.target.value)} placeholder="e.g. 1000" min="0" />
+            </div>
+            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label>Max Followers</label>
+              <input type="number" className="input-field" value={maxFollowers} onChange={(e)=>setMaxFollowers(e.target.value)} placeholder="e.g. 50000" min="0" />
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('scrape', `${platformId}_scrape`, { hashtag: targetSearch, maxLimit })}>
+            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('scrape', `${platformId}_scrape`, { hashtag: targetSearch, maxLimit, minFollowers: minFollowers ? parseInt(minFollowers) : null, maxFollowers: maxFollowers ? parseInt(maxFollowers) : null })}>
               Execute Deep Scrape
             </button>
             {activeTask === 'scrape' && (
@@ -146,11 +164,37 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
               Upload Username CSV
             </button>
             <div className="helper-text">
-              {csvFileLabel || 'Use a CSV where the first column contains Instagram usernames.'}
+              {csvFileLabel || csvUsernames.length > 0 ? `${csvUsernames.length} usernames loaded` : 'Use a CSV where the first column contains usernames.'}
             </div>
           </div>
+          
+          {/* Bulk Action Settings */}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px', padding: '10px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '12px', color: '#aaa' }}>Bulk Limit:</label>
+              <input 
+                type="number" 
+                style={{ width: '60px', padding: '4px 8px', background: '#222', border: '1px solid #333', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
+                value={bulkLimit} 
+                onChange={(e)=>setBulkLimit(Math.max(1, parseInt(e.target.value)||1))} 
+                min="1" 
+                max="100"
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#aaa', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={followBeforeDM} 
+                onChange={(e) => setFollowBeforeDM(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Follow first, then DM
+            </label>
+          </div>
+
+          {/* Single Actions */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset })}>
+            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
               Auto-DM
             </button>
             <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_engage`, { username: targetUser, userGoal: goal, tonePrompt: tone })}>
@@ -162,21 +206,32 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
             <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_post`, { userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset })}>
               Auto-Post
             </button>
-            <button disabled={activeTask !== null || csvUsernames.length === 0} className="btn-secondary" onClick={() => startCsvAction('csv_dm')}>
-              Bulk DM From CSV
-            </button>
-            <button disabled={activeTask !== null || csvUsernames.length === 0} className="btn-secondary" onClick={() => startCsvAction('csv_engage')}>
-              Bulk Engage From CSV
-            </button>
-            <button disabled={activeTask !== null || csvUsernames.length === 0} className="btn-secondary" onClick={() => startCsvAction('csv_follow')}>
-              Bulk Follow From CSV
-            </button>
             {activeTask === 'engage' && (
               <button className="btn-primary" style={{ backgroundColor: 'var(--apple-red)' }} onClick={onStop}>
                 STOP
               </button>
             )}
           </div>
+          
+          {/* Bulk Actions - Only show if CSV loaded */}
+          {csvUsernames.length > 0 && (
+            <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Bulk Actions ({Math.min(bulkLimit, csvUsernames.length)} of {csvUsernames.length} users)
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_dm')} style={{ backgroundColor: followBeforeDM ? '#4a4a2a' : undefined }}>
+                  {followBeforeDM ? 'Follow + DM' : 'Bulk DM'}
+                </button>
+                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_engage')}>
+                  Bulk Engage
+                </button>
+                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_follow')}>
+                  Bulk Follow
+                </button>
+              </div>
+            </div>
+          )}
           {activeTask === 'engage' && progress.total > 0 && typeof progress.current !== 'undefined' && (
              <div style={{ width: '100%', marginTop: '10px' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
@@ -200,6 +255,84 @@ function App() {
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  
+  // License state
+  const [licenseStatus, setLicenseStatus] = useState('checking');
+  const [licenseCode, setLicenseCode] = useState('');
+  const [serverUrl, setServerUrl] = useState('http://localhost:8080');
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  
+  // Load saved server URL on mount
+  useEffect(() => {
+    chrome.storage.local.get(['cherry_server_url'], (result) => {
+      if (result.cherry_server_url) {
+        setServerUrl(result.cherry_server_url);
+      }
+    });
+  }, []);
+  
+  useEffect(() => {
+    // Check license status on mount
+    checkLicense();
+  }, []);
+  
+  const checkLicense = async () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({ action: 'CHECK_LICENSE' }, (res) => {
+        if (res?.isActive) {
+          setLicenseStatus('active');
+          setShowLicenseModal(false);
+        } else {
+          setLicenseStatus(res?.status || 'inactive');
+          setShowLicenseModal(true);
+        }
+      });
+    }
+  };
+  
+  const [isActivating, setIsActivating] = useState(false);
+  
+  const activateLicense = async () => {
+    if (!licenseCode || !serverUrl) return;
+    
+    // Save server URL
+    await chrome.storage.local.set({ cherry_server_url: serverUrl });
+    
+    setIsActivating(true);
+    setStatusMsg('Connecting to license server...');
+    setErrorMsg('');
+    
+    console.log('[Cherry UI] Starting activation with code:', licenseCode, 'server:', serverUrl);
+    
+    chrome.runtime.sendMessage({ 
+      action: 'ACTIVATE_LICENSE', 
+      code: licenseCode,
+      serverUrl: serverUrl
+    }, (res) => {
+      setIsActivating(false);
+      console.log('[Cherry UI] Activation response:', res);
+      
+      if (chrome.runtime.lastError) {
+        console.error('[Cherry UI] Runtime error:', chrome.runtime.lastError);
+        setErrorMsg('Error: ' + chrome.runtime.lastError.message);
+        return;
+      }
+      
+      if (!res) {
+        setErrorMsg('No response from background. Check console for errors.');
+        return;
+      }
+      
+      if (res.success) {
+        setLicenseStatus('active');
+        setShowLicenseModal(false);
+        setStatusMsg('✓ License activated!');
+        setErrorMsg('');
+      } else {
+        setErrorMsg(res.message || 'Activation failed. Is admin extension installed?');
+      }
+    });
+  };
   
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
@@ -326,6 +459,108 @@ function App() {
                 <label>LLM Active Pipeline</label>
                 <input type="text" className="input-field" defaultValue="Cherry AI Engine (TinyLlama GGUF)" disabled />
               </div>
+              <div className="input-group" style={{ marginTop: '12px' }}>
+                <label>License Server IP/URL</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  value={serverUrl} 
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  placeholder="http://192.168.1.100:8080"
+                />
+                <p style={{ color: '#666', fontSize: '11px', marginTop: '4px' }}>
+                  Enter the admin laptop's IP address (e.g., http://192.168.1.100:8080)
+                </p>
+              </div>
+              <div style={{ marginTop: '12px' }}>
+                <label>License Status: </label>
+                <span style={{ 
+                  color: licenseStatus === 'active' ? '#34C759' : 
+                         licenseStatus === 'checking' ? '#FF9500' : '#FF3B30',
+                  fontWeight: 'bold'
+                }}>
+                  {licenseStatus === 'active' ? '✓ ACTIVE' : 
+                   licenseStatus === 'checking' ? '⏳ CHECKING' : 
+                   licenseStatus === 'pending_activation' ? '⚠ PENDING ACTIVATION' :
+                   licenseStatus === 'revoked' ? '❌ REVOKED' : '✗ INACTIVE'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* License Activation Modal */}
+        {showLicenseModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: '#1a1a1a',
+              padding: '30px',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '400px',
+              textAlign: 'center'
+            }}>
+              <h2 style={{ color: '#007AFF', marginBottom: '20px' }}>🔐 License Required</h2>
+              <p style={{ color: '#888', marginBottom: '20px', fontSize: '14px' }}>
+                This extension requires activation. Please enter your license code or contact your administrator.
+              </p>
+              <div style={{ marginBottom: '15px' }}>
+                <input
+                  type="password"
+                  placeholder="Enter license code"
+                  value={licenseCode}
+                  onChange={(e) => setLicenseCode(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: '#2a2a2a',
+                    border: '1px solid #333',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <p style={{ color: '#666', fontSize: '12px', marginBottom: '15px' }}>
+                Make sure the admin has started the license server on their laptop.
+              </p>
+              <button
+                onClick={activateLicense}
+                disabled={!licenseCode || !serverUrl || isActivating}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: licenseCode && serverUrl && !isActivating ? '#007AFF' : '#333',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: licenseCode && serverUrl && !isActivating ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold'
+                }}
+              >
+                {isActivating ? 'Activating...' : 'Activate'}
+              </button>
+              
+              {errorMsg && (
+                <p style={{ color: '#FF3B30', marginTop: '15px', fontSize: '13px' }}>
+                  {errorMsg}
+                </p>
+              )}
+              {licenseStatus === 'revoked' && (
+                <p style={{ color: '#FF3B30', marginTop: '15px', fontSize: '13px' }}>
+                  ⚠️ Your license has been revoked. Please contact your administrator.
+                </p>
+              )}
             </div>
           </div>
         )}

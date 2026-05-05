@@ -16,7 +16,8 @@
     "scripting",
     "nativeMessaging",
     "sidePanel",
-    "downloads"
+    "downloads",
+    "management"
   ],
   "host_permissions": [
     "https://www.instagram.com/*",

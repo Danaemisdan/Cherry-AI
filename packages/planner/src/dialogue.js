@@ -233,15 +233,19 @@ export class DialogueEngine {
     // Build task prompts for each platform
     const tasks = platforms.map(platform => {
       const prompt = this.buildTaskPrompt(action, platform, params);
+      const context = {
+        operation: action,
+        platform,
+        strategy,
+        ...params,
+      };
+      const plan = planTask({ prompt, context });
+      
       return {
         platform,
         prompt,
-        context: {
-          operation: action,
-          platform,
-          strategy,
-          ...params,
-        },
+        context,
+        workflow: plan,
       };
     });
 

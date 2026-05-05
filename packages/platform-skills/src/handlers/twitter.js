@@ -12,6 +12,7 @@ import {
   summarizeAction,
   tryClick,
   waitForAppShell,
+  minimalDelay,
 } from '../common.js';
 import { checkLoginState } from '../state-checker.js';
 import { extractChatContext } from '../chat-context.js';

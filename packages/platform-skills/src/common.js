@@ -9,6 +9,8 @@ const PLATFORM_URLS = {
   facebook: 'https://www.facebook.com/',
   gmail: 'https://mail.google.com/mail/u/0/#inbox',
   whatsapp: 'https://web.whatsapp.com/',
+  chatgpt: 'https://chat.openai.com/',
+  gemini: 'https://gemini.google.com/',
 };
 
 const PLATFORM_DOMAINS = {
@@ -18,6 +20,8 @@ const PLATFORM_DOMAINS = {
   facebook: ['facebook.com'],
   gmail: ['mail.google.com'],
   whatsapp: ['web.whatsapp.com'],
+  chatgpt: ['chat.openai.com', 'chatgpt.com'],
+  gemini: ['gemini.google.com'],
 };
 
 const SEARCH_SELECTORS = {
@@ -617,8 +621,8 @@ export async function generateOutreachMessage({ username, goal, tone, query, pla
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const host = await connectLocalLlmHost();
-      // Use higher temp for more natural variety
-      const temperature = 0.9 + (attempt * 0.05); // Increase temp on retries
+      // Use lower temp for local LLMs to prevent gibberish, especially for non-English
+      const temperature = 0.3 + (attempt * 0.1); // Max 0.5
       const maxTokens = hasChatContext ? 180 : 100;
       
       let generated = await host.generate(prompt, maxTokens, temperature);
@@ -788,6 +792,68 @@ export async function minimalDelay(ms = 0) {
   if (ms > 0) await new Promise(r => setTimeout(r, ms));
 }
 
+export function humanDelay(minMs = 120, maxMs = 420) {
+  const min = Math.max(0, Number(minMs) || 0);
+  const max = Math.max(min, Number(maxMs) || min);
+  return Math.round(min + Math.random() * (max - min));
+}
+
+export async function pauseLikeHuman(page, minMs = 50, maxMs = 150) {
+  await page.waitForTimeout(humanDelay(minMs, maxMs)).catch(() => {});
+}
+
+// === Human-like Browser Helpers ===
+
+export async function typeLikeHuman(page, locator, text) {
+  await locator.click();
+  await minimalDelay(50);
+  // Type with faster human-like delays
+  for (const char of text) {
+    await page.keyboard.type(char, { delay: humanDelay(10, 30) });
+    // Very occasional short micro-pauses
+    if (Math.random() > 0.95) await minimalDelay(humanDelay(50, 100));
+  }
+}
+
+export async function waitForVisible(page, selectors, maxWaitMs = 5000) {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const loc = await firstVisibleLocator(page, selectors);
+    if (loc) return loc;
+    await minimalDelay(200);
+  }
+  return null;
+}
+
+export async function scrollUntil(page, checkFn, maxScrolls = 10) {
+  for (let i = 0; i < maxScrolls; i++) {
+    if (await checkFn()) return true;
+    // Human-like scroll down
+    await page.mouse.wheel(0, humanDelay(300, 600));
+    await minimalDelay(humanDelay(500, 1500));
+  }
+  return await checkFn();
+}
+
+export async function collectCards(page, cardSelector, extractFn) {
+  const cards = page.locator(cardSelector);
+  const count = await cards.count().catch(() => 0);
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const data = await extractFn(cards.nth(i));
+    if (data) results.push(data);
+  }
+  return results;
+}
+
+export async function verifyState(page, expectations) {
+  const state = {};
+  for (const [key, selector] of Object.entries(expectations)) {
+    state[key] = await page.locator(selector).first().isVisible().catch(() => false);
+  }
+  return state;
+}
+
 export async function bodyText(page) {
   return page.locator('body').innerText().catch(() => '');
 }
@@ -878,6 +944,8 @@ export async function tryClick(page, selectors = []) {
   for (const selector of selectors) {
     const locator = page.locator(selector).first();
     if (await locator.count().catch(() => 0)) {
+      await locator.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
+      await pauseLikeHuman(page, 80, 240);
       await locator.click({ timeout: 3000 }).catch(() => {});
       return true;
     }
@@ -890,6 +958,8 @@ export async function clickByText(page, selectors, labels = []) {
     for (const label of labels) {
       const locator = page.locator(selector, { hasText: label }).first();
       if (await locator.count().catch(() => 0)) {
+        await locator.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
+        await pauseLikeHuman(page, 80, 240);
         await locator.click({ timeout: 3000 }).catch(() => {});
         return true;
       }
@@ -898,14 +968,49 @@ export async function clickByText(page, selectors, labels = []) {
   return false;
 }
 
+export async function humanScrollPage(page, options = {}) {
+  const {
+    maxScrolls = 5,
+    minDistance = 420,
+    maxDistance = 950,
+    settleMinMs = 100,
+    settleMaxMs = 300,
+  } = options;
+  const snapshots = [];
+
+  for (let index = 0; index < Math.max(1, Number(maxScrolls) || 1); index += 1) {
+    const before = await page.evaluate(() => ({
+      y: window.scrollY,
+      height: document.documentElement.scrollHeight,
+      text: document.body?.innerText?.slice(0, 8000) || '',
+    })).catch(() => null);
+
+    if (before) snapshots.push(before);
+
+    await page.mouse.wheel(0, humanDelay(minDistance, maxDistance)).catch(() => {});
+    await pauseLikeHuman(page, settleMinMs, settleMaxMs);
+
+    const after = await page.evaluate(() => ({
+      y: window.scrollY,
+      height: document.documentElement.scrollHeight,
+    })).catch(() => null);
+
+    if (before && after && after.y === before.y && after.height === before.height) break;
+  }
+
+  return snapshots;
+}
+
 export async function fillEditable(page, selectors = [], value = '', options = {}) {
   const { humanLike = true, typingSpeed = 'fast' } = options;
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
 
   for (const selector of selectors) {
     const locator = page.locator(selector).first();
     if (await locator.count().catch(() => 0)) {
+      await locator.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
       await locator.click();
-      await page.waitForTimeout(100);
+      await pauseLikeHuman(page, 80, 180);
 
       if (humanLike && value.length > 10) {
         // Human-like typing with variable speed and occasional mistakes
@@ -1036,6 +1141,14 @@ export async function openAttachedPage(attachedBrowser, url, { platform, forceNa
 }
 
 export async function openSearchSurface(page, platform, query) {
+  const searchBoxBeforeNavigation = await firstWorkingLocator(page, SEARCH_SELECTORS[platform] || []);
+  if (searchBoxBeforeNavigation && query && platform !== 'instagram' && platform !== 'gmail') {
+    await fillEditable(page, SEARCH_SELECTORS[platform] || [], query, { humanLike: true, typingSpeed: 'normal' });
+    await page.keyboard.press('Enter').catch(() => {});
+    await pauseLikeHuman(page, 600, 1200);
+    return page;
+  }
+
   await navigate(page, buildPlatformSearchUrl(platform, query), platform);
   const searchBox = await firstWorkingLocator(page, SEARCH_SELECTORS[platform] || []);
   if (searchBox && platform !== 'instagram' && platform !== 'gmail') {
@@ -1073,6 +1186,7 @@ export async function scrapeGoogleResults(attachedBrowser, { query, platform, ma
 
 export async function scrapePlatformProfiles(page, platform, maxResults) {
   await ensurePlatformReady(page, platform);
+  await humanScrollPage(page, { maxScrolls: Math.min(6, Math.max(2, Number(maxResults) ? Math.ceil(Number(maxResults) / 5) : 3)) });
   return page.evaluate(({ currentPlatform, limit }) => {
     const clean = (value) => String(value || '').trim();
     const addUnique = (list, next) => {

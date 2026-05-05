@@ -10,6 +10,7 @@ import { CampaignEngine } from '@cherry/campaign-engine';
 import { executeSkill } from '@cherry/platform-skills';
 
 const backendUrl = process.env.CHERRY_BACKEND_URL || 'http://localhost:8787';
+const backendWsUrl = backendUrl.replace(/^http/i, 'ws');
 const agentRoot = path.join(os.homedir(), '.cherry-agent');
 const configFile = path.join(agentRoot, 'agent.json');
 fs.mkdirSync(agentRoot, { recursive: true });
@@ -34,7 +35,7 @@ async function pairIfNeeded() {
 
   // If the user provides a fresh pairing code, prefer it over stale local config.
   if (!pairingCode && existing?.agentToken) {
-    await fetch(`${backendUrl}/agent/session/restore`, {
+    const response = await fetch(`${backendUrl}/agent/session/restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -44,7 +45,12 @@ async function pairIfNeeded() {
         os: process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux',
         agentVersion: '0.1.0',
       }),
-    }).catch(() => {});
+    }).catch((error) => {
+      throw new Error(`Failed to restore agent session: ${error.message}`);
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to restore agent session: ${response.status}. Pair again from the web UI.`);
+    }
     return existing;
   }
 
@@ -124,7 +130,28 @@ async function runTask(task, socket) {
       }
     }
 
-    const artifact = artifacts.writeJson({ plan, results }, 'task_result');
+    const stateAndMemory = {
+      scrapedLeads: [],
+      profileSnapshots: [],
+      messagesSent: [],
+      followStatus: [],
+      failures: [],
+    };
+
+    for (const { step, result } of results) {
+      if (!result) continue;
+      if (result.data?.profiles) stateAndMemory.scrapedLeads.push(...result.data.profiles);
+      if (result.data?.page) stateAndMemory.profileSnapshots.push({ platform: step.platform, snapshot: result.data.page });
+      if (step.action === 'send_message' || step.action === 'message_batch') {
+        stateAndMemory.messagesSent.push({ platform: step.platform, status: result.status });
+      }
+      if (step.action === 'follow' || step.action === 'follow_user') {
+        stateAndMemory.followStatus.push({ platform: step.platform, status: result.status });
+      }
+      if (result.status === 'failed') stateAndMemory.failures.push({ step: step.id, error: result.error });
+    }
+
+    const artifact = artifacts.writeJson({ plan, results, stateAndMemory }, 'task_result');
     socket.send(JSON.stringify({
       type: 'task.event',
       taskId: task.id,
@@ -177,7 +204,7 @@ async function main() {
   });
   console.log('Campaign engine ready', campaignEngine.listCampaigns().length);
 
-  const socket = new WebSocket(`ws://localhost:8787/ws?role=agent&token=${encodeURIComponent(config.agentToken)}`);
+  const socket = new WebSocket(`${backendWsUrl}/ws?role=agent&token=${encodeURIComponent(config.agentToken)}`);
   let statusInterval = null;
   socket.on('open', async () => {
     console.log('Cherry agent connected');

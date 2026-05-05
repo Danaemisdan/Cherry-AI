@@ -7,7 +7,7 @@ const defaultDebugProfileDir = path.join(os.homedir(), '.cherry-agent', 'chrome-
 const env = {
   ...process.env,
   CHERRY_ATTACHED_AUTO_LAUNCH: process.env.CHERRY_ATTACHED_AUTO_LAUNCH || 'true',
-  CHERRY_ATTACHED_TAKEOVER_RUNNING: process.env.CHERRY_ATTACHED_TAKEOVER_RUNNING || 'true',
+  CHERRY_ATTACHED_TAKEOVER_RUNNING: process.env.CHERRY_ATTACHED_TAKEOVER_RUNNING || 'false',
   CHERRY_RESTORE_LAST_SESSION: process.env.CHERRY_RESTORE_LAST_SESSION || 'true',
   CHERRY_CHROME_USER_DATA_DIR: process.env.CHERRY_CHROME_USER_DATA_DIR || defaultDebugProfileDir,
 };

@@ -402,58 +402,179 @@ async function openInstagramInbox(tabId) {
   await StealthEngine.applySpoofing(tabId);
   await CDPController.sendCommand(tabId, 'Page.navigate', { url: INSTAGRAM_INBOX_URL });
   await StealthEngine.waitForPageLoad(tabId);
-  await StealthEngine.sleep(3500);
-}
-
-async function clickComposeMessage(tabId) {
-  const composeEval = await evalOnPage(tabId, `
-    (() => {
-      const candidates = Array.from(document.querySelectorAll('button, div[role="button"]'));
-      const match = candidates.find((el) => {
-        const label = ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || '')).trim().toLowerCase();
-        return label.includes('new message') || label === 'send message' || label === 'chat';
-      });
-      if (!match) return null;
-      const rect = match.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0
-        ? { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }
-        : null;
-    })();
-  `);
-
-  if (!composeEval.result?.value) {
-    throw new Error('New message button could not be found.');
-  }
-
-  await StealthEngine.organicClick(tabId, composeEval.result.value.x, composeEval.result.value.y);
   await StealthEngine.sleep(2500);
 }
 
-async function focusSearchInput(tabId) {
-  const focusEval = await evalOnPage(tabId, `
+async function clickComposeMessage(tabId) {
+  console.log('[Cherry IG] Opening new message dialog...');
+
+  const composeEval = await evalOnPage(tabId, `
     (() => {
-      const selectors = [
-        'input[placeholder="Search..."]',
-        'input[placeholder="Search"]',
-        'input[aria-label*="Search"]',
-        'input[name="queryBox"]',
-        'input[type="text"]'
-      ];
-      for (const selector of selectors) {
-        const input = document.querySelector(selector);
-        if (!input) continue;
-        const rect = input.getBoundingClientRect();
-        if (rect.width < 8 || rect.height < 8) continue;
-        input.focus();
-        input.select?.();
-        return true;
+      // Strategy 1: Look by text content
+      let candidates = Array.from(document.querySelectorAll('a, button, div[role="button"], div[role="link"]'));
+      let match = candidates.find((el) => {
+        const text = (el.textContent || '').trim().toLowerCase();
+        const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+        return text.includes('new message') || ariaLabel.includes('new message');
+      });
+      
+      // Strategy 2: Look for SVG with new message icon near it
+      if (!match) {
+        const svgs = document.querySelectorAll('svg');
+        for (const svg of svgs) {
+          const ariaLabel = (svg.getAttribute('aria-label') || '').toLowerCase();
+          if (ariaLabel.includes('new message')) {
+            // Find nearest clickable parent
+            let parent = svg.parentElement;
+            for (let i = 0; i < 5 && parent; i++) {
+              if (parent.tagName === 'A' || parent.tagName === 'BUTTON' || parent.getAttribute('role') === 'button') {
+                match = parent;
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            break;
+          }
+        }
       }
-      return false;
+      
+      // Strategy 3: Look for pencil/edit icon in header
+      if (!match) {
+        const header = document.querySelector('header, [role="banner"]');
+        if (header) {
+          const buttons = header.querySelectorAll('a, button, div[role="button"]');
+          for (const btn of buttons) {
+            if (btn.querySelector('svg')) {
+              const rect = btn.getBoundingClientRect();
+              if (rect.width > 30 && rect.width < 100) {
+                match = btn;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      if (!match) return { found: false };
+      const rect = match.getBoundingClientRect();
+      return {
+        found: true,
+        x: Math.round(rect.x + rect.width / 2),
+        y: Math.round(rect.y + rect.height / 2),
+        text: match.textContent?.substring(0, 30)
+      };
     })();
   `);
 
-  if (!focusEval.result?.value) {
-    throw new Error('Search input could not be focused.');
+  const result = composeEval.result?.value;
+  if (!result?.found) {
+    throw new Error('New message button could not be found.');
+  }
+
+  console.log(`[Cherry IG] Found New Message button at (${result.x}, ${result.y})`);
+  
+  // Temporarily focus tab for the click (required for Instagram dialog to open)
+  const wasActive = await chrome.tabs.get(tabId).then(t => t.active);
+  if (!wasActive) {
+    console.log('[Cherry IG] Temporarily focusing tab for compose click...');
+    await chrome.tabs.update(tabId, { active: true });
+    await StealthEngine.sleep(500);
+  }
+  
+  // Click using CDP (works when tab is focused)
+  await CDPController.sendCommand(tabId, 'Input.dispatchMouseEvent', { 
+    type: 'mousePressed', x: result.x, y: result.y, button: 'left', clickCount: 1 
+  });
+  await StealthEngine.sleep(50);
+  await CDPController.sendCommand(tabId, 'Input.dispatchMouseEvent', { 
+    type: 'mouseReleased', x: result.x, y: result.y, button: 'left', clickCount: 1 
+  });
+  
+  console.log('[Cherry IG] Clicked compose, waiting for dialog...');
+  await StealthEngine.sleep(3000);
+  
+  // Return tab to background if it wasn't active before
+  if (!wasActive) {
+    console.log('[Cherry IG] Returning tab to background...');
+    // Note: We can't directly "unfocus" a tab, but we can switch to another tab
+    // Get all tabs and switch to a different one
+    const allTabs = await chrome.tabs.query({ currentWindow: true });
+    const otherTab = allTabs.find(t => t.id !== tabId && t.id);
+    if (otherTab) {
+      await chrome.tabs.update(otherTab.id, { active: true });
+    }
+  }
+  
+  // Verify dialog opened
+  const dialogCheck = await evalOnPage(tabId, `
+    (() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      return { hasDialog: !!dialog, dialogHTML: dialog ? dialog.innerHTML.substring(0, 200) : null };
+    })();
+  `);
+  console.log('[Cherry IG] Dialog check:', dialogCheck.result?.value);
+}
+
+async function focusSearchInput(tabId) {
+  console.log('[Cherry IG] Looking for search input in message dialog...');
+  
+  // First, ensure we're looking within the dialog only
+  const focusEval = await evalOnPage(tabId, `
+    (() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) {
+        console.log('[Cherry IG Debug] No dialog found for search');
+        return { found: false, reason: 'no-dialog' };
+      }
+      
+      // Look for search input ONLY within the dialog
+      const selectors = [
+        'input[placeholder*="Search"]',
+        'input[aria-label*="Search"]',
+        'input[type="text"]',
+        'textarea[placeholder*="Search"]',
+        '[contenteditable="true"]'
+      ];
+      
+      for (const selector of selectors) {
+        // Use querySelector on dialog element specifically
+        const input = dialog.querySelector(selector);
+        if (!input) continue;
+        
+        const rect = input.getBoundingClientRect();
+        // Must be visible and reasonably sized
+        if (rect.width < 50 || rect.height < 20) continue;
+        // Must be in upper portion of dialog (search input is near top)
+        if (rect.y > 300) continue;
+        
+        input.focus();
+        input.click?.();
+        input.select?.();
+        return { found: true, selector, y: rect.y };
+      }
+      
+      // Fallback: find any text input near top of dialog
+      const allInputs = dialog.querySelectorAll('input, textarea, [contenteditable="true"]');
+      for (const input of allInputs) {
+        const rect = input.getBoundingClientRect();
+        if (rect.width > 100 && rect.height > 20 && rect.y < 250) {
+          input.focus();
+          input.click?.();
+          return { found: true, selector: 'fallback', y: rect.y };
+        }
+      }
+      
+      return { found: false, reason: 'no-input-in-dialog' };
+    })();
+  `);
+
+  const result = focusEval.result?.value;
+  if (result?.found) {
+    console.log(`[Cherry IG] Found search input in dialog: ${result.selector} at y=${result.y}`);
+    return true;
+  } else {
+    console.error(`[Cherry IG] Could not find search input in dialog: ${result?.reason}`);
+    return false;
   }
 }
 
@@ -468,63 +589,164 @@ async function clearFocusedInput(tabId) {
 
 async function searchMessagesRecipient(tabId, username) {
   const normalizedUsername = normalizeUsername(username);
-  const searchQuery = `@${normalizedUsername}`;
+  const searchQuery = normalizedUsername;
 
-  await focusSearchInput(tabId);
+  const focused = await focusSearchInput(tabId);
+  if (!focused) {
+    console.log('[Cherry IG] Could not focus search input');
+    return null;
+  }
+  
   await clearFocusedInput(tabId);
+  console.log(`[Cherry IG] Typing search query: ${searchQuery}`);
   await StealthEngine.simulateTyping(tabId, searchQuery);
   await StealthEngine.sleep(3000);
 
+  // Wait for search results and find the user
   const resultEval = await evalOnPage(tabId, `
     (() => {
       const target = ${JSON.stringify(normalizedUsername.toLowerCase())};
-      const bodyText = document.body?.innerText || '';
-      const noResults = /no account found|no results found|no results|couldn't find anything/i.test(bodyText);
-      const scoreHandle = (value) => {
-        if (!value) return 0;
-        const clean = value.toLowerCase().replace(/^@/, '').trim();
-        if (clean === target) return 100;
-        if (clean.startsWith(target)) return 85;
-        if (target.startsWith(clean)) return 75;
-        if (clean.includes(target) || target.includes(clean)) return 60;
-        return 0;
-      };
-
-      const candidates = [];
-      for (const el of document.querySelectorAll('button, div[role="button"], label')) {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) {
+        return { error: 'no-dialog' };
+      }
+      
+      // Find all elements in dialog
+      const allDivs = dialog.querySelectorAll('div');
+      let foundElement = null;
+      let foundText = '';
+      
+      for (const el of allDivs) {
+        const text = (el.innerText || el.textContent || '').toLowerCase();
         const rect = el.getBoundingClientRect();
-        if (rect.width < 20 || rect.height < 20) continue;
-        const text = (el.innerText || el.textContent || '').trim();
-        if (!text) continue;
-        const lines = text.split('\\n').map((line) => line.trim()).filter(Boolean);
-        if (!lines.length) continue;
-        const score = Math.max(...lines.map(scoreHandle));
-        if (score <= 0) continue;
-        candidates.push({
-          score,
-          text,
+        
+        // Must be visible and reasonably sized for a user row
+        if (rect.width < 100 || rect.height < 30 || rect.y < 150) continue;
+        
+        // Split into lines and look for EXACT username match
+        const lines = text.split('\\n').map(l => l.trim().replace(/^@/, ''));
+        let exactMatch = false;
+        
+        for (const line of lines) {
+          // Must be EXACT match, not partial
+          if (line === target) {
+            exactMatch = true;
+            break;
+          }
+        }
+        
+        if (exactMatch) {
+          // Prefer clickable elements (user rows)
+          const isClickable = el.getAttribute('role') === 'button' || 
+                             el.tagName === 'BUTTON' || 
+                             el.onclick ||
+                             window.getComputedStyle(el).cursor === 'pointer';
+          
+          // Prefer elements that look like user rows (reasonable height)
+          const isUserRow = rect.height >= 50 && rect.height <= 80;
+          
+          if (!foundElement || (isClickable && isUserRow)) {
+            foundElement = el;
+            foundText = text;
+          }
+        }
+      }
+      
+      if (foundElement) {
+        const rect = foundElement.getBoundingClientRect();
+        return {
+          found: true,
+          text: foundText.split('\\n')[0].substring(0, 30),
           x: Math.round(rect.x + rect.width / 2),
           y: Math.round(rect.y + rect.height / 2)
-        });
+        };
       }
-
-      candidates.sort((a, b) => b.score - a.score);
-      return {
-        noResults,
-        best: candidates[0] || null
-      };
+      
+      return { found: false, target: target };
     })();
   `);
 
-  const payload = resultEval.result?.value;
-  if (payload?.best) {
-    return payload.best;
+  const result = resultEval.result?.value;
+  if (result?.found) {
+    console.log(`[Cherry IG] Found user: "${result.text}" at (${result.x}, ${result.y})`);
+    return { text: result.text, x: result.x, y: result.y };
   }
-  if (payload?.noResults) {
-    return null;
-  }
-
+  
+  console.log(`[Cherry IG] Could not find user: ${normalizedUsername}`);
   return null;
+}
+
+async function clickChatButton(tabId) {
+  console.log('[Cherry IG] Looking for Chat button...');
+  
+  // Try multiple strategies to find the Chat button
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const buttonEval = await evalOnPage(tabId, `
+      (() => {
+        // Strategy 1: Primary button in dialog
+        const primaryBtns = Array.from(document.querySelectorAll('div[role="dialog"] button, div[role="dialog"] div[role="button"]'));
+        for (const btn of primaryBtns) {
+          const text = (btn.textContent || '').trim().toLowerCase();
+          const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+          
+          if (text === 'chat' || text.includes('chat') || 
+              ariaLabel.includes('chat') || ariaLabel.includes('new message')) {
+            const rect = btn.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              return { 
+                found: true, 
+                x: Math.round(rect.x + rect.width / 2), 
+                y: Math.round(rect.y + rect.height / 2),
+                text: btn.textContent,
+                strategy: 'primary'
+              };
+            }
+          }
+        }
+        
+        // Strategy 2: Blue/primary colored button at bottom of dialog
+        const allBtns = Array.from(document.querySelectorAll('div[role="dialog"] button, div[role="dialog"] div[role="button"]'));
+        const bottomBtns = allBtns.filter(btn => {
+          const rect = btn.getBoundingClientRect();
+          return rect.y > window.innerHeight * 0.7 && rect.width > 100;
+        });
+        
+        if (bottomBtns.length > 0) {
+          // Pick the one that looks like a primary action (usually has specific styling)
+          const primary = bottomBtns.find(btn => {
+            const style = window.getComputedStyle(btn);
+            const bg = style.backgroundColor || style.background || '';
+            return bg.includes('rgb(0, 149') || bg.includes('rgb(56, 151') || bg.includes('blue') || btn.textContent.toLowerCase().includes('chat');
+          }) || bottomBtns[0];
+          
+          const rect = primary.getBoundingClientRect();
+          return { 
+            found: true, 
+            x: Math.round(rect.x + rect.width / 2), 
+            y: Math.round(rect.y + rect.height / 2),
+            text: primary.textContent,
+            strategy: 'bottom-button'
+          };
+        }
+        
+        return { found: false };
+      })();
+    `);
+    
+    if (buttonEval.result?.value?.found) {
+      const { x, y, text, strategy } = buttonEval.result.value;
+      console.log(`[Cherry IG] Found Chat button: "${text}" using ${strategy} at (${x}, ${y})`);
+      await StealthEngine.organicClick(tabId, x, y);
+      await StealthEngine.sleep(2000);
+      return true;
+    }
+    
+    console.log(`[Cherry IG] Chat button not found on attempt ${attempt + 1}, waiting...`);
+    await StealthEngine.sleep(1000);
+  }
+  
+  console.log('[Cherry IG] Could not find Chat button after retries');
+  return false;
 }
 
 async function searchAndOpenProfile(tabId, username) {
@@ -846,58 +1068,346 @@ async function attachAssetIfPresent(tabId, attachmentUrl) {
   }
 }
 
+async function followUserOnInstagram(tabId, username) {
+  console.log(`[Cherry IG] Following @${username} first...`);
+  
+  // Navigate to profile
+  await CDPController.sendCommand(tabId, 'Page.navigate', { url: `https://www.instagram.com/${username}/` });
+  await StealthEngine.waitForPageLoad(tabId);
+  await StealthEngine.sleep(4000); // Wait longer for profile to load
+  
+  // Find follow button with multiple strategies
+  const followEval = await CDPController.sendCommand(tabId, 'Runtime.evaluate', {
+    expression: `
+      (() => {
+        const btns = Array.from(document.querySelectorAll('div[role="button"], button'));
+        
+        // Strategy 1: Exact text match (case insensitive)
+        let followBtn = btns.find(b => {
+          const text = (b.textContent || '').trim().toLowerCase();
+          return text === 'follow';
+        });
+        
+        // Strategy 2: Check for aria-label
+        if (!followBtn) {
+          followBtn = btns.find(b => {
+            const label = (b.getAttribute('aria-label') || '').toLowerCase();
+            return label.includes('follow') && !label.includes('following');
+          });
+        }
+        
+        // Strategy 3: Check header area buttons (follow is usually in header near profile info)
+        if (!followBtn) {
+          const headerBtns = btns.filter(b => {
+            const rect = b.getBoundingClientRect();
+            // Follow button is typically in the header section, below profile pic
+            return rect.y > 150 && rect.y < 350 && rect.width > 80 && rect.width < 200;
+          });
+          followBtn = headerBtns.find(b => {
+            const text = (b.textContent || '').trim().toLowerCase();
+            // Must be EXACTLY 'follow', not 'following' or other variations
+            return text === 'follow';
+          });
+        }
+        
+        if (followBtn) {
+          const rect = followBtn.getBoundingClientRect();
+          return { 
+            found: true, 
+            x: Math.round(rect.x + rect.width / 2), 
+            y: Math.round(rect.y + rect.height / 2),
+            text: followBtn.textContent?.trim()
+          };
+        }
+        
+        // Check if already following
+        const followingBtn = btns.find(b => {
+          const text = (b.textContent || '').trim().toLowerCase();
+          return text === 'following' || text === 'requested';
+        });
+        if (followingBtn) {
+          return { found: false, alreadyFollowing: true, text: followingBtn.textContent?.trim() };
+        }
+        
+        return { found: false };
+      })();
+    `,
+    returnByValue: true
+  });
+  
+  const result = followEval.result?.value;
+  
+  if (result?.found) {
+    console.log(`[Cherry IG] Found follow button: "${result.text}" at (${result.x}, ${result.y})`);
+    await StealthEngine.organicClick(tabId, result.x, result.y);
+    await StealthEngine.sleep(2000); // Wait for follow action to complete
+    console.log(`[Cherry IG] Followed @${username}`);
+    return true;
+  } else if (result?.alreadyFollowing) {
+    console.log(`[Cherry IG] Already following @${username} (button shows: "${result.text}")`);
+    return true;
+  }
+  
+  console.log(`[Cherry IG] Could not find follow button for @${username} - may be private/unavailable`);
+  return false;
+}
+
+async function getProfileInfoQuick(tabId, username) {
+  // Try to get profile info from current page or navigate quickly
+  const result = await evalOnPage(tabId, `
+    (() => {
+      const username = ${JSON.stringify(username)};
+      let displayName = '';
+      let bio = '';
+      let recentPosts = [];
+      
+      // Try to get display name from title
+      try {
+        const title = document.title || '';
+        const match = title.match(/^(.+?)\\s*[@(]/);
+        if (match) displayName = match[1].trim();
+      } catch (e) {}
+      
+      // Try to get bio from various selectors
+      try {
+        const selectors = [
+          'header section div > span',
+          'header section span',
+          'section > div > span'
+        ];
+        for (const sel of selectors) {
+          const el = document.querySelector(sel);
+          if (el && el.textContent.trim().length > 2) {
+            bio = el.textContent.trim();
+            break;
+          }
+        }
+      } catch (e) {}
+      
+      return { username, displayName, bio, recentPosts };
+    })();
+  `);
+  return result.result?.value || { username, displayName: '', bio: '', recentPosts: [] };
+}
+
 export const InstagramDMSender = {
-  async sendDM(tabId, username, profileData, userGoal, tonePrompt, attachmentUrl) {
+  async sendDM(tabId, username, profileData, userGoal, tonePrompt, attachmentUrl, followFirst = false) {
     const normalizedUsername = normalizeUsername(username);
     if (!normalizedUsername) {
       throw new Error('Username is required.');
     }
 
-    console.log(`Starting DM flow for @${normalizedUsername}`);
-
-    const matchedProfileUsername = await searchAndOpenProfile(tabId, normalizedUsername);
-    if (!matchedProfileUsername) {
-      return { status: `No matching profile found for @${normalizedUsername}.` };
+    console.log(`[Cherry IG] Starting DM flow for @${normalizedUsername} (followFirst=${followFirst})`);
+    
+    // Step 1: Follow first if requested - navigate to profile, follow, then continue
+    let profileInfo = { username: normalizedUsername, displayName: '', bio: '' };
+    if (followFirst) {
+      console.log(`[Cherry IG] Step 1: Following @${normalizedUsername}...`);
+      await followUserOnInstagram(tabId, normalizedUsername);
+      // Get profile info while we're on the profile page
+      profileInfo = await getProfileInfoQuick(tabId, normalizedUsername);
+      await StealthEngine.sleep(1500);
     }
-    const resolvedProfileData = matchedProfileUsername
-      ? await extractProfileInfo(tabId, matchedProfileUsername)
-      : { username: normalizedUsername, displayName: '', bio: '' };
 
+    // Step 2: Go to inbox and open compose dialog
+    console.log(`[Cherry IG] Step 2: Opening inbox...`);
+    await openInstagramInbox(tabId);
+    
+    console.log(`[Cherry IG] Step 3: Clicking compose...`);
+    await clickComposeMessage(tabId);
+
+    // Step 3: Search for the recipient
+    console.log(`[Cherry IG] Step 4: Searching for @${normalizedUsername}...`);
+    let bestMatch = await searchMessagesRecipient(tabId, normalizedUsername);
+    
+    // If dialog closed (no results), try reopening
+    if (!bestMatch) {
+      console.log(`[Cherry IG] Search failed, checking if dialog is open...`);
+      const dialogCheck = await evalOnPage(tabId, `(() => { return { hasDialog: !!document.querySelector('[role="dialog"]') }; })();`);
+      if (!dialogCheck.result?.value?.hasDialog) {
+        console.log(`[Cherry IG] Dialog closed, reopening...`);
+        await clickComposeMessage(tabId);
+        await StealthEngine.sleep(2000);
+        bestMatch = await searchMessagesRecipient(tabId, normalizedUsername);
+      }
+    }
+    if (!bestMatch) {
+      console.log(`[Cherry IG] No matching recipient found for @${normalizedUsername}`);
+      return { status: `No matching recipient found for @${normalizedUsername}.` };
+    }
+
+    console.log(`[Cherry IG] Found match: "${bestMatch.text}" at (${bestMatch.x}, ${bestMatch.y})`);
+    
+    // Step 4: Click on the matched user row to select them
+    console.log(`[Cherry IG] Step 5: Clicking on user row to select...`);
+    
+    // Try clicking on the row itself
+    try {
+      await StealthEngine.organicClick(tabId, bestMatch.x, bestMatch.y);
+    } catch (err) {
+      console.log(`[Cherry IG] Organic click failed, trying direct click...`);
+      await CDPController.sendCommand(tabId, 'Input.dispatchMouseEvent', { type: 'mousePressed', x: bestMatch.x, y: bestMatch.y, button: 'left', clickCount: 1 });
+      await StealthEngine.sleep(50);
+      await CDPController.sendCommand(tabId, 'Input.dispatchMouseEvent', { type: 'mouseReleased', x: bestMatch.x, y: bestMatch.y, button: 'left', clickCount: 1 });
+    }
+    await StealthEngine.sleep(1000);
+    
+    // Verify the user was selected - look for filled checkbox or selected state
+    let selectionCheck = await evalOnPage(tabId, `
+      (() => {
+        // Look for any checked/selected indicator in the dialog
+        const dialog = document.querySelector('[role="dialog"]');
+        if (!dialog) return { selected: false, hasDialog: false };
+        
+        // Check for checked radio buttons
+        const checkedRadio = dialog.querySelector('[role="radio"][aria-checked="true"]');
+        if (checkedRadio) return { selected: true, type: 'radio' };
+        
+        // Check for SVG with checkmark or filled state
+        const svgs = dialog.querySelectorAll('svg');
+        for (const svg of svgs) {
+          const ariaLabel = svg.getAttribute('aria-label') || '';
+          if (ariaLabel.toLowerCase().includes('selected') || ariaLabel.toLowerCase().includes('checked')) {
+            return { selected: true, type: 'svg' };
+          }
+          // Check for filled circle (Instagram uses this for selection)
+          const circles = svg.querySelectorAll('circle');
+          for (const circle of circles) {
+            const fill = circle.getAttribute('fill');
+            if (fill && fill !== 'none' && fill !== 'transparent') {
+              return { selected: true, type: 'circle' };
+            }
+          }
+        }
+        
+        // Check if any user row has a "selected" class or style
+        const rows = dialog.querySelectorAll('div[role="button"], div[role="listitem"]');
+        for (const row of rows) {
+          const style = window.getComputedStyle(row);
+          const bg = style.backgroundColor;
+          // Selected rows often have different background
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+            return { selected: true, type: 'background' };
+          }
+        }
+        
+        return { selected: false, hasDialog: true };
+      })();
+    `);
+    
+    const isSelected = selectionCheck.result?.value?.selected;
+    console.log(`[Cherry IG] User selected: ${isSelected}`);
+    
+    // If not selected, try clicking more precisely on the row
+    if (!isSelected) {
+      console.log(`[Cherry IG] User not selected, trying alternative click method...`);
+      
+      // Try clicking directly on the text/username area
+      const rowClick = await evalOnPage(tabId, `
+        (() => {
+          const target = ${JSON.stringify(normalizedUsername.toLowerCase())};
+          const dialog = document.querySelector('[role="dialog"]');
+          if (!dialog) return { found: false };
+          
+          const rows = dialog.querySelectorAll('div[role="button"], div[role="listitem"]');
+          for (const row of rows) {
+            const text = (row.innerText || '').toLowerCase();
+            if (text.includes(target)) {
+              const rect = row.getBoundingClientRect();
+              // Click on the left side where the avatar is (more reliable)
+              return { 
+                found: true, 
+                x: Math.round(rect.x + 60), 
+                y: Math.round(rect.y + rect.height / 2),
+                width: rect.width,
+                height: rect.height
+              };
+            }
+          }
+          return { found: false };
+        })();
+      `);
+      
+      if (rowClick.result?.value?.found) {
+        const { x, y } = rowClick.result.value;
+        console.log(`[Cherry IG] Clicking on row at (${x}, ${y})...`);
+        await StealthEngine.organicClick(tabId, x, y);
+        await StealthEngine.sleep(1500);
+      }
+    }
+
+    // Step 5: Click Chat button
+    console.log(`[Cherry IG] Step 6: Looking for Chat button...`);
+    const chatClicked = await clickChatButton(tabId);
+    if (!chatClicked) {
+      console.log(`[Cherry IG] Warning: Could not find Chat button, attempting to continue anyway...`);
+      // Try pressing Enter as fallback
+      await CDPController.sendCommand(tabId, 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', windowsVirtualKeyCode: 13, code: 'Enter' });
+      await StealthEngine.sleep(50);
+      await CDPController.sendCommand(tabId, 'Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', windowsVirtualKeyCode: 13, code: 'Enter' });
+    }
+    
+    // Wait for dialog to close and conversation to open
+    console.log(`[Cherry IG] Waiting for conversation to open...`);
+    await StealthEngine.sleep(3000);
+    
+    // Check if we're now in a conversation (URL should change or dialog should be gone)
+    const conversationCheck = await evalOnPage(tabId, `
+      (() => {
+        const hasDialog = !!document.querySelector('[role="dialog"]');
+        const hasComposer = !!document.querySelector('[contenteditable="true"][role="textbox"], [data-lexical-editor="true"]');
+        const url = window.location.href;
+        return { hasDialog, hasComposer, url, inConversation: !hasDialog && hasComposer };
+      })();
+    `);
+    
+    const checkResult = conversationCheck.result?.value;
+    console.log(`[Cherry IG] Conversation check:`, checkResult);
+    
+    if (!checkResult?.inConversation) {
+      console.log(`[Cherry IG] Conversation didn't open properly, dialog closed but no composer found`);
+      // The user might be selected but Chat didn't work - try navigating directly
+      if (!checkResult?.hasDialog) {
+        console.log(`[Cherry IG] Attempting direct navigation to conversation...`);
+        await CDPController.sendCommand(tabId, 'Runtime.evaluate', {
+          expression: `window.location.href = 'https://www.instagram.com/direct/t/${normalizedUsername}/'`
+        });
+        await StealthEngine.sleep(3000);
+      }
+    }
+
+    // Step 6: If we didn't get profile info from following, try now (we're in chat)
+    if (!profileInfo.displayName && !profileInfo.bio) {
+      profileInfo = { username: normalizedUsername, displayName: '', bio: '' };
+    }
+
+    // Step 7: Generate message
     const prompt = buildMessagePrompt({
-      username: resolvedProfileData.username || normalizedUsername,
-      profileData: {
-        ...profileData,
-        ...resolvedProfileData
-      },
+      username: normalizedUsername,
+      profileData: { ...profileData, ...profileInfo },
       goal: userGoal,
       tonePrompt
     });
-    const fallbackPrompt = `Write one short Instagram DM to @${resolvedProfileData.username || normalizedUsername}.
+    const fallbackPrompt = `Write one short Instagram DM to @${normalizedUsername}.
 Return only the DM text.
-Start with ${resolvedProfileData.displayName || `@${resolvedProfileData.username || normalizedUsername}`}.
+Start with ${profileInfo.displayName || `@${normalizedUsername}`}.
 Goal: ${sanitizeGoal(userGoal)}
 Tone: ${String(tonePrompt || 'Casual and brief').trim() || 'Casual and brief'}
 Maximum 2 short sentences.
 DM:`;
 
-    console.log('Asking Cherry AI Engine for message...');
+    console.log('[Cherry IG] Generating message...');
     const messageText = await generateDirectMessage({
       prompt,
       fallbackPrompt,
-      username: resolvedProfileData.username || normalizedUsername,
-      profileData: {
-        ...profileData,
-        ...resolvedProfileData
-      },
+      username: normalizedUsername,
+      profileData: { ...profileData, ...profileInfo },
       goal: userGoal,
       tonePrompt
     });
 
-    const match = await openConversationFromCurrentContext(tabId, matchedProfileUsername);
-    if (!match) {
-      return { status: `No matching message recipient found for @${normalizedUsername}.` };
-    }
-
+    // Step 8: Send message
+    console.log('[Cherry IG] Sending message...');
     await focusAndInsertMessage(tabId, messageText);
     await attachAssetIfPresent(tabId, attachmentUrl);
     await StealthEngine.sleep(500);
@@ -905,7 +1415,7 @@ DM:`;
     await StealthEngine.sleep(50);
     await CDPController.sendCommand(tabId, 'Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, code: 'Enter' });
 
-    console.log(`Sent DM to @${normalizedUsername}`);
-    return { status: `DM sent to closest match for @${normalizedUsername}.` };
+    console.log(`[Cherry IG] DM sent to @${normalizedUsername}`);
+    return { status: `DM sent to @${normalizedUsername}${followFirst ? ' (followed first)' : ''}.` };
   }
 };

@@ -132,10 +132,27 @@ async function extractUsernameFromPostPage(tabId) {
 
 export const InstagramScraper = {
 
-  async scrapeHashtag(tabId, targetQuery, maxResults, onProgress) {
+  async scrapeHashtag(tabId, targetQuery, maxResults, onProgress, minFollowers = null, maxFollowers = null) {
     await StealthEngine.applySpoofing(tabId);
     const { profiles: visitedProfiles, posts: visitedPosts } = await loadHistory();
     const results = [];
+    
+    // Helper to parse follower count
+    const parseFollowers = (followersStr) => {
+      if (!followersStr) return 0;
+      const clean = followersStr.toLowerCase().replace(/,/g, '');
+      if (clean.includes('m')) return parseFloat(clean) * 1000000;
+      if (clean.includes('k')) return parseFloat(clean) * 1000;
+      return parseInt(clean) || 0;
+    };
+    
+    // Check if profile meets follower criteria
+    const meetsFollowerCriteria = (profile) => {
+      const count = parseFollowers(profile.followers);
+      if (minFollowers !== null && count < minFollowers) return false;
+      if (maxFollowers !== null && count > maxFollowers) return false;
+      return true;
+    };
 
     try {
       const tag = targetQuery.replace(/^#/, '').trim();
@@ -259,11 +276,17 @@ export const InstagramScraper = {
 
           const profile = await this._extractProfile(tabId);
           if (profile && profile.username && !['explore','p','reel'].includes(profile.username)) {
+            // Check follower limits
+            if (!meetsFollowerCriteria(profile)) {
+              console.log('[Cherry IG] Skipped:', profile.username, '- followers:', profile.followers, '(outside limits)');
+              visitedProfiles.add(authorUrl);
+              continue;
+            }
             profile.postUrl = postUrl;
             profile.postDescription = postDescription;
             results.push(profile);
             visitedProfiles.add(authorUrl);
-            console.log('[Cherry IG] ✓ Scraped:', profile.username, '| bio:', profile.bio.slice(0,40));
+            console.log('[Cherry IG] ✓ Scraped:', profile.username, '| followers:', profile.followers, '| bio:', profile.bio.slice(0,40));
             onProgress && onProgress(results.length, maxResults);
           } else {
             console.log('[Cherry IG] Profile extraction returned empty for:', username);
@@ -287,10 +310,27 @@ export const InstagramScraper = {
     return results;
   },
 
-  async scrapeByKeyword(tabId, targetQuery, maxResults, onProgress) {
+  async scrapeByKeyword(tabId, targetQuery, maxResults, onProgress, minFollowers = null, maxFollowers = null) {
     await StealthEngine.applySpoofing(tabId);
     const { profiles: visitedProfiles } = await loadHistory();
     const results = [];
+    
+    // Helper to parse follower count
+    const parseFollowers = (followersStr) => {
+      if (!followersStr) return 0;
+      const clean = followersStr.toLowerCase().replace(/,/g, '');
+      if (clean.includes('m')) return parseFloat(clean) * 1000000;
+      if (clean.includes('k')) return parseFloat(clean) * 1000;
+      return parseInt(clean) || 0;
+    };
+    
+    // Check if profile meets follower criteria
+    const meetsFollowerCriteria = (profile) => {
+      const count = parseFollowers(profile.followers);
+      if (minFollowers !== null && count < minFollowers) return false;
+      if (maxFollowers !== null && count > maxFollowers) return false;
+      return true;
+    };
 
     try {
       const hostEval = await CDPController.sendCommand(tabId, 'Runtime.evaluate', {
@@ -372,8 +412,15 @@ export const InstagramScraper = {
           await StealthEngine.sleep(1500);
           const profile = await this._extractProfile(tabId);
           if (profile?.username) {
+            // Check follower limits
+            if (!meetsFollowerCriteria(profile)) {
+              console.log('[Cherry IG] Skipped:', profile.username, '- followers:', profile.followers, '(outside limits)');
+              visitedProfiles.add(link.href);
+              continue;
+            }
             results.push(profile);
             visitedProfiles.add(link.href);
+            console.log('[Cherry IG] ✓ Scraped:', profile.username, '| followers:', profile.followers);
             onProgress && onProgress(results.length, maxResults);
           }
           await StealthEngine.sleep(Math.floor(Math.random() * 1500) + 1000);

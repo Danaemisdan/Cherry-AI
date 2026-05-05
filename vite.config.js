@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     crx({ manifest }),
   ],
+  build: {
+    minify: true,
+    cssMinify: true
+  },
   server: {
     port: 5173,
     strictPort: true,
