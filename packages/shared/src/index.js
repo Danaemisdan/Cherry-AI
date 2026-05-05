@@ -241,12 +241,12 @@ export const WORKFLOW_TEMPLATES = {
   scrape_profiles: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact'],
   execute_deep_scrape: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'open_result', 'scrape_profile', 'extract_context', 'export_artifact'],
   scrape_followers: ['open_workspace', 'open_target', 'scroll_collect', 'scrape_results', 'export_artifact'],
-  send_message: ['open_workspace', 'open_target', 'open_message', 'draft_message', 'send_message'],
-  auto_dm: ['open_workspace', 'open_target', 'open_message', 'draft_message', 'send_message'],
+  send_message: ['open_workspace', 'open_target', 'send_message'],
+  auto_dm: ['open_workspace', 'open_target', 'send_message'],
   message_batch: ['open_workspace', 'message_batch'],
   bulk_dm_csv: ['open_workspace', 'message_batch'],
-  follow_user: ['open_workspace', 'open_target', 'follow'],
-  follow_and_message: ['open_workspace', 'open_target', 'follow', 'open_message', 'draft_message', 'send_message'],
+  follow_user: ['open_workspace', 'open_target', 'follow_user'],
+  follow_and_message: ['open_workspace', 'open_target', 'follow_user', 'send_message'],
   lead_and_message: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact', 'message_batch'],
   scrape_and_message: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact', 'message_batch'],
   like_ai_comment: ['open_workspace', 'open_target', 'engage_post'],
@@ -261,7 +261,6 @@ export const WORKFLOW_TEMPLATES = {
   delete_chat: ['open_workspace', 'open_target', 'delete_chat'],
   block_user: ['open_workspace', 'open_target', 'block_user'],
   report_user: ['open_workspace', 'open_target', 'report_user'],
-  map_contacts: ['open_workspace', 'map_contacts'],
 };
 
 export const WORKFLOW_PRESETS = [
@@ -294,11 +293,6 @@ export const WORKFLOW_PRESETS = [
     id: 'lead_and_message',
     label: 'Leads + DMs',
     description: 'Find leads, export the scrape, then process provided usernames one by one.',
-  },
-  {
-    id: 'map_contacts',
-    label: 'Map contacts',
-    description: 'Read visible contacts/conversations into dashboard data where supported.',
   },
 ];
 

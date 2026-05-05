@@ -215,4 +215,10 @@ def start_server():
         admin_server.shutdown()
 
 if __name__ == "__main__":
-    start_server()
+    try:
+        start_server()
+    except Exception as e:
+        print(f"[License Server] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        input("\nPress Enter to exit...")

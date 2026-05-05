@@ -37,8 +37,8 @@ const platformMeta = [
   { id: 'facebook', label: 'Facebook', short: 'f', icon: FacebookIcon, defaultQuery: 'saas founders', description: 'Group engagement and lead prospecting.' },
   { id: 'gmail', label: 'Gmail', short: 'M', icon: GmailIcon, defaultQuery: 'warm follow up', description: 'Automated follow-ups and inbox monitoring.' },
   { id: 'whatsapp', label: 'WhatsApp', short: 'WA', icon: WhatsAppIcon, defaultQuery: 'customer follow up', description: 'One-to-one chat automation in a logged-in WhatsApp Web session.' },
-  { id: 'chatgpt', label: 'ChatGPT', short: 'GPT', icon: Lightbulb, defaultQuery: 'A cinematic landscape', description: 'Generate images via ChatGPT.' },
-  { id: 'gemini', label: 'Gemini', short: 'G', icon: Lightbulb, defaultQuery: 'A futuristic city', description: 'Generate images via Gemini.' },
+  { id: 'chatgpt', label: 'ChatGPT', short: 'GPT', icon: ChatGPTIcon, defaultQuery: 'A cinematic landscape', description: 'Generate images via ChatGPT.' },
+  { id: 'gemini', label: 'Gemini', short: 'G', icon: GeminiIcon, defaultQuery: 'A futuristic city', description: 'Generate images via Gemini.' },
   { id: 'research', label: 'Research', short: 'R', icon: SearchIcon, defaultQuery: 'best fintech founders in india', description: 'Deep research using managed stealth browser.' },
 ];
 
@@ -1311,6 +1311,22 @@ function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M23.707 20.879l-5.632-5.632A9.972 9.972 0 0 0 20 9.999a10 10 0 1 0-10 10 9.972 9.972 0 0 0 5.247-1.925l5.632 5.632a2 2 0 1 0 2.828-2.828ZM2 9.999a8 8 0 1 1 8 8 8.01 8.01 0 0 1-8-8Z" />
+    </svg>
+  );
+}
+
+function ChatGPTIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-1.5609-7.2502 6.0063 6.0063 0 0 0-8.3202.9649 5.9856 5.9856 0 0 0-8.3973 2.0526 6.0063 6.0063 0 0 0 .548 8.3534 5.985 5.985 0 0 0 1.5609 7.2503 6.0063 6.0063 0 0 0 8.3202-.9649 5.9856 5.9856 0 0 0 8.3973-2.0525 6.006 6.006 0 0 0-.548-8.3536Zm-8.6521 7.3651v-5.1054l4.423-2.5532.032.013v5.527l-4.455 2.5705v-.4519Zm-1.21-1.0664-4.4365-2.5604 2.2155-3.8373h5.539l-2.202 3.8138-1.116.6453-.0001 1.9386Zm-5.326-1.5162-2.228-3.859 4.423-2.5532 2.2144 3.8354-4.41 2.5457v.0311Zm-1.464-6.3117 2.2155-3.8374h8.86l-2.2156 3.8374H7.6298Zm2.674-2.5828 4.4365 2.5604-2.2154 3.8374H4.386l2.202-3.8138 1.116-.6453.0001-1.9387Zm5.326 1.5163 2.228 3.859-4.423 2.5532-2.2144-3.8353 4.41-2.5458v-.0311Zm1.464 6.3117-2.2156 3.8373h-8.86l2.2156-3.8373h6.6444Zm-5.111-2.6075 2.2281-1.2863 2.2281 1.2863v2.5726l-2.2281 1.2862-2.2281-1.2862V10.93Z"/>
+    </svg>
+  );
+}
+
+function GeminiIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.049 2.006c-.456-1.048-1.745-1.048-2.201 0l-1.921 4.409-4.321 2.052c-1.018.484-1.018 1.91 0 2.394l4.32 2.053 1.922 4.408c.456 1.048 1.745 1.048 2.201 0l1.922-4.408 4.32-2.053c1.018-.484 1.018-1.91 0-2.394l-4.32-2.052Zm8.081 13.918c-.342-.786-1.308-.786-1.65 0l-.824 1.89-1.851.879c-.437.208-.437.82 0 1.027l1.85.88.825 1.889c.342.786 1.308.786 1.65 0l.824-1.89 1.851-.879c.437-.208.437-.82 0-1.027l-1.85-.88Z"/>
     </svg>
   );
 }

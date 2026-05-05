@@ -242,6 +242,11 @@ const baseHandler = createSocialHandler('twitter', {
   commentSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]'],
   commentSubmitSelectors: ['button[data-testid="tweetButton"]'],
   commentSubmitLabels: ['Reply'],
+  async openPostComposer(page) {
+    await navigate(page, 'https://twitter.com/compose/tweet', 'twitter');
+    await waitForAppShell(page, 'twitter');
+    await minimalDelay(1000);
+  },
   postComposerSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]'],
   publishPostSelectors: ['button[data-testid="tweetButtonInline"]', 'button[data-testid="tweetButton"]'],
   publishPostLabels: ['Post'],

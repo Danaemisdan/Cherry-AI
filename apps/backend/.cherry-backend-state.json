@@ -8,7 +8,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 5,
+      "tabs": 3,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -15504,6 +15504,609 @@
       "createdAt": "2026-05-04T23:43:22.045Z",
       "assignedAgentId": "agent_s0talsp3",
       "dispatchedAt": "2026-05-05T01:14:08.041Z"
+    },
+    {
+      "id": "task_srabxwr3",
+      "status": "failed",
+      "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+      "context": {
+        "platform": "linkedin",
+        "operation": "send_message",
+        "query": "fintech founders india",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_k1e71dnu",
+          "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_srabxwr3",
+            "objective": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+            "targetPlatforms": [
+              "linkedin"
+            ],
+            "steps": [
+              {
+                "id": "linkedin_0_7ep05r0i",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "send_message",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_1_nr2bfam7",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "send_message",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_2_wwmz40rt",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "open_message",
+                "args": {
+                  "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "send_message",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_3_7dsj7izd",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "send_message",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "linkedin_4_plfgymcc",
+                "platform": "linkedin",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Message the selected contact on LinkedIn. Goal: Get a meeting. Tone: Casual and brief.",
+                  "platform": "linkedin",
+                  "query": "fintech founders india",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "send_message",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on linkedin",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_0_7ep05r0i",
+          "label": "linkedin:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_0_7ep05r0i",
+          "message": "Opened linkedin workspace",
+          "duration": 32957
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_1_nr2bfam7",
+          "label": "linkedin:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "linkedin_1_nr2bfam7",
+          "message": "Opened on linkedin",
+          "duration": 35710
+        },
+        {
+          "type": "step.started",
+          "stepId": "linkedin_2_wwmz40rt",
+          "label": "linkedin:open_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "linkedin_2_wwmz40rt",
+          "error": "linkedin does not support the \"open_message\" action in Cherry yet",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "linkedin does not support the \"open_message\" action in Cherry yet"
+        }
+      ],
+      "createdAt": "2026-05-05T07:18:00.254Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-05T07:18:00.258Z"
+    },
+    {
+      "id": "task_qw8933z3",
+      "status": "failed",
+      "prompt": "Map visible contacts and conversations from WhatsApp into the dashboard.",
+      "context": {
+        "platform": "whatsapp",
+        "operation": "map_contacts",
+        "query": "customer follow up",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "artifact",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_xokx8ky2",
+          "prompt": "Map visible contacts and conversations from WhatsApp into the dashboard."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_qw8933z3",
+            "objective": "Map visible contacts and conversations from WhatsApp into the dashboard.",
+            "targetPlatforms": [
+              "whatsapp"
+            ],
+            "steps": [
+              {
+                "id": "whatsapp_0_wdqcnubl",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Map visible contacts and conversations from WhatsApp into the dashboard.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "map_contacts",
+                  "maxResults": 15,
+                  "destination": "artifact",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "whatsapp_1_zd9gp5it",
+                "platform": "whatsapp",
+                "browserMode": "attached",
+                "action": "map_contacts",
+                "args": {
+                  "prompt": "Map visible contacts and conversations from WhatsApp into the dashboard.",
+                  "platform": "whatsapp",
+                  "query": "customer follow up",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "map_contacts",
+                  "maxResults": 15,
+                  "destination": "artifact",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete map_contacts on whatsapp",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_0_wdqcnubl",
+          "label": "whatsapp:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "whatsapp_0_wdqcnubl",
+          "message": "Opened whatsapp workspace",
+          "duration": 80
+        },
+        {
+          "type": "step.started",
+          "stepId": "whatsapp_1_zd9gp5it",
+          "label": "whatsapp:map_contacts"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "whatsapp_1_zd9gp5it",
+          "error": "whatsapp does not support the \"map_contacts\" action in Cherry yet",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "whatsapp does not support the \"map_contacts\" action in Cherry yet"
+        }
+      ],
+      "createdAt": "2026-05-05T07:18:19.536Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-05T07:18:19.541Z"
+    },
+    {
+      "id": "task_f855ixp3",
+      "status": "completed",
+      "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+      "context": {
+        "platform": "instagram",
+        "operation": "find_leads",
+        "query": "founders in fintech",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "sheet",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_ydshhbho",
+          "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_f855ixp3",
+            "objective": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_tl9yqbdq",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_xvqj1n3d",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_home",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_home on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_eez6nnk8",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "search",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete search on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_y51asn4f",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "apply_filters",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete apply_filters on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_4_nzp4xw12",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "scroll_collect",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scroll_collect on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_5_lvatkm5g",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "scrape_results",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scrape_results on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_6_9e974m2s",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "export_artifact",
+                "args": {
+                  "prompt": "Find 15 leads on Instagram for \"founders in fintech\" and export them to a sheet.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "find_leads",
+                  "maxResults": 15,
+                  "destination": "sheet",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete export_artifact on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_tl9yqbdq",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_tl9yqbdq",
+          "message": "Opened instagram workspace",
+          "duration": 6288
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_xvqj1n3d",
+          "label": "instagram:open_home"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_xvqj1n3d",
+          "message": "Opened instagram home page",
+          "duration": 10
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_eez6nnk8",
+          "label": "instagram:search"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_eez6nnk8",
+          "message": "Navigated to instagram search results",
+          "duration": 7660
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_y51asn4f",
+          "label": "instagram:apply_filters"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_y51asn4f",
+          "message": "Applied visible instagram search controls",
+          "duration": 0
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_4_nzp4xw12",
+          "label": "instagram:scroll_collect"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_4_nzp4xw12",
+          "message": "Scrolled and collected visible instagram context",
+          "duration": 2756
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_5_lvatkm5g",
+          "label": "instagram:scrape_results"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_5_lvatkm5g",
+          "message": "Collected visible instagram search results for \"founders in fintech\"",
+          "duration": 1371
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_6_9e974m2s",
+          "label": "instagram:export_artifact"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_6_9e974m2s",
+          "message": "Prepared artifact output",
+          "duration": 898
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_h3jn59lt",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_h3jn59lt.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 7 steps"
+        }
+      ],
+      "createdAt": "2026-05-05T16:15:01.287Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-05T16:15:01.292Z"
     }
   ],
   "campaigns": [],
