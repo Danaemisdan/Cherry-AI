@@ -155,7 +155,14 @@ async function messageContactViaInbox(page, username) {
     
     const matchInfo = await page.evaluate((targetName) => {
       const target = targetName.toLowerCase().trim();
-      const rows = Array.from(document.querySelectorAll('div')).filter(el => {
+      // Restrict search to dialog if open, else document
+      const container = document.querySelector('div[role="dialog"]') || document;
+      
+      const rows = Array.from(container.querySelectorAll('div')).filter(el => {
+        const rect = el.getBoundingClientRect();
+        // Skip invisible or massive wrapper divs
+        if (rect.height === 0 || rect.height > 150) return false;
+        
         const role = el.getAttribute('role');
         return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
       });
@@ -257,8 +264,15 @@ async function messageViaInbox(page, username) {
   // Extract and find results robustly
   const matchInfo = await page.evaluate((targetName) => {
     const target = targetName.toLowerCase().trim();
+    // Restrict search to dialog if open, else document
+    const container = document.querySelector('div[role="dialog"]') || document;
+    
     // Find all possible user rows in the modal
-    const rows = Array.from(document.querySelectorAll('div')).filter(el => {
+    const rows = Array.from(container.querySelectorAll('div')).filter(el => {
+      const rect = el.getBoundingClientRect();
+      // Skip invisible or massive wrapper divs
+      if (rect.height === 0 || rect.height > 150) return false;
+      
       const role = el.getAttribute('role');
       // Must be an interactive row or contain an image/avatar
       return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
