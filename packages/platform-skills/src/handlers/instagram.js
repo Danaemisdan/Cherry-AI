@@ -153,18 +153,47 @@ async function messageContactViaInbox(page, username) {
     
     await minimalDelay(2500 + Math.random() * 1500);
     
-    const content = await extractPageContent(page);
-    const userResults = content.interactiveElements.filter(e => 
-      e.text.toLowerCase().includes(username.toLowerCase()) && 
-      e.visible !== false &&
-      (e.href?.includes('/direct/t/') || e.role === 'link' || e.role === 'button')
-    );
+    const matchInfo = await page.evaluate((targetName) => {
+      const target = targetName.toLowerCase().trim();
+      const rows = Array.from(document.querySelectorAll('div')).filter(el => {
+        const role = el.getAttribute('role');
+        return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
+      });
+      
+      const getCleanText = (el) => el.innerText ? el.innerText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+      let bestRow = null;
+      
+      for (const row of rows) {
+        const text = getCleanText(row);
+        if (text === target || text.split('\n').includes(target)) {
+          bestRow = row; break;
+        }
+      }
+      
+      if (!bestRow) {
+        for (const row of rows) {
+          const text = getCleanText(row);
+          if (text.includes(target) && !text.includes('to:')) {
+            bestRow = row; break;
+          }
+        }
+      }
+      
+      if (bestRow) {
+        const rect = bestRow.getBoundingClientRect();
+        return { 
+          found: true, 
+          x: rect.left + Math.min(60, rect.width / 2), 
+          y: rect.top + (rect.height / 2),
+          text: getCleanText(bestRow)
+        };
+      }
+      return { found: false };
+    }, username);
     
-    if (userResults.length > 0) {
-      await page.evaluate(({ tag, index }) => {
-        const elements = document.querySelectorAll(tag);
-        if (elements[index]) elements[index].click();
-      }, { tag: userResults[0].tag, index: userResults[0].index });
+    if (matchInfo.found) {
+      console.log(`[Instagram] Clicking contact row at ${matchInfo.x}, ${matchInfo.y}`);
+      await page.mouse.click(matchInfo.x, matchInfo.y);
       await minimalDelay(1000);
       return { success: true, method: 'contact_inbox' };
     }
@@ -225,47 +254,68 @@ async function messageViaInbox(page, username) {
   
   await minimalDelay(2500 + Math.random() * 1500); // Just enough for results
   
-  // Extract and find results
-  const content = await extractPageContent(page);
-  const userResults = content.interactiveElements.filter(e => 
-    e.text.toLowerCase().includes(username.toLowerCase()) && 
-    e.visible !== false &&
-    !e.text.includes('To:')
-  );
-  
-  if (userResults.length > 0) {
-    const bestMatch = userResults[0];
-    await page.evaluate(({ tag, index }) => {
-      const elements = document.querySelectorAll(tag);
-      if (elements[index]) elements[index].click();
-    }, { tag: bestMatch.tag, index: bestMatch.index });
+  // Extract and find results robustly
+  const matchInfo = await page.evaluate((targetName) => {
+    const target = targetName.toLowerCase().trim();
+    // Find all possible user rows in the modal
+    const rows = Array.from(document.querySelectorAll('div')).filter(el => {
+      const role = el.getAttribute('role');
+      // Must be an interactive row or contain an image/avatar
+      return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
+    });
     
+    const getCleanText = (el) => el.innerText ? el.innerText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+    let bestRow = null;
+    
+    // Strategy 1: Exact match or split exact match
+    for (const row of rows) {
+      const text = getCleanText(row);
+      if (text === target || text.split('\n').includes(target)) {
+        bestRow = row; break;
+      }
+    }
+    
+    // Strategy 2: Includes match (fuzzy)
+    if (!bestRow) {
+      for (const row of rows) {
+        const text = getCleanText(row);
+        if (text.includes(target) && !text.includes('to:')) {
+          bestRow = row; break;
+        }
+      }
+    }
+    
+    if (bestRow) {
+      const rect = bestRow.getBoundingClientRect();
+      return { 
+        found: true, 
+        x: rect.left + Math.min(60, rect.width / 2), 
+        y: rect.top + (rect.height / 2),
+        text: getCleanText(bestRow)
+      };
+    }
+    return { found: false };
+  }, username);
+  
+  if (matchInfo.found) {
+    console.log(`[Instagram] Clicking matched user row at ${matchInfo.x}, ${matchInfo.y} (Text: ${matchInfo.text})`);
+    await page.mouse.click(matchInfo.x, matchInfo.y);
     await minimalDelay(1000);
     
     // Click Chat button if present
-    const chatButton = await findElementsByText(page, 'Chat', {
-      tagNames: ['div', 'button'],
-      fuzzy: false
-    });
-    
-    if (chatButton.length > 0) {
-      await page.evaluate(({ tag, index }) => {
-        const elements = document.querySelectorAll(tag);
-        if (elements[index]) elements[index].click();
-      }, { tag: chatButton[0].tag, index: chatButton[0].index });
+    const chatButton = await page.locator('div[role="button"]:has-text("Chat"), button:has-text("Chat")').first();
+    if (await chatButton.count() > 0 && await chatButton.isVisible()) {
+      await chatButton.click().catch(() => {});
       await minimalDelay(1000);
     }
   } else {
-    // Fallback: hit Enter if user element not directly found
+    console.log('[Instagram] No fuzzy match found, falling back to Enter key');
     await page.keyboard.press('Enter');
     await minimalDelay(500);
     
-    const chatButton = await findElementsByText(page, 'Chat', { tagNames: ['div', 'button'], fuzzy: false });
-    if (chatButton.length > 0) {
-      await page.evaluate(({ tag, index }) => {
-        const elements = document.querySelectorAll(tag);
-        if (elements[index]) elements[index].click();
-      }, { tag: chatButton[0].tag, index: chatButton[0].index });
+    const chatButton = await page.locator('div[role="button"]:has-text("Chat"), button:has-text("Chat")').first();
+    if (await chatButton.count() > 0 && await chatButton.isVisible()) {
+      await chatButton.click().catch(() => {});
       await minimalDelay(1000);
     }
   }
@@ -767,41 +817,47 @@ export const instagramHandler = {
       // STEP 2: Try messaging methods
       let chatOpened = null;
       let methodUsed = null;
+      const triedMethods = new Set();
       
       if (operation === 'auto_dm_contact') {
+        triedMethods.add('contact_inbox');
         chatOpened = await messageContactViaInbox(page, username);
         if (chatOpened) methodUsed = 'contact_inbox';
       } else if (operation === 'auto_dm_new' || operation === 'auto_dm') {
+        triedMethods.add('new_message_modal');
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'new_message_modal';
       }
       
       // Method: Inbox (Fallback if not explicitly defined above, or if defined but failed)
       if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
+        triedMethods.add('inbox');
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'inbox';
       }
       
       // Method 2: Profile (if inbox failed or not suitable AND we aren't restricted to inbox)
       if (!chatOpened && profileContext.canMessage && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
+        triedMethods.add('profile');
         chatOpened = await messageViaProfile(page, username);
         if (chatOpened) methodUsed = 'profile';
       }
       
       // Method 3: Explore
       if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
+        triedMethods.add('explore');
         chatOpened = await messageViaExplore(page, username);
         if (chatOpened) methodUsed = 'explore';
       }
       
       // Ultimate fallback to generic inbox method if the specific one failed
-      if (!chatOpened) {
+      if (!chatOpened && !triedMethods.has('new_message_modal') && !triedMethods.has('inbox')) {
          chatOpened = await messageViaInbox(page, username);
          if (chatOpened) methodUsed = 'fallback_inbox';
       }
       
       if (!chatOpened) {
-        throw new Error(`Could not open chat with @${username}. They may have restricted messaging.`);
+        throw new Error(`Could not open chat with @${username}. They may have restricted messaging or search failed to find them.`);
       }
       
       console.log(`[Instagram] Chat opened via: ${methodUsed}`);
