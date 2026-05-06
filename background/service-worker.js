@@ -230,9 +230,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             result = { status: 'Scraped 0 profiles. Is Instagram open and logged in?' };
           }
 
-        } else if (request.type === 'ig_dm') {
+        } else if (request.type === 'ig_dm' || request.type === 'ig_dm_contact' || request.type === 'ig_dm_new') {
           const followFirst = request.payload.followFirst || false;
-          await InstagramDMSender.sendDM(activeTabId, request.payload.username, {}, request.payload.userGoal, request.payload.tonePrompt, request.payload.attachmentUrl, followFirst);
+          const method = request.type === 'ig_dm_contact' ? 'contact' : 'new';
+          await InstagramDMSender.sendDM(activeTabId, request.payload.username, {}, request.payload.userGoal, request.payload.tonePrompt, request.payload.attachmentUrl, followFirst, method);
           result = { status: followFirst ? 'Followed then DM dispatched.' : 'DM dispatched.' };
 
         } else if (request.type === 'ig_csv_dm') {

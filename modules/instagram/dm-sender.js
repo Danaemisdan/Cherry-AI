@@ -611,44 +611,53 @@ async function searchMessagesRecipient(tabId, username) {
         return { error: 'no-dialog' };
       }
       
-      // Find all elements in dialog
-      const allDivs = dialog.querySelectorAll('div');
+      // Find elements that look like user rows specifically
+      const rowCandidates = Array.from(dialog.querySelectorAll('div, button')).filter(el => {
+        // Skip hidden elements
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        
+        // It must have a decent height to be a row, but not be the whole container
+        const rect = el.getBoundingClientRect();
+        if (rect.height < 40 || rect.height > 100) return false;
+        if (rect.width < 100) return false;
+        
+        // It must contain an SVG (the circle checkbox) or an image (the avatar)
+        // or have a specific role
+        const role = el.getAttribute('role');
+        const hasSvgOrImg = el.querySelector('svg') || el.querySelector('img');
+        
+        return role === 'button' || role === 'listitem' || role === 'checkbox' || hasSvgOrImg;
+      });
+      
       let foundElement = null;
       let foundText = '';
       
-      for (const el of allDivs) {
+      for (const el of rowCandidates) {
         const text = (el.innerText || el.textContent || '').toLowerCase();
-        const rect = el.getBoundingClientRect();
-        
-        // Must be visible and reasonably sized for a user row
-        if (rect.width < 100 || rect.height < 30 || rect.y < 150) continue;
-        
-        // Split into lines and look for EXACT username match
         const lines = text.split('\\n').map(l => l.trim().replace(/^@/, ''));
+        
         let exactMatch = false;
+        let partialMatch = false;
         
         for (const line of lines) {
-          // Must be EXACT match, not partial
           if (line === target) {
             exactMatch = true;
             break;
           }
+          if (line.includes(target) || target.includes(line)) {
+            partialMatch = true;
+          }
         }
         
-        if (exactMatch) {
-          // Prefer clickable elements (user rows)
-          const isClickable = el.getAttribute('role') === 'button' || 
-                             el.tagName === 'BUTTON' || 
-                             el.onclick ||
-                             window.getComputedStyle(el).cursor === 'pointer';
+        if (exactMatch || partialMatch) {
+          // If we already found an exact match, don't overwrite it with a partial match
+          if (foundElement && !exactMatch) continue;
           
-          // Prefer elements that look like user rows (reasonable height)
-          const isUserRow = rect.height >= 50 && rect.height <= 80;
+          foundElement = el;
+          foundText = text;
           
-          if (!foundElement || (isClickable && isUserRow)) {
-            foundElement = el;
-            foundText = text;
-          }
+          if (exactMatch) break; // Exact match is best, stop searching
         }
       }
       
@@ -657,7 +666,8 @@ async function searchMessagesRecipient(tabId, username) {
         return {
           found: true,
           text: foundText.split('\\n')[0].substring(0, 30),
-          x: Math.round(rect.x + rect.width / 2),
+          // Click slightly to the right of the left edge to reliably hit the row content
+          x: Math.round(rect.x + 60),
           y: Math.round(rect.y + rect.height / 2)
         };
       }
@@ -1191,7 +1201,7 @@ async function getProfileInfoQuick(tabId, username) {
 }
 
 export const InstagramDMSender = {
-  async sendDM(tabId, username, profileData, userGoal, tonePrompt, attachmentUrl, followFirst = false) {
+  async sendDM(tabId, username, profileData, userGoal, tonePrompt, attachmentUrl, followFirst = false, method = 'new') {
     const normalizedUsername = normalizeUsername(username);
     if (!normalizedUsername) {
       throw new Error('Username is required.');

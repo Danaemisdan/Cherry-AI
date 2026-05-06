@@ -194,8 +194,11 @@ const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onSt
 
           {/* Single Actions */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
-              Auto-DM
+            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm_contact`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
+              DM a Contact
+            </button>
+            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm_new`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
+              DM a New Person
             </button>
             <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_engage`, { username: targetUser, userGoal: goal, tonePrompt: tone })}>
               Like + AI Comment
