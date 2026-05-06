@@ -491,24 +491,14 @@ async function sendInstagramMessage(page, message, options = {}) {
   console.log('[Instagram] Sending message...');
   
   // Find composer
-  const composerResults = await findElementsByText(page, '', {
-    tagNames: ['textarea', 'div[contenteditable="true"]'],
-    fuzzy: true
-  });
-  
-  if (composerResults.length === 0) {
+  const composer = await page.locator('textarea, div[contenteditable="true"]').last();
+  if (await composer.count() === 0) {
     throw new Error('Message composer not found');
   }
   
   // Click composer and type
-  await page.evaluate(({ tag, index }) => {
-    const elements = document.querySelectorAll(tag);
-    if (elements[index]) {
-      elements[index].click();
-      elements[index].focus();
-    }
-  }, { tag: composerResults[0].tag, index: composerResults[0].index });
-  
+  await composer.click({ force: true }).catch(() => {});
+  await composer.focus().catch(() => {});
   await minimalDelay(500 + Math.random() * 1000);
   
   // Human-like typing
@@ -520,23 +510,17 @@ async function sendInstagramMessage(page, message, options = {}) {
   if (attachmentPath) {
     console.log('[Instagram] Attaching media...');
     try {
-      // Look for attachment button
-      const attachBtn = await findElementsByText(page, 'Gallery', {
-        tagNames: ['button', 'svg', 'div'],
-        fuzzy: true
-      });
-      
-      if (attachBtn.length > 0) {
-        await page.evaluate(({ tag, index }) => {
-          const elements = document.querySelectorAll(tag);
-          if (elements[index]) elements[index].click();
-        }, { tag: attachBtn[0].tag, index: attachBtn[0].index });
+      const attachBtn = await page.locator('svg[aria-label="Gallery"], svg[aria-label="Add photo or video"], button[aria-label="Add photo or video"]').first();
+      if (await attachBtn.count() > 0) {
+        await attachBtn.evaluate(el => {
+          const btn = el.closest('button') || el.closest('div[role="button"]') || el;
+          btn.click();
+        }).catch(() => {});
         
-        await minimalDelay(500);
+        await minimalDelay(1000);
         
-        // Find file input
         const fileInput = await page.locator('input[type="file"]').first();
-        if (fileInput) {
+        if (await fileInput.count() > 0) {
           await fileInput.setInputFiles(attachmentPath);
           await minimalDelay(2000);
         }
@@ -548,23 +532,23 @@ async function sendInstagramMessage(page, message, options = {}) {
   
   // Send or wait for review
   if (!requireManualReview) {
-    // Try send button
-    const sendBtn = await findElementsByText(page, 'Send', {
-      tagNames: ['button', 'div'],
-      fuzzy: false
-    });
+    await minimalDelay(1000); // Wait for the Send button to become active
     
-    if (sendBtn.length > 0) {
-      await page.evaluate(({ tag, index }) => {
-        const elements = document.querySelectorAll(tag);
-        if (elements[index]) elements[index].click();
-      }, { tag: sendBtn[0].tag, index: sendBtn[0].index });
+    // Try send button
+    const sendBtn = await page.locator('svg[aria-label="Send"], button:has-text("Send"), button[aria-label="Send"], div[role="button"]:has-text("Send")').first();
+    
+    if (await sendBtn.count() > 0 && await sendBtn.isVisible()) {
+      console.log('[Instagram] Clicking Send button natively');
+      await sendBtn.evaluate(el => {
+        const btn = el.closest('button') || el.closest('div[role="button"]') || el;
+        btn.click();
+      }).catch(() => {});
     } else {
-      // Fallback to Enter key
+      console.log('[Instagram] Send button not found, falling back to Enter key');
       await page.keyboard.press('Enter');
     }
     
-    await minimalDelay(500);
+    await minimalDelay(1500);
     console.log('[Instagram] Message sent');
     return { sent: true };
   }
@@ -884,8 +868,11 @@ export const instagramHandler = {
       
       console.log(`[Instagram] Chat opened via: ${methodUsed}`);
       
-      // STEP 3: Extract chat history if existing conversation
-      const chatHistory = await extractInstagramChatHistory(page, 6);
+      // STEP 3: Extract chat history ONLY for reply flows, never for cold DM operations
+      // Cold DMs (auto_dm_contact, auto_dm_new, auto_dm) must not use scraped sidebar text as context
+      // — it causes the LLM to hallucinate from unrelated messages visible in the inbox
+      const isColdDm = ['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation);
+      const chatHistory = isColdDm ? [] : await extractInstagramChatHistory(page, 6);
       
       // STEP 4: Generate personalized message
       const message = await generateOutreachMessage({
@@ -894,8 +881,8 @@ export const instagramHandler = {
         tone,
         query,
         platform: 'instagram',
-        chatContext: chatHistory,
-        profileInfo: profileContext
+        chatContext: chatHistory,    // Empty for cold DMs — goal+tone only
+        profileInfo: profileContext  // Empty object for inbox-only flows (no profile scraped)
       });
       
       console.log(`[Instagram] Message: "${message.slice(0, 50)}..."`);

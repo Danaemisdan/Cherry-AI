@@ -321,30 +321,34 @@ Write your reply now:`;
   }
 
   // Cold outreach prompt
+  const hasProfileInfo = !!(profileInfo && (profileInfo.bio || profileInfo.recentPost || profileInfo.name));
+  
   return `You are writing an initial DM to ${recipient} on ${platform}.
 
 YOUR GOAL: ${objective}
-${context ? `\nCONTEXT TO INCLUDE: ${context}` : ''}${profileSection}
+${context ? `\nCONTEXT: ${context}` : ''}${profileSection}
 
 INSTRUCTIONS:
-- BE RESPECTFUL AND PROFESSIONAL - never be rude, abusive, or harassing even if the goal suggests it
-- USE THE PROFILE CONTEXT provided above - reference their job, company, bio, or recent posts when relevant
+- BE RESPECTFUL AND PROFESSIONAL - never be rude, abusive, or harassing
+${hasProfileInfo ? `- USE THE PROFILE CONTEXT provided above - reference their job, company, bio, or recent posts when relevant
 - If they work at a company, mention it naturally
 - If they posted about something recently, reference it specifically (not generic "saw your post")
-- If their bio mentions something interesting, reference it
+- If their bio mentions something interesting, reference it` : `- Focus on the GOAL above — write a direct, personal message that clearly serves that goal
+- Do NOT make up or reference profile details you don't have
+- Make it feel like a genuine, direct outreach for the stated purpose`}
 - Write 1-2 SHORT sentences max (total 20 words or less)
 - Sound like a real person texting, NOT a formal email
-- NEVER use placeholders like [your name], {name}, [recipient], [company], etc. - use the ACTUAL info from context
+- NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
 - NEVER start with "Subject:" lines
 - NO "Dear Sir/Madam" or formal business language
 - Be direct and casual
-- Make it feel PERSONAL - like you actually looked at their profile
 
 STYLE: ${style}
 
 CRITICAL RULES - VIOLATING THESE WILL FAIL:
 - Return ONLY the message text - NO labels, NO quotes, NO "Subject:" lines
 - 1-2 SHORT sentences max (20 words total)
+- NEVER repeat yourself or say the same thing twice
 - NEVER use placeholders like [your name], {name}, [recipient], [company], etc.
 - NEVER write "Subject:" or include email formatting
 - NEVER include signatures like "Best regards" or "Sent from..."
