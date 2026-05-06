@@ -126,7 +126,54 @@ async function getInstagramProfileContext(page, username) {
   return context;
 }
 
-// Method 1: Message via inbox search - OPTIMIZED FOR SPEED
+// Method 1a: Message contact via inbox (search existing threads)
+async function messageContactViaInbox(page, username) {
+  console.log(`[Instagram] Method: Contact Inbox messaging...`);
+  
+  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(1000);
+  
+  // Try to find the search input in the left rail
+  const searchInput = await firstVisibleLocator(page, [
+    'input[placeholder*="Search"]',
+    'input[aria-label*="Search"]'
+  ]);
+  
+  if (searchInput) {
+    await searchInput.click();
+    await searchInput.fill('');
+    await searchInput.type(username, { delay: 50 });
+    await minimalDelay(1500);
+    
+    const content = await extractPageContent(page);
+    const userResults = content.interactiveElements.filter(e => 
+      e.text.toLowerCase().includes(username.toLowerCase()) && 
+      e.visible !== false &&
+      (e.href?.includes('/direct/t/') || e.role === 'link')
+    );
+    
+    if (userResults.length > 0) {
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
+        if (elements[index]) elements[index].click();
+      }, { tag: userResults[0].tag, index: userResults[0].index });
+      await minimalDelay(1000);
+      return { success: true, method: 'contact_inbox' };
+    }
+  }
+  
+  // Fallback: Just click the text in the list
+  const clicked = await clickByText(page, ['span', 'div'], [username]);
+  if (clicked) {
+    await minimalDelay(1000);
+    return { success: true, method: 'contact_inbox' };
+  }
+  
+  return false;
+}
+
+// Method 1b: Message via New Message modal - OPTIMIZED FOR SPEED
 async function messageViaInbox(page, username) {
   console.log(`[Instagram] Method 1: Inbox messaging...`);
   
@@ -651,22 +698,30 @@ export const instagramHandler = {
     
     // ACTION: Send message (with 3 methods)
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview, attachmentPath } = args;
+      const { username, messageGoal, tone, query, requireManualReview, attachmentPath, operation } = args;
       
-      console.log(`[Instagram] Starting DM to @${username}`);
+      console.log(`[Instagram] Starting DM to @${username} (Operation: ${operation || 'default'})`);
       
       // STEP 1: Get profile context FIRST
       await navigateToProfileViaSearch(page, username);
       const profileContext = await getInstagramProfileContext(page, username);
       
-      // STEP 2: Try 3 messaging methods
+      // STEP 2: Try messaging methods
       let chatOpened = null;
       let methodUsed = null;
       
-      // Method 1: Inbox
-      chatOpened = await messageViaInbox(page, username);
-      if (chatOpened) {
-        methodUsed = 'inbox';
+      if (operation === 'auto_dm_contact') {
+        chatOpened = await messageContactViaInbox(page, username);
+        if (chatOpened) methodUsed = 'contact_inbox';
+      } else if (operation === 'auto_dm_new') {
+        chatOpened = await messageViaInbox(page, username);
+        if (chatOpened) methodUsed = 'new_message_modal';
+      }
+      
+      // Method: Inbox (Fallback if not explicitly defined above, or if defined but failed)
+      if (!chatOpened) {
+        chatOpened = await messageViaInbox(page, username);
+        if (chatOpened) methodUsed = 'inbox';
       }
       
       // Method 2: Profile (if inbox failed or not suitable)

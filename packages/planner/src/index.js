@@ -68,6 +68,8 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'open_workspace') return ['open_workspace'];
   if (operation === 'send_message') return ['open_workspace', 'open_target', 'draft_message', 'send_message'];
   if (operation === 'auto_dm') return ['open_workspace', 'open_target', 'draft_message', 'send_message'];
+  if (operation === 'auto_dm_contact') return ['open_workspace', 'open_target', 'draft_message', 'send_message'];
+  if (operation === 'auto_dm_new') return ['open_workspace', 'open_target', 'draft_message', 'send_message'];
   if (operation === 'message_batch') return ['open_workspace', 'message_batch'];
   if (operation === 'bulk_dm_csv') return ['open_workspace', 'message_batch'];
   if (operation === 'find_leads') return ['open_workspace', 'search', 'scrape_results', 'export_artifact'];

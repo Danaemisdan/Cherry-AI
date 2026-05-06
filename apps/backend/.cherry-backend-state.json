@@ -8,7 +8,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 3,
+      "tabs": 2,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -16107,6 +16107,314 @@
       "createdAt": "2026-05-05T16:15:01.287Z",
       "assignedAgentId": "agent_s0talsp3",
       "dispatchedAt": "2026-05-05T16:15:01.292Z"
+    },
+    {
+      "id": "task_zojtwmaj",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Jagadeesh",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_k91143bi",
+          "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_zojtwmaj",
+            "objective": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_s2rutevk",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_l87qgme9",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_fsywwlbh",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_s2rutevk",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_s2rutevk",
+          "message": "Opened instagram workspace",
+          "duration": 43
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_l87qgme9",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_l87qgme9",
+          "message": "Opened @Jagadeesh on instagram",
+          "duration": 8167
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_fsywwlbh",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_2_fsywwlbh",
+          "error": "Could not open chat with @Jagadeesh. They may have restricted messaging.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not open chat with @Jagadeesh. They may have restricted messaging."
+        }
+      ],
+      "createdAt": "2026-05-06T00:50:38.859Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-06T00:50:38.863Z"
+    },
+    {
+      "id": "task_e7ba0abg",
+      "status": "failed",
+      "prompt": "Follow Lauda on Instagram.",
+      "context": {
+        "platform": "instagram",
+        "operation": "follow_user",
+        "query": "founders in fintech",
+        "username": "Lauda",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_1eo4nycq",
+          "prompt": "Follow Lauda on Instagram."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_e7ba0abg",
+            "objective": "Follow Lauda on Instagram.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_6mszc4pl",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Follow Lauda on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Lauda",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_ju7rwikw",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Follow Lauda on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Lauda",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_16rt96e4",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "follow_user",
+                "args": {
+                  "prompt": "Follow Lauda on Instagram.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Lauda",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "follow_user",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete follow_user on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_6mszc4pl",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_6mszc4pl",
+          "message": "Opened instagram workspace",
+          "duration": 2345
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_ju7rwikw",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_ju7rwikw",
+          "message": "Opened @Lauda on instagram",
+          "duration": 2919
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_16rt96e4",
+          "label": "instagram:follow_user"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_2_16rt96e4",
+          "error": "Could not find Follow button for @Lauda",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not find Follow button for @Lauda"
+        }
+      ],
+      "createdAt": "2026-05-06T00:51:43.639Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-06T00:51:43.642Z"
     }
   ],
   "campaigns": [],

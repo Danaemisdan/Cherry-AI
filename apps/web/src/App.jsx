@@ -317,8 +317,8 @@ function Workspace({ refreshTasks, tasks }) {
   async function runPlatformAction(operation) {
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
-    const autoOnlyOperations = new Set(['auto_dm', 'like_ai_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
-    const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'bulk_dm_csv']);
+    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
+    const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'auto_dm_contact', 'auto_dm_new', 'bulk_dm_csv']);
     const trimmedQuery = query.trim();
     const noisyDefaults = new Set(['customer follow up']);
     const messageContext = messageOperations.has(operation) && trimmedQuery && !noisyDefaults.has(trimmedQuery.toLowerCase())
@@ -369,6 +369,14 @@ function Workspace({ refreshTasks, tasks }) {
       auto_dm: {
         prompt: `Send an automated DM to ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
         context: { ...baseContext, operation: 'auto_dm', attachmentPath },
+      },
+      auto_dm_contact: {
+        prompt: `Send an automated DM to contact ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_dm_contact', attachmentPath },
+      },
+      auto_dm_new: {
+        prompt: `Send an automated DM to new person ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_dm_new', attachmentPath },
       },
       like_ai_comment: {
         prompt: `Like and leave an AI-generated comment on ${targetHandle || 'the user'}'s recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
@@ -737,7 +745,12 @@ function Workspace({ refreshTasks, tasks }) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {supports('send_message') ? <button onClick={() => runPlatformAction('auto_dm')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">{selectedPlatform === 'gmail' ? 'Auto-Email' : 'Auto-DM'}</button> : null}
+                      {supports('send_message') ? (
+                        <>
+                          <button onClick={() => runPlatformAction(selectedPlatform === 'gmail' ? 'auto_dm' : 'auto_dm_contact')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">{selectedPlatform === 'gmail' ? 'Auto-Email' : 'DM a contact'}</button>
+                          {selectedPlatform !== 'gmail' && <button onClick={() => runPlatformAction('auto_dm_new')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">DM a new person</button>}
+                        </>
+                      ) : null}
                       {supports('engage_post') ? <button onClick={() => runPlatformAction('like_ai_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Like + AI Comment</button> : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
                       {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
