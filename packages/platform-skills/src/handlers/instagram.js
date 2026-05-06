@@ -1087,25 +1087,30 @@ export const instagramHandler = {
         }
       },
       async likePost(page) {
-        await likeInstagramPost(page, null);
+        const likeBtn = await page.locator('svg[aria-label="Like"]').first();
+        if (await likeBtn.count() > 0) {
+          await likeBtn.evaluate(el => {
+            const btn = el.closest('button') || el.closest('[role="button"]') || el;
+            btn.click();
+          }).catch(() => {});
+          await minimalDelay(500);
+        }
       },
       async sendComment(page) {
-        const postBtn = await findElementsByText(page, 'Post', { tagNames: ['div', 'button', 'span'], fuzzy: false });
-        if (postBtn.length > 0) {
-          await page.evaluate(({ tag, index }) => {
-            const elements = document.querySelectorAll(tag);
-            if (elements[index]) elements[index].click();
-          }, { tag: postBtn[0].tag, index: postBtn[0].index });
-          await minimalDelay(500);
+        const postBtn = await page.locator('div[role="button"]:has-text("Post"), button:has-text("Post")').first();
+        if (await postBtn.count() > 0 && await postBtn.isVisible()) {
+          await postBtn.click().catch(() => {});
+          await minimalDelay(1500);
           return true;
         }
         await page.keyboard.press('Enter');
+        await minimalDelay(1500);
         return true;
       },
       commentSelectors: ['textarea[aria-label="Add a comment…"]', 'textarea[placeholder="Add a comment…"]', 'textarea', 'div[role="textbox"][contenteditable="true"]'],
       commentSubmitSelectors: ['button:has-text("Post")', 'div:has-text("Post")'],
       commentSubmitLabels: ['Post'],
-      async openPostComposer(page) {
+      async openPostComposer(page, attachmentPath) {
         const createBtn = await page.locator('svg[aria-label="New post"]').first();
         if (await createBtn.count() > 0) {
           await createBtn.evaluate(el => {
@@ -1117,33 +1122,32 @@ export const instagramHandler = {
           await navigate(page, 'https://www.instagram.com/create/style/', 'instagram').catch(() => {});
           await minimalDelay(1000);
         }
+
+        if (attachmentPath) {
+          try {
+            await minimalDelay(1500);
+            const fileInput = await page.locator('input[type="file"]').first();
+            if (await fileInput.count() > 0) {
+              await fileInput.setInputFiles(attachmentPath);
+              await minimalDelay(2000);
+              
+              // Navigate through the "Next" modal steps
+              for (let i = 0; i < 2; i++) {
+                let nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
+                if (await nextBtn.isVisible().catch(() => false)) {
+                  await nextBtn.click();
+                  await minimalDelay(1000);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[Instagram] Media upload failed in openPostComposer:', e.message);
+          }
+        }
       },
       postComposerSelectors: ['div[role="textbox"][contenteditable="true"]', 'textarea[aria-label="Write a caption..."]'],
       publishPostSelectors: ['button:has-text("Share")'],
-      publishPostLabels: ['Share'],
-      async attachMedia(page, filePath) {
-        try {
-          await minimalDelay(1500);
-          const fileInput = await page.locator('input[type="file"]').first();
-          if (await fileInput.count() > 0) {
-            await fileInput.setInputFiles(filePath);
-            await minimalDelay(2000);
-            
-            // Navigate through the "Next" modal steps
-            for (let i = 0; i < 2; i++) {
-              let nextBtn = page.locator('button:has-text("Next"), div[role="button"]:has-text("Next")').first();
-              if (await nextBtn.isVisible().catch(() => false)) {
-                await nextBtn.click();
-                await minimalDelay(1000);
-              }
-            }
-            return true;
-          }
-        } catch (e) {
-          console.warn('[Instagram] Media upload failed:', e.message);
-        }
-        return false;
-      }
+      publishPostLabels: ['Share']
     });
     return baseHandler.execute({ step, attachedBrowser });
   }

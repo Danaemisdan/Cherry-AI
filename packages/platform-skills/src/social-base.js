@@ -152,7 +152,7 @@ export function createSocialHandler(platform, config) {
     const postText = await composePost({ platform, goal: step.args.messageGoal, tone: step.args.tone, query: step.args.query });
 
     if (config.openPostComposer) {
-      await config.openPostComposer(page);
+      await config.openPostComposer(page, step.args.attachmentPath);
     }
 
     const filled = await fillEditable(page, config.postComposerSelectors || [], postText);

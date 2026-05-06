@@ -31,6 +31,12 @@ function detectOperation(prompt, context = {}) {
   if (context.operation) return context.operation;
 
   const lower = prompt.toLowerCase();
+  
+  // Specific DM methods injected by UI
+  if (lower.includes('automated dm to contact')) return 'auto_dm_contact';
+  if (lower.includes('automated dm to new person')) return 'auto_dm_new';
+  if (lower.includes('automated dm')) return 'auto_dm';
+
   const wantsLeads = /lead|scrape|search|find|prospect|list/i.test(lower);
   const wantsMessaging = /message|dm|reply|outreach|follow.?up|contact|reach out/i.test(lower);
   const wantsCampaign = /campaign|always-on|always on|monitor inbox|continue outreach/i.test(lower);
