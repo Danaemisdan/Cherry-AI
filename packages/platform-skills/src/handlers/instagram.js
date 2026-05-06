@@ -136,7 +136,8 @@ async function messageContactViaInbox(page, username) {
   
   // Try to find the search input in the left rail
   const searchInput = await firstVisibleLocator(page, [
-    'input[placeholder*="Search"]',
+    'input[placeholder="Search"]',
+    'input[aria-label="Search input"]',
     'input[aria-label*="Search"]'
   ]);
   
@@ -144,13 +145,13 @@ async function messageContactViaInbox(page, username) {
     await searchInput.click();
     await searchInput.fill('');
     await searchInput.type(username, { delay: 50 });
-    await minimalDelay(1500);
+    await minimalDelay(2000);
     
     const content = await extractPageContent(page);
     const userResults = content.interactiveElements.filter(e => 
       e.text.toLowerCase().includes(username.toLowerCase()) && 
       e.visible !== false &&
-      (e.href?.includes('/direct/t/') || e.role === 'link')
+      (e.href?.includes('/direct/t/') || e.role === 'link' || e.role === 'button')
     );
     
     if (userResults.length > 0) {
@@ -164,9 +165,9 @@ async function messageContactViaInbox(page, username) {
   }
   
   // Fallback: Just click the text in the list
-  const clicked = await clickByText(page, ['span', 'div'], [username]);
+  const clicked = await clickByText(page, ['span', 'div', 'a'], [username]);
   if (clicked) {
-    await minimalDelay(1000);
+    await minimalDelay(1500);
     return { success: true, method: 'contact_inbox' };
   }
   
@@ -175,17 +176,17 @@ async function messageContactViaInbox(page, username) {
 
 // Method 1b: Message via New Message modal - OPTIMIZED FOR SPEED
 async function messageViaInbox(page, username) {
-  console.log(`[Instagram] Method 1: Inbox messaging...`);
+  console.log(`[Instagram] Method 1: Inbox messaging (New Person)...`);
   
-  // Navigate directly to inbox - fastest
   await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
   await waitForAppShell(page, 'instagram');
+  await minimalDelay(1500);
   
-  // Click "New message"
+  // Click "New message" icon
   const newMsgClicked = await tryClick(page, [
-    'button:has-text("New message")',
-    'button[aria-label="New message"]',
     'svg[aria-label="New message"]',
+    'button[aria-label="New message"]',
+    'button:has-text("New message")',
   ]);
   
   if (!newMsgClicked) {
@@ -193,45 +194,69 @@ async function messageViaInbox(page, username) {
     return false;
   }
   
-  // Type username quickly
-  await page.keyboard.type(username, { delay: 10 });
-  await minimalDelay(800); // Just enough for results
+  await minimalDelay(1000);
+  
+  // Type username quickly in the modal
+  const modalInput = await firstVisibleLocator(page, [
+    'input[placeholder="Search..."]',
+    'input[placeholder*="Search"]',
+    'input[name="queryBox"]',
+    'input'
+  ]);
+  
+  if (modalInput) {
+    await modalInput.click().catch(() => {});
+    await modalInput.fill('');
+    await modalInput.type(username, { delay: 50 });
+  } else {
+    await page.keyboard.type(username, { delay: 50 });
+  }
+  
+  await minimalDelay(2000); // Just enough for results
   
   // Extract and find results
   const content = await extractPageContent(page);
   const userResults = content.interactiveElements.filter(e => 
     e.text.toLowerCase().includes(username.toLowerCase()) && 
-    e.visible !== false
+    e.visible !== false &&
+    !e.text.includes('To:')
   );
   
-  if (userResults.length === 0) {
-    return false;
-  }
-  
-  // Click first valid result
-  const bestMatch = userResults.find(r => 
-    r.text.length > username.length && !r.text.includes('To:')
-  ) || userResults[0];
-  
-  await page.evaluate(({ tag, index }) => {
-    const elements = document.querySelectorAll(tag);
-    if (elements[index]) elements[index].click();
-  }, { tag: bestMatch.tag, index: bestMatch.index });
-  
-  await minimalDelay(500);
-  
-  // Click Chat button if present
-  const chatButton = await findElementsByText(page, 'Chat', {
-    tagNames: ['button', 'div'],
-    fuzzy: false
-  });
-  
-  if (chatButton.length > 0) {
+  if (userResults.length > 0) {
+    const bestMatch = userResults[0];
     await page.evaluate(({ tag, index }) => {
       const elements = document.querySelectorAll(tag);
       if (elements[index]) elements[index].click();
-    }, { tag: chatButton[0].tag, index: chatButton[0].index });
-    await minimalDelay(300);
+    }, { tag: bestMatch.tag, index: bestMatch.index });
+    
+    await minimalDelay(1000);
+    
+    // Click Chat button if present
+    const chatButton = await findElementsByText(page, 'Chat', {
+      tagNames: ['div', 'button'],
+      fuzzy: false
+    });
+    
+    if (chatButton.length > 0) {
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
+        if (elements[index]) elements[index].click();
+      }, { tag: chatButton[0].tag, index: chatButton[0].index });
+      await minimalDelay(1000);
+    }
+  } else {
+    // Fallback: hit Enter if user element not directly found
+    await page.keyboard.press('Enter');
+    await minimalDelay(500);
+    
+    const chatButton = await findElementsByText(page, 'Chat', { tagNames: ['div', 'button'], fuzzy: false });
+    if (chatButton.length > 0) {
+      await page.evaluate(({ tag, index }) => {
+        const elements = document.querySelectorAll(tag);
+        if (elements[index]) elements[index].click();
+      }, { tag: chatButton[0].tag, index: chatButton[0].index });
+      await minimalDelay(1000);
+    }
   }
   
   // Quick composer check
@@ -658,8 +683,18 @@ export const instagramHandler = {
     
     // ACTION: Open profile
     if (action === 'open_target') {
-      const { username } = args;
+      const { username, operation } = args;
       if (!username) throw new Error('Instagram open_target requires a username');
+      
+      // DO NOT navigate to profile if user explicitly requested a direct inbox message operation!
+      if (operation === 'auto_dm_contact' || operation === 'auto_dm_new') {
+        console.log(`[Instagram] Skipping profile navigation for direct inbox messaging (${operation})`);
+        return {
+          status: 'ready',
+          summary: `Skipped profile load for direct messaging`,
+          data: { profile: { username }, snapshot: await pageSnapshot(page) }
+        };
+      }
       
       await navigateToProfileViaSearch(page, username);
       const context = await getInstagramProfileContext(page, username);
@@ -673,11 +708,14 @@ export const instagramHandler = {
     
     // ACTION: Draft message
     if (action === 'draft_message') {
-      const { username, messageGoal, tone, query } = args;
+      const { username, messageGoal, tone, query, operation } = args;
       
-      // Get profile context for better message generation
-      await navigateToProfileViaSearch(page, username);
-      const context = await getInstagramProfileContext(page, username);
+      let context = {};
+      // ONLY fetch profile context if it's not a direct inbox DM operation
+      if (operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+        await navigateToProfileViaSearch(page, username);
+        context = await getInstagramProfileContext(page, username);
+      }
       
       const message = await generateOutreachMessage({
         username,
@@ -703,8 +741,13 @@ export const instagramHandler = {
       console.log(`[Instagram] Starting DM to @${username} (Operation: ${operation || 'default'})`);
       
       // STEP 1: Get profile context FIRST
-      await navigateToProfileViaSearch(page, username);
-      const profileContext = await getInstagramProfileContext(page, username);
+      let profileContext = { canMessage: true };
+      
+      // ONLY load profile context if the user didn't explicitly request direct inbox messaging
+      if (operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+        await navigateToProfileViaSearch(page, username);
+        profileContext = await getInstagramProfileContext(page, username);
+      }
       
       // STEP 2: Try messaging methods
       let chatOpened = null;
@@ -719,21 +762,27 @@ export const instagramHandler = {
       }
       
       // Method: Inbox (Fallback if not explicitly defined above, or if defined but failed)
-      if (!chatOpened) {
+      if (!chatOpened && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'inbox';
       }
       
-      // Method 2: Profile (if inbox failed or not suitable)
-      if (!chatOpened && profileContext.canMessage) {
+      // Method 2: Profile (if inbox failed or not suitable AND we aren't restricted to inbox)
+      if (!chatOpened && profileContext.canMessage && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
         chatOpened = await messageViaProfile(page, username);
         if (chatOpened) methodUsed = 'profile';
       }
       
       // Method 3: Explore
-      if (!chatOpened) {
+      if (!chatOpened && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
         chatOpened = await messageViaExplore(page, username);
         if (chatOpened) methodUsed = 'explore';
+      }
+      
+      // Ultimate fallback to generic inbox method if the specific one failed
+      if (!chatOpened) {
+         chatOpened = await messageViaInbox(page, username);
+         if (chatOpened) methodUsed = 'fallback_inbox';
       }
       
       if (!chatOpened) {

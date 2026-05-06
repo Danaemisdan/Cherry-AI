@@ -16415,6 +16415,318 @@
       "createdAt": "2026-05-06T00:51:43.639Z",
       "assignedAgentId": "agent_s0talsp3",
       "dispatchedAt": "2026-05-06T00:51:43.642Z"
+    },
+    {
+      "id": "task_mldecwhc",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_lyw60qid",
+          "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_mldecwhc",
+            "objective": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_6ze2we1e",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_dvkcpn6t",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_83gfwwcc",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_6ze2we1e",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_6ze2we1e",
+          "message": "Opened instagram workspace",
+          "duration": 2174
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_dvkcpn6t",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_dvkcpn6t",
+          "message": "Opened @Jagadeesh K on instagram",
+          "duration": 3128
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_83gfwwcc",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_2_83gfwwcc",
+          "error": "Could not open chat with @Jagadeesh K. They may have restricted messaging.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not open chat with @Jagadeesh K. They may have restricted messaging."
+        }
+      ],
+      "createdAt": "2026-05-06T01:00:14.074Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-06T01:00:14.079Z"
+    },
+    {
+      "id": "task_lw0n3c8s",
+      "status": "failed",
+      "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm",
+        "query": "founders in fintech",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_a3a3vwef",
+          "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_lw0n3c8s",
+            "objective": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_5qv08a2g",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_s4hygb05",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_98602nz4",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_5qv08a2g",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_5qv08a2g",
+          "message": "Opened instagram workspace",
+          "duration": 2169
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_s4hygb05",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_s4hygb05",
+          "message": "Opened @Jagadeesh K on instagram",
+          "duration": 3620
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_98602nz4",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "instagram_2_98602nz4",
+          "error": "Could not open chat with @Jagadeesh K. They may have restricted messaging.",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "Could not open chat with @Jagadeesh K. They may have restricted messaging."
+        }
+      ],
+      "createdAt": "2026-05-06T01:02:20.921Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-06T01:02:20.925Z"
     }
   ],
   "campaigns": [],
