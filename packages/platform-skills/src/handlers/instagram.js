@@ -317,7 +317,11 @@ async function messageViaInbox(page, username) {
     await minimalDelay(1000);
     
     // Click Chat button if present
-    const chatButton = await page.locator('div[role="button"]:has-text("Chat"), button:has-text("Chat")').first();
+    let chatButton = await page.locator('div[role="dialog"] div[role="button"]:has-text("Chat"), div[role="dialog"] button:has-text("Chat")').first();
+    if (await chatButton.count() === 0) {
+      chatButton = await page.locator('div[role="button"]:text-is("Chat"), button:text-is("Chat")').first();
+    }
+    
     if (await chatButton.count() > 0 && await chatButton.isVisible()) {
       await chatButton.click().catch(() => {});
       await minimalDelay(1000);
@@ -327,7 +331,11 @@ async function messageViaInbox(page, username) {
     await page.keyboard.press('Enter');
     await minimalDelay(500);
     
-    const chatButton = await page.locator('div[role="button"]:has-text("Chat"), button:has-text("Chat")').first();
+    let chatButton = await page.locator('div[role="dialog"] div[role="button"]:has-text("Chat"), div[role="dialog"] button:has-text("Chat")').first();
+    if (await chatButton.count() === 0) {
+      chatButton = await page.locator('div[role="button"]:text-is("Chat"), button:text-is("Chat")').first();
+    }
+    
     if (await chatButton.count() > 0 && await chatButton.isVisible()) {
       await chatButton.click().catch(() => {});
       await minimalDelay(1000);
