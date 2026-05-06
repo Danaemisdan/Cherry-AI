@@ -143,9 +143,15 @@ async function messageContactViaInbox(page, username) {
   
   if (searchInput) {
     await searchInput.click();
+    await minimalDelay(500 + Math.random() * 1000); // Human pause before typing
     await searchInput.fill('');
-    await searchInput.type(username, { delay: 50 });
-    await minimalDelay(2000);
+    
+    // Human-like typing delay
+    for (const char of username) {
+      await searchInput.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
+    }
+    
+    await minimalDelay(2500 + Math.random() * 1500);
     
     const content = await extractPageContent(page);
     const userResults = content.interactiveElements.filter(e => 
@@ -206,13 +212,18 @@ async function messageViaInbox(page, username) {
   
   if (modalInput) {
     await modalInput.click().catch(() => {});
+    await minimalDelay(500 + Math.random() * 800);
     await modalInput.fill('');
-    await modalInput.type(username, { delay: 50 });
+    for (const char of username) {
+      await modalInput.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
+    }
   } else {
-    await page.keyboard.type(username, { delay: 50 });
+    for (const char of username) {
+      await page.keyboard.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
+    }
   }
   
-  await minimalDelay(2000); // Just enough for results
+  await minimalDelay(2500 + Math.random() * 1500); // Just enough for results
   
   // Extract and find results
   const content = await extractPageContent(page);
@@ -426,8 +437,12 @@ async function sendInstagramMessage(page, message, options = {}) {
     }
   }, { tag: composerResults[0].tag, index: composerResults[0].index });
   
-  await minimalDelay(200);
-  await page.keyboard.type(message, { delay: 10 });
+  await minimalDelay(500 + Math.random() * 1000);
+  
+  // Human-like typing
+  for (const char of message) {
+    await page.keyboard.type(char, { delay: Math.floor(Math.random() * 100) + 30 });
+  }
   
   // Handle attachment if provided
   if (attachmentPath) {
@@ -687,7 +702,7 @@ export const instagramHandler = {
       if (!username) throw new Error('Instagram open_target requires a username');
       
       // DO NOT navigate to profile if user explicitly requested a direct inbox message operation!
-      if (operation === 'auto_dm_contact' || operation === 'auto_dm_new') {
+      if (['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         console.log(`[Instagram] Skipping profile navigation for direct inbox messaging (${operation})`);
         return {
           status: 'ready',
@@ -712,7 +727,7 @@ export const instagramHandler = {
       
       let context = {};
       // ONLY fetch profile context if it's not a direct inbox DM operation
-      if (operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+      if (!['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         await navigateToProfileViaSearch(page, username);
         context = await getInstagramProfileContext(page, username);
       }
@@ -744,7 +759,7 @@ export const instagramHandler = {
       let profileContext = { canMessage: true };
       
       // ONLY load profile context if the user didn't explicitly request direct inbox messaging
-      if (operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+      if (!['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         await navigateToProfileViaSearch(page, username);
         profileContext = await getInstagramProfileContext(page, username);
       }
@@ -756,25 +771,25 @@ export const instagramHandler = {
       if (operation === 'auto_dm_contact') {
         chatOpened = await messageContactViaInbox(page, username);
         if (chatOpened) methodUsed = 'contact_inbox';
-      } else if (operation === 'auto_dm_new') {
+      } else if (operation === 'auto_dm_new' || operation === 'auto_dm') {
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'new_message_modal';
       }
       
       // Method: Inbox (Fallback if not explicitly defined above, or if defined but failed)
-      if (!chatOpened && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+      if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'inbox';
       }
       
       // Method 2: Profile (if inbox failed or not suitable AND we aren't restricted to inbox)
-      if (!chatOpened && profileContext.canMessage && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+      if (!chatOpened && profileContext.canMessage && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         chatOpened = await messageViaProfile(page, username);
         if (chatOpened) methodUsed = 'profile';
       }
       
       // Method 3: Explore
-      if (!chatOpened && operation !== 'auto_dm_contact' && operation !== 'auto_dm_new') {
+      if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
         chatOpened = await messageViaExplore(page, username);
         if (chatOpened) methodUsed = 'explore';
       }
