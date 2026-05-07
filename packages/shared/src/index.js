@@ -116,6 +116,8 @@ export const TASK_OPERATIONS = [
   'execute_deep_scrape',
   'scrape_followers',
   'auto_dm',
+  'auto_dm_contact',
+  'auto_dm_new',
   'like_ai_comment',
   'follow_user',
   'auto_post',
