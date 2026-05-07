@@ -126,232 +126,209 @@ async function getInstagramProfileContext(page, username) {
   return context;
 }
 
-// Method 1a: Message contact via inbox (search existing threads)
+// Method 1a: DM a Contact — uses the inbox LEFT RAIL search bar to find an existing thread
 async function messageContactViaInbox(page, username) {
-  console.log(`[Instagram] Method: Contact Inbox messaging...`);
-  
+  console.log(`[Instagram] DM Contact: navigating to inbox and searching left rail...`);
+
   await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
   await waitForAppShell(page, 'instagram');
-  await minimalDelay(1000);
-  
-  // Try to find the search input in the left rail
+  await minimalDelay(1500);
+
+  // Find the search input in the left rail
   const searchInput = await firstVisibleLocator(page, [
     'input[placeholder="Search"]',
     'input[aria-label="Search input"]',
     'input[aria-label*="Search"]'
   ]);
-  
-  if (searchInput) {
-    await searchInput.click();
-    await minimalDelay(500 + Math.random() * 1000); // Human pause before typing
-    await searchInput.fill('');
-    
-    // Human-like typing delay
-    for (const char of username) {
-      await searchInput.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
-    }
-    
-    await minimalDelay(2500 + Math.random() * 1500);
-    
-    const matchInfo = await page.evaluate((targetName) => {
-      const target = targetName.toLowerCase().trim();
-      // Restrict search to dialog if open, else document
-      const container = document.querySelector('div[role="dialog"]') || document;
-      
-      const rows = Array.from(container.querySelectorAll('div')).filter(el => {
-        const rect = el.getBoundingClientRect();
-        // Skip invisible or massive wrapper divs
-        if (rect.height === 0 || rect.height > 150) return false;
-        
-        const role = el.getAttribute('role');
-        return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
-      });
-      
-      const getCleanText = (el) => el.innerText ? el.innerText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
-      let bestRow = null;
-      
-      for (const row of rows) {
-        const text = getCleanText(row);
-        if (text === target || text.split('\n').includes(target)) {
-          bestRow = row; break;
-        }
-      }
-      
-      if (!bestRow) {
-        for (const row of rows) {
-          const text = getCleanText(row);
-          if (text.includes(target) && !text.includes('to:')) {
-            bestRow = row; break;
-          }
-        }
-      }
-      
-      if (bestRow) {
-        const rect = bestRow.getBoundingClientRect();
-        return { 
-          found: true, 
-          x: rect.left + Math.min(60, rect.width / 2), 
-          y: rect.top + (rect.height / 2),
-          text: getCleanText(bestRow)
-        };
-      }
-      return { found: false };
-    }, username);
-    
-    if (matchInfo.found) {
-      console.log(`[Instagram] Clicking contact row at ${matchInfo.x}, ${matchInfo.y}`);
-      await page.mouse.click(matchInfo.x, matchInfo.y);
-      await minimalDelay(1000);
-      return { success: true, method: 'contact_inbox' };
-    }
-  }
-  
-  // Fallback: Just click the text in the list
-  const clicked = await clickByText(page, ['span', 'div', 'a'], [username]);
-  if (clicked) {
-    await minimalDelay(1500);
-    return { success: true, method: 'contact_inbox' };
-  }
-  
-  return false;
-}
 
-// Method 1b: Message via New Message modal - OPTIMIZED FOR SPEED
-async function messageViaInbox(page, username) {
-  console.log(`[Instagram] Method 1: Inbox messaging (New Person)...`);
-  
-  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
-  await waitForAppShell(page, 'instagram');
-  await minimalDelay(1500);
-  
-  // Click "New message" icon
-  const newMsgClicked = await tryClick(page, [
-    'svg[aria-label="New message"]',
-    'button[aria-label="New message"]',
-    'button:has-text("New message")',
-  ]);
-  
-  if (!newMsgClicked) {
-    console.log('[Instagram] New message button not found');
+  if (!searchInput) {
+    console.log('[Instagram] Could not find inbox search bar in left rail');
     return false;
   }
-  
-  await minimalDelay(1000);
-  
-  // Type username quickly in the modal
-  const modalInput = await firstVisibleLocator(page, [
-    'input[placeholder="Search..."]',
-    'input[placeholder*="Search"]',
-    'input[name="queryBox"]',
-    'input'
-  ]);
-  
-  if (modalInput) {
-    await modalInput.click().catch(() => {});
-    await minimalDelay(500 + Math.random() * 800);
-    await modalInput.fill('');
-    for (const char of username) {
-      await modalInput.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
-    }
-  } else {
-    for (const char of username) {
-      await page.keyboard.type(char, { delay: Math.floor(Math.random() * 150) + 50 });
-    }
+
+  await searchInput.click();
+  await minimalDelay(600 + Math.random() * 800);
+  await searchInput.fill('');
+  for (const char of username) {
+    await searchInput.type(char, { delay: Math.floor(Math.random() * 130) + 50 });
   }
-  
-  await minimalDelay(2500 + Math.random() * 1500); // Just enough for results
-  
-  // Extract and find results robustly
+  await minimalDelay(2500 + Math.random() * 1200);
+
+  // Find the matching row in the LEFT RAIL only (left 380px of screen)
   const matchInfo = await page.evaluate((targetName) => {
     const target = targetName.toLowerCase().trim();
-    // Restrict search to dialog if open, else document
-    const container = document.querySelector('div[role="dialog"]') || document;
-    
-    // Find all possible user rows in the modal
-    const rows = Array.from(container.querySelectorAll('div')).filter(el => {
+    const allEls = Array.from(document.querySelectorAll('div, a')).filter(el => {
       const rect = el.getBoundingClientRect();
-      // Skip invisible or massive wrapper divs
-      if (rect.height === 0 || rect.height > 150) return false;
-      
-      const role = el.getAttribute('role');
-      // Must be an interactive row or contain an image/avatar
-      return role === 'button' || role === 'listitem' || role === 'checkbox' || el.querySelector('img, svg');
+      if (rect.left > 380 || rect.width < 60) return false;
+      if (rect.height < 40 || rect.height > 120) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      return true;
     });
-    
-    const getCleanText = (el) => el.innerText ? el.innerText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+    const getText = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
     let bestRow = null;
-    
-    // Strategy 1: Exact match or split exact match
-    for (const row of rows) {
-      const text = getCleanText(row);
-      if (text === target || text.split('\n').includes(target)) {
-        bestRow = row; break;
-      }
+    for (const el of allEls) {
+      const lines = getText(el).split('\n').map(l => l.trim());
+      if (lines.some(l => l === target || l.replace(/^@/, '') === target)) { bestRow = el; break; }
     }
-    
-    // Strategy 2: Includes match (fuzzy)
     if (!bestRow) {
-      for (const row of rows) {
-        const text = getCleanText(row);
-        if (text.includes(target) && !text.includes('to:')) {
-          bestRow = row; break;
-        }
+      for (const el of allEls) {
+        if (getText(el).includes(target)) { bestRow = el; break; }
       }
     }
-    
     if (bestRow) {
       const rect = bestRow.getBoundingClientRect();
-      return { 
-        found: true, 
-        x: rect.left + Math.min(60, rect.width / 2), 
-        y: rect.top + (rect.height / 2),
-        text: getCleanText(bestRow)
-      };
+      return { found: true, x: rect.left + Math.min(80, rect.width / 2), y: rect.top + rect.height / 2, text: getText(bestRow).slice(0, 40) };
     }
     return { found: false };
   }, username);
-  
-  if (matchInfo.found) {
-    console.log(`[Instagram] Clicking matched user row at ${matchInfo.x}, ${matchInfo.y} (Text: ${matchInfo.text})`);
-    await page.mouse.click(matchInfo.x, matchInfo.y);
-    await minimalDelay(1000);
-    
-    // Click Chat button if present
-    let chatButton = await page.locator('div[role="dialog"] div[role="button"]:has-text("Chat"), div[role="dialog"] button:has-text("Chat")').first();
-    if (await chatButton.count() === 0) {
-      chatButton = await page.locator('div[role="button"]:text-is("Chat"), button:text-is("Chat")').first();
-    }
-    
-    if (await chatButton.count() > 0 && await chatButton.isVisible()) {
-      await chatButton.click().catch(() => {});
-      await minimalDelay(1000);
-    }
-  } else {
-    console.log('[Instagram] No fuzzy match found, falling back to Enter key');
-    await page.keyboard.press('Enter');
-    await minimalDelay(500);
-    
-    let chatButton = await page.locator('div[role="dialog"] div[role="button"]:has-text("Chat"), div[role="dialog"] button:has-text("Chat")').first();
-    if (await chatButton.count() === 0) {
-      chatButton = await page.locator('div[role="button"]:text-is("Chat"), button:text-is("Chat")').first();
-    }
-    
-    if (await chatButton.count() > 0 && await chatButton.isVisible()) {
-      await chatButton.click().catch(() => {});
-      await minimalDelay(1000);
-    }
+
+  if (!matchInfo.found) {
+    console.log(`[Instagram] Could not find "${username}" in inbox search results`);
+    return false;
   }
-  
-  // Quick composer check
-  const composer = await findElementsByText(page, '', {
-    tagNames: ['textarea', 'div[contenteditable="true"]'],
-    fuzzy: true
+
+  console.log(`[Instagram] Clicking contact row: "${matchInfo.text}" at (${matchInfo.x}, ${matchInfo.y})`);
+  await page.mouse.click(matchInfo.x, matchInfo.y);
+  await minimalDelay(1500);
+
+  // Confirm the chat panel opened
+  const composer = await page.locator('div[contenteditable="true"], textarea').first();
+  if (await composer.count() > 0) {
+    console.log('[Instagram] Chat panel confirmed open');
+    return { success: true, method: 'contact_inbox' };
+  }
+
+  return false;
+}
+
+// Method 1b: DM a New Person — clicks the compose/pencil icon, searches in modal, clicks Chat
+async function messageViaInbox(page, username) {
+  console.log(`[Instagram] DM New Person: opening new message modal...`);
+
+  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
+  await waitForAppShell(page, 'instagram');
+  await minimalDelay(1500);
+
+  // Click the pencil/compose icon — walk up from SVG to its clickable parent
+  const composeBtnCoords = await page.evaluate(() => {
+    for (const svg of document.querySelectorAll('svg[aria-label="New message"]')) {
+      const btn = svg.closest('button') || svg.closest('a') || svg.closest('[role="button"]');
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          return { found: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        }
+      }
+    }
+    // Fallback: any labeled button in the top area of the left rail
+    for (const btn of document.querySelectorAll('button, a[role="button"], div[role="button"]')) {
+      const rect = btn.getBoundingClientRect();
+      const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+      if (rect.left < 380 && rect.top < 160 && rect.width > 20 && rect.width < 90
+          && (label.includes('new') || label.includes('compose'))) {
+        return { found: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+    }
+    return { found: false };
   });
-  
-  if (composer.length > 0) {
-    return { success: true, method: 'inbox' };
+
+  if (!composeBtnCoords.found) {
+    console.log('[Instagram] Compose button not found');
+    return false;
   }
-  
+
+  console.log(`[Instagram] Clicking compose button at (${composeBtnCoords.x}, ${composeBtnCoords.y})`);
+  await page.mouse.click(composeBtnCoords.x, composeBtnCoords.y);
+  await minimalDelay(1500);
+
+  // Verify modal opened
+  const modal = page.locator('div[role="dialog"]').first();
+  if (await modal.count() === 0) {
+    console.log('[Instagram] New message modal did not open');
+    return false;
+  }
+
+  // Type username in the modal search input
+  const modalInput = page.locator('div[role="dialog"] input').first();
+  if (await modalInput.count() > 0) {
+    await modalInput.click().catch(() => {});
+    await minimalDelay(400 + Math.random() * 600);
+    await modalInput.fill('');
+  }
+  for (const char of username) {
+    await page.keyboard.type(char, { delay: Math.floor(Math.random() * 130) + 50 });
+  }
+  await minimalDelay(2500 + Math.random() * 1200);
+
+  // Find and click the matching user row INSIDE the modal only
+  const matchInfo = await page.evaluate((targetName) => {
+    const target = targetName.toLowerCase().trim();
+    const dialog = document.querySelector('div[role="dialog"]');
+    if (!dialog) return { found: false };
+    const getText = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const rows = Array.from(dialog.querySelectorAll('div, button')).filter(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.height < 40 || rect.height > 120 || rect.width < 80) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      return el.querySelector('img') || el.getAttribute('role') === 'button' || el.getAttribute('role') === 'option';
+    });
+    let bestRow = null;
+    for (const row of rows) {
+      const lines = getText(row).split('\n').map(l => l.trim());
+      if (lines.some(l => l === target || l.replace(/^@/, '') === target)) { bestRow = row; break; }
+    }
+    if (!bestRow) {
+      for (const row of rows) { if (getText(row).includes(target)) { bestRow = row; break; } }
+    }
+    if (bestRow) {
+      const rect = bestRow.getBoundingClientRect();
+      return { found: true, x: rect.left + Math.min(80, rect.width / 2), y: rect.top + rect.height / 2, text: getText(bestRow).slice(0, 40) };
+    }
+    return { found: false };
+  }, username);
+
+  if (matchInfo.found) {
+    console.log(`[Instagram] Clicking modal row: "${matchInfo.text}" at (${matchInfo.x}, ${matchInfo.y})`);
+    await page.mouse.click(matchInfo.x, matchInfo.y);
+  } else {
+    console.log('[Instagram] No match in modal, pressing Enter for first result');
+    await page.keyboard.press('Enter');
+  }
+  await minimalDelay(1000);
+
+  // Click the "Chat" button (exact text) that appears after selecting a user in the modal
+  const chatBtn = page.locator('div[role="dialog"] button, div[role="dialog"] div[role="button"]').filter({ hasText: /^Chat$/ }).first();
+  if (await chatBtn.count() > 0 && await chatBtn.isVisible()) {
+    console.log('[Instagram] Clicking Chat button');
+    await chatBtn.click().catch(() => {});
+    await minimalDelay(1500);
+  } else {
+    // Fallback: find Chat/Next by text anywhere in dialog
+    const fallback = await page.evaluate(() => {
+      const dialog = document.querySelector('div[role="dialog"]');
+      if (!dialog) return null;
+      for (const btn of dialog.querySelectorAll('button, div[role="button"]')) {
+        const t = (btn.textContent || '').trim().toLowerCase();
+        const rect = btn.getBoundingClientRect();
+        if ((t === 'chat' || t === 'next') && rect.width > 60) {
+          return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        }
+      }
+      return null;
+    });
+    if (fallback) { await page.mouse.click(fallback.x, fallback.y); await minimalDelay(1500); }
+  }
+
+  // Confirm chat is open
+  const composer = page.locator('div[contenteditable="true"], textarea').first();
+  if (await composer.count() > 0) {
+    console.log('[Instagram] Chat confirmed open via new message modal');
+    return { success: true, method: 'new_message_modal' };
+  }
+
+  console.log('[Instagram] Composer not visible after modal flow');
   return false;
 }
 
