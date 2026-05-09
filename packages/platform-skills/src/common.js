@@ -492,8 +492,25 @@ async function connectLocalLlmHost() {
   if (llmHost) return llmHost;
   if (llmHostPromise) return llmHostPromise;
 
+  // Resolve the Python binary cross-platform.
+  // On Windows: 'python3' is often a Microsoft Store alias that fails; try 'python' first.
+  // On Mac/Linux: 'python3' is standard.
+  const pythonBin = await (async () => {
+    const { execFile } = await import('node:child_process');
+    const candidates = process.platform === 'win32'
+      ? ['python', 'python3', 'py']
+      : ['python3', 'python'];
+    for (const bin of candidates) {
+      const ok = await new Promise(resolve => {
+        execFile(bin, ['--version'], { timeout: 3000 }, (err) => resolve(!err));
+      });
+      if (ok) return bin;
+    }
+    return candidates[0]; // Last resort — will fail at spawn time
+  })();
+
   llmHostPromise = new Promise((resolve, reject) => {
-    const child = spawn('python3', [nativeHostPath], {
+    const child = spawn(pythonBin, [nativeHostPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: process.env,
     });
@@ -660,10 +677,43 @@ export async function generateOutreachMessage({ username, goal, tone, query, pla
     }
   }
 
-  // All retries failed - throw error instead of using templates
-  // This forces the system to surface the issue rather than send bad messages
-  throw new Error(`Failed to generate message after ${maxRetries + 1} attempts. Last error: ${lastError}. Please try again.`);
+  // All LLM retries failed — use a JS template fallback so the DM always sends
+  console.warn(`[Cherry] LLM unavailable (${lastError}), using template fallback for ${platform} DM`);
+  return buildTemplateFallback({ username, goal, tone, platform });
 }
+
+/**
+ * Pure-JS message template fallback — used when the local LLM is unavailable.
+ * Produces a short, human-sounding message matching the requested goal + tone.
+ */
+function buildTemplateFallback({ username, goal, tone, platform }) {
+  const handle = normalizeUsername(username) || 'there';
+  const g = String(goal || 'introduce').toLowerCase();
+  const t = String(tone || 'casual').toLowerCase();
+
+  const isFormal   = t.includes('formal') || t.includes('professional');
+  const isCasual   = t.includes('casual') || t.includes('friendly') || t.includes('brief');
+  const isQuestion = g.includes('ask') || g.includes('question');
+  const isCollab   = g.includes('collab') || g.includes('work together') || g.includes('partner');
+  const isFeedback = g.includes('feedback') || g.includes('review') || g.includes('opinion');
+  const isIntro    = g.includes('intro') || g.includes('connect') || g.includes('meet') || g.includes('say hi');
+
+  if (isFormal) {
+    if (isIntro)    return `Hi @${handle}, I came across your profile and wanted to reach out. Would love to connect if you're open to it!`;
+    if (isCollab)   return `Hi @${handle}, I've been following your work and would love to explore a potential collaboration. Would you be open to a quick chat?`;
+    if (isFeedback) return `Hi @${handle}, I'd really appreciate your thoughts on something I'm working on. Would you mind taking a look?`;
+    if (isQuestion) return `Hi @${handle}, I had a quick question for you — would you be open to sharing your perspective?`;
+    return `Hi @${handle}, I came across your profile and wanted to connect. Looking forward to hearing from you!`;
+  }
+
+  // Default: casual
+  if (isIntro)    return `Hey! Just came across your profile and thought I'd say hi 👋`;
+  if (isCollab)   return `Hey! Love what you're doing — would be cool to collab sometime 🙌`;
+  if (isFeedback) return `Hey! Would love to get your thoughts on something — got a sec?`;
+  if (isQuestion) return `Hey! Quick question for you if you don't mind 😊`;
+  return `Hey! Came across your profile and wanted to reach out 👋`;
+}
+
 
 export async function composeComment({ tone, goal, postContent = '' }) {
   // Use LLM for comment generation instead of templates
