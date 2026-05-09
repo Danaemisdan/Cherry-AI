@@ -12,6 +12,8 @@ import { twitterHandler } from './handlers/twitter.js';
 import { whatsappHandler } from './handlers/whatsapp.js';
 import { chatgptHandler } from './handlers/chatgpt.js';
 import { geminiHandler } from './handlers/gemini.js';
+import { gsheetsHandler } from './handlers/gsheets.js';
+
 import {
   PLATFORM_URLS,
   SEARCH_SELECTORS,
@@ -39,7 +41,9 @@ export const skillRegistry = new Map([
   ['research', researchHandler],
   ['chatgpt', chatgptHandler],
   ['gemini', geminiHandler],
+  ['sheets', gsheetsHandler],
 ]);
+
 
 export const skillCatalog = Object.fromEntries(
   [...skillRegistry.keys()].map((platform) => [

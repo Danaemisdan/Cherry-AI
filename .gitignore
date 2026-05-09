@@ -26,3 +26,7 @@ release
 *.sln
 *.sw?
 *.gguf
+PlatformHTML/G-mail/
+PlatformHTML/G-sheets/
+PlatformHTML/G-Drive/
+PlatformHTML/G-meet/

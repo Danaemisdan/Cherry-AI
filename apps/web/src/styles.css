@@ -431,6 +431,11 @@ button:disabled {
   border: 1px solid rgba(255, 122, 122, 0.18);
 }
 
+.step-row.paused {
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+
 .step-label {
   display: block;
   font-weight: 600;
@@ -453,6 +458,41 @@ button:disabled {
   color: var(--danger);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* HITL (Human-in-the-loop) login wall banner */
+.hitl-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.hitl-banner .hitl-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.hitl-banner strong {
+  display: block;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.hitl-banner p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.hitl-banner small {
+  color: #92400e;
+  font-size: 0.8rem;
 }
 
 .command-block,

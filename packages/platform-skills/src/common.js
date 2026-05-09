@@ -759,24 +759,151 @@ function pageMatchesPlatform(url, platform) {
   return (PLATFORM_DOMAINS[platform] || []).some((domain) => hostname.includes(domain));
 }
 
+// ── Popup / Login-wall detection ─────────────────────────────────────────────
+
+// Buttons across all platforms that should be dismissed automatically
+const DISMISS_PATTERNS = [
+  // Text matches (case-insensitive substring)
+  'not now', 'maybe later', 'skip', 'dismiss', 'no thanks', 'no, thanks',
+  'close', 'cancel', "don't allow", 'deny', 'decline',
+  'turn on later', 'remind me later', 'block', 'allow once',
+  // Instagram specific
+  'not now', 'turn on notifications',
+  // Facebook / Meta cookie banner
+  'only allow essential cookies', 'decline optional cookies',
+  // LinkedIn
+  'dismiss', 'got it', 'agree',
+  // WhatsApp
+  'continue', 'ok', 'got it',
+];
+
+// Selectors that signal a login/signup wall
+const LOGIN_WALL_SELECTORS = [
+  // Generic
+  'input[name="username"][type="text"]',
+  'input[name="email"]',
+  'input[autocomplete="username"]',
+  'input#username',
+  'input#identifierId',
+  // Instagram
+  'form button[type="submit"]',
+  // Twitter
+  'input[name="text"][autocomplete="username"]',
+  // LinkedIn
+  'input#password + button',
+  // Facebook
+  'input[name="pass"]',
+  // WhatsApp QR scan
+  'canvas[aria-label*="Scan"]',
+  '[data-ref] canvas',
+];
+
+const LOGIN_WALL_URL_FRAGMENTS = [
+  '/login', '/signin', '/sign-in', '/signup', '/sign-up',
+  '/accounts/login', '/auth/', 'oauth', 'accounts/emailsignup',
+];
+
+// Special error so the agent can distinguish login walls from other failures
+export class LoginWallError extends Error {
+  constructor(platform, url) {
+    super(`Login required on ${platform} (${url}). Please log in and retry.`);
+    this.name = 'LoginWallError';
+    this.platform = platform;
+    this.url = url;
+  }
+}
+
+// Dismiss any visible non-essential popups/modals.
+// Returns the number of buttons clicked.
+export async function dismissPopups(page) {
+  let dismissed = 0;
+  try {
+    const clicked = await page.evaluate((patterns) => {
+      let count = 0;
+      const allBtns = Array.from(document.querySelectorAll(
+        'button, [role="button"], a[role="button"], div[role="button"]'
+      ));
+      for (const btn of allBtns) {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width < 20 || rect.height < 20) continue;
+        const style = window.getComputedStyle(btn);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+
+        const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+        const isModal = btn.closest('[role="dialog"], [role="alertdialog"], ._a9-_, [data-testid*="modal"], .overlay');
+        if (!isModal) continue; // Only dismiss inside a modal/overlay
+
+        if (patterns.some(p => text.includes(p))) {
+          btn.click();
+          count++;
+        }
+      }
+      return count;
+    }, DISMISS_PATTERNS);
+    dismissed = clicked;
+    if (dismissed > 0) {
+      console.log(`[Cherry] Dismissed ${dismissed} popup button(s)`);
+      await new Promise(r => setTimeout(r, 600));
+    }
+  } catch (_) { /* non-critical */ }
+  return dismissed;
+}
+
+// Detect if the page is showing a login/signup wall.
+// Throws LoginWallError so the agent can pause and hand off to the user.
+export async function detectLoginWall(page, platform) {
+  try {
+    const url = page.url();
+
+    // URL-based detection (fastest)
+    if (LOGIN_WALL_URL_FRAGMENTS.some(f => url.toLowerCase().includes(f))) {
+      throw new LoginWallError(platform || 'unknown', url);
+    }
+
+    // DOM-based detection
+    const isLoginWall = await page.evaluate((selectors, loggedOutTexts) => {
+      // Check for known login-form selectors
+      for (const sel of selectors) {
+        if (document.querySelector(sel)) return true;
+      }
+      // Check for "Log in" / "Sign in" CTA text prominently on page
+      const bodyText = (document.body?.innerText || '').toLowerCase();
+      return loggedOutTexts.some(t => bodyText.includes(t));
+    }, LOGIN_WALL_SELECTORS, LOGGED_OUT_TEXT[platform] || ['log in', 'sign in', 'sign up', 'create account']);
+
+    if (isLoginWall) {
+      throw new LoginWallError(platform || 'unknown', url);
+    }
+  } catch (e) {
+    if (e instanceof LoginWallError) throw e;
+    // Any other evaluate error is non-fatal
+  }
+}
+
 export async function waitForAppShell(page, platform) {
-  // Fast path: check if page is already ready
+  // Quick load check
+  await page.waitForLoadState('domcontentloaded', { timeout: 4000 }).catch(() => {});
+
+  // 1. Dismiss any blocking popups first
+  await dismissPopups(page);
+
+  // 2. Check for login wall — throws LoginWallError if detected
+  await detectLoginWall(page, platform);
+
+  // 3. Check if app shell is ready
+  const readySelectors = platform && READY_SELECTORS[platform] ? READY_SELECTORS[platform] : ['body'];
   const isReady = await page.evaluate((selectors) => {
     return selectors.some(s => document.querySelector(s) !== null);
-  }, platform && READY_SELECTORS[platform] ? READY_SELECTORS[platform] : ['body']);
-  
+  }, readySelectors);
+
   if (isReady) return;
-  
-  // Quick wait for basic load
-  await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
-  
-  // Check again with shorter timeout
-  const hasContent = await page.locator('body').count().catch(() => 0);
-  if (hasContent > 0) return;
-  
-  // Only wait for networkidle if needed (max 3s)
+
+  // 4. Wait up to 3s for network to settle, then dismiss again (some popups appear post-load)
   await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
+  await dismissPopups(page);
+  await detectLoginWall(page, platform);
 }
+
 
 // Smart wait - check if element exists before waiting
 export async function smartWait(page, checkFn, options = {}) {

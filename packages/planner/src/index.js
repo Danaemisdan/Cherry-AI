@@ -12,10 +12,12 @@ const PLATFORM_HINTS = {
   facebook: ['facebook', 'fb', 'page', 'group'],
   gmail: ['gmail', 'email', 'inbox', 'thread', 'reply'],
   whatsapp: ['whatsapp', 'wa', 'chat'],
-  chatgpt: ['chatgpt', 'gpt', 'openai', 'dalle'],
-  gemini: ['gemini', 'google ai', 'imagen'],
+  chatgpt: ['chatgpt', 'gpt', 'openai', 'dalle', 'ask chatgpt', 'generate with chatgpt'],
+  gemini: ['gemini', 'google ai', 'imagen', 'ask gemini', 'generate with gemini'],
+  sheets: ['google sheets', 'spreadsheet', 'excel', 'google sheet', 'make a sheet', 'create a sheet', 'export to sheet'],
   research: ['lead', 'research', 'scrape', 'website', 'duckduckgo', 'google', 'search'],
 };
+
 
 function detectPlatforms(prompt, context = {}) {
   if (context.platform) return [context.platform];
@@ -40,15 +42,25 @@ function detectOperation(prompt, context = {}) {
   const wantsLeads = /lead|scrape|search|find|prospect|list/i.test(lower);
   const wantsMessaging = /message|dm|reply|outreach|follow.?up|contact|reach out/i.test(lower);
   const wantsCampaign = /campaign|always-on|always on|monitor inbox|continue outreach/i.test(lower);
-  const wantsImage = /image|generate image|draw|picture|photo/i.test(lower);
+  const wantsImage = /image|generate image|draw|picture|photo|dalle|imagen/i.test(lower);
+  const wantsSheet = /spreadsheet|excel|google sheet|make a sheet|create a sheet|export to sheet/i.test(lower);
+  const wantsChat = /ask|chat|prompt|generate text|write|summarize|translate/i.test(lower);
+  const wantsUpload = /upload|reference image|reference asset|use this file|attach/i.test(lower);
+  const wantsExport = /export|save to sheet|put in sheet|add to spreadsheet/i.test(lower);
 
+  if (wantsSheet && wantsExport) return 'export_to_sheet';
+  if (wantsSheet) return 'create_sheet';
+  if (wantsUpload && wantsImage) return 'generate_image'; // reference image generation
+  if (wantsUpload) return 'upload_file';
   if (wantsImage) return 'generate_image';
   if (wantsCampaign) return 'run_campaign';
   if (wantsLeads && wantsMessaging) return 'lead_and_message';
   if (wantsMessaging) return context.usernames?.length > 1 ? 'message_batch' : 'send_message';
   if (wantsLeads) return 'find_leads';
+  if (wantsChat) return 'chat';
   return 'research';
 }
+
 
 function browserModeFor(platform) {
   if (platform === 'research') return 'managed';

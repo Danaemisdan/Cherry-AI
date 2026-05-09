@@ -232,13 +232,21 @@ export const PLATFORM_SKILL_CAPABILITIES = {
     'map_contacts',
   ],
   research: ['search', 'open_result', 'scroll_collect', 'scrape_results', 'extract_context', 'export_artifact'],
-  chatgpt: ['open_workspace', 'generate_image'],
-  gemini: ['open_workspace', 'generate_image'],
+  chatgpt: ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file'],
+  gemini:  ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file'],
+  sheets:  ['open_workspace', 'create_sheet', 'write_data', 'export_to_sheet', 'read_sheet'],
 };
 
 export const WORKFLOW_TEMPLATES = {
   open_workspace: ['open_workspace'],
   generate_image: ['open_workspace', 'generate_image'],
+  chat:           ['open_workspace', 'chat'],
+  ask:            ['open_workspace', 'ask'],
+  upload_file:    ['open_workspace', 'upload_file'],
+  create_sheet:   ['open_workspace', 'create_sheet'],
+  write_data:     ['open_workspace', 'write_data'],
+  export_to_sheet:['open_workspace', 'export_to_sheet'],
+  read_sheet:     ['open_workspace', 'read_sheet'],
   find_leads: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact'],
   scrape_profiles: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact'],
   execute_deep_scrape: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'open_result', 'scrape_profile', 'extract_context', 'export_artifact'],

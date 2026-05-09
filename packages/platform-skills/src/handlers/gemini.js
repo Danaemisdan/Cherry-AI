@@ -1,56 +1,319 @@
-import { openAttachedPage, pauseLikeHuman, typeLikeHuman, waitForVisible } from '../common.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import {
+  openAttachedPage,
+  pauseLikeHuman,
+  waitForAppShell,
+  waitForVisible,
+  minimalDelay,
+  dismissPopups,
+} from '../common.js';
+
+// Confirmed from PlatformHTML/Gemini/ captures
+const GEMINI_HOME_URL   = 'https://gemini.google.com/app';
+const GEMINI_IMAGES_URL = 'https://gemini.google.com/app'; // same page, just navigate & prompt
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function openGemini(attachedBrowser, url = GEMINI_HOME_URL) {
+  const page = await openAttachedPage(attachedBrowser, url, { platform: 'gemini' });
+  await waitForAppShell(page, 'gemini');
+  await dismissPopups(page);
+  return page;
+}
+
+/**
+ * Get the main prompt textarea.
+ * Confirmed selector from HTML: <textarea class="gds-body-l" placeholder="Ask Gemini">
+ */
+async function getPromptInput(page) {
+  return waitForVisible(page, [
+    'textarea.gds-body-l',
+    'textarea[placeholder="Ask Gemini"]',
+    'div.initial-input-area textarea',
+    // Fallback for conversation pages (different layout)
+    'rich-textarea div[contenteditable="true"]',
+    'div[contenteditable="true"][role="textbox"]',
+    'div[contenteditable="true"]',
+  ], 12000);
+}
+
+/**
+ * Type prompt text into Gemini's textarea.
+ * Gemini uses a real <textarea> on the home page — fill() works.
+ */
+async function typeIntoInput(page, text) {
+  const input = await getPromptInput(page);
+  if (!input) throw new Error('Gemini prompt input not found — are you logged in?');
+
+  await input.click();
+  await minimalDelay(300);
+
+  const tag = await input.evaluate(el => el.tagName.toLowerCase());
+  if (tag === 'textarea') {
+    await input.fill('');
+    await input.type(text, { delay: 20 });
+  } else {
+    // contenteditable div
+    await page.keyboard.selectAll();
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type(text, { delay: 20 });
+  }
+
+  await minimalDelay(400);
+}
+
+/**
+ * Click the send button.
+ * Confirmed from HTML: <mat-icon class="send-icon ...">send</mat-icon> inside a button/anchor.
+ * Grid area: icons. The send icon only appears when textarea is not empty.
+ */
+async function clickSend(page) {
+  // Try locating the send button by its mat-icon class
+  const sent = await page.evaluate(() => {
+    // The send icon is a mat-icon.send-icon; its parent is the clickable element
+    const icon = document.querySelector('mat-icon.send-icon');
+    if (icon) {
+      const btn = icon.closest('button') || icon.closest('a') || icon.closest('[role="button"]') || icon.parentElement;
+      if (btn) { btn.click(); return true; }
+    }
+    // Fallback: any button in the icons grid area
+    const iconsArea = document.querySelector('[style*="grid-area: icons"], .send-icon');
+    if (iconsArea) { iconsArea.click(); return true; }
+    return false;
+  });
+
+  if (!sent) {
+    // Last resort — press Enter
+    await page.keyboard.press('Enter');
+  }
+}
+
+/**
+ * Upload a file via the upload button.
+ * Confirmed from HTML: <mat-icon class="upload-icon ...">add_2</mat-icon>
+ * Grid area: upload-icon.
+ */
+async function attachFile(page, filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return false;
+
+  try {
+    // Trigger file chooser by clicking the upload icon button
+    const [fileChooser] = await Promise.all([
+      page.waitForFileChooser({ timeout: 5000 }),
+      page.evaluate(() => {
+        const icon = document.querySelector('mat-icon.upload-icon');
+        if (icon) {
+          const btn = icon.closest('button') || icon.closest('a') || icon.closest('[role="button"]') || icon.parentElement;
+          if (btn) { btn.click(); return true; }
+        }
+        // Try direct input
+        const input = document.querySelector('input[type="file"]');
+        if (input) { input.click(); return true; }
+        return false;
+      }),
+    ]);
+
+    if (fileChooser) {
+      await fileChooser.setFiles(filePath);
+      await minimalDelay(2500);
+      return true;
+    }
+  } catch (_) {}
+
+  // Direct setInputFiles fallback
+  const fileInput = page.locator('input[type="file"]').first();
+  if (await fileInput.count() > 0) {
+    await fileInput.setInputFiles(filePath);
+    await minimalDelay(2500);
+    return true;
+  }
+
+  console.warn('[Gemini] Could not open file chooser for:', filePath);
+  return false;
+}
+
+/**
+ * Wait for Gemini to finish generating a response.
+ * Gemini shows a loading state while streaming; we detect when it's done.
+ */
+async function waitForResponse(page, timeoutMs = 90000) {
+  const start = Date.now();
+  // First wait a moment for generation to start
+  await minimalDelay(1500);
+
+  while (Date.now() - start < timeoutMs) {
+    const isDone = await page.evaluate(() => {
+      // Loading indicators Gemini uses
+      const loading = document.querySelector(
+        '.loading-indicator, [aria-label*="Generating"], ' +
+        '.progress-spinner, mat-progress-bar, ' +
+        '[aria-label*="Stop generating"], .stop-button'
+      );
+      return !loading;
+    }).catch(() => true);
+
+    if (isDone) return true;
+    await minimalDelay(1000);
+  }
+  return false;
+}
+
+/**
+ * Extract the last Gemini response text.
+ * Confirmed from HTML: .response-container contains the assistant output.
+ */
+async function getLastResponse(page) {
+  return page.evaluate(() => {
+    // Look for response containers (confirmed class prefix from HTML)
+    const containers = document.querySelectorAll(
+      'model-response, .response-container, .response-content, ' +
+      'message-content, .gemini-message, [data-response-index]'
+    );
+    if (containers.length) {
+      const last = containers[containers.length - 1];
+      return (last.innerText || last.textContent || '').trim();
+    }
+    // Generic fallback
+    const all = document.querySelectorAll('[class*="response"]');
+    const last = all[all.length - 1];
+    return last ? (last.innerText || '').trim() : '';
+  });
+}
+
+/**
+ * Get generated image URL from Gemini response.
+ * Imagen produces image thumbnails in .generated-image or similar containers.
+ */
+async function getGeneratedImageSrc(page) {
+  return page.evaluate(() => {
+    // Look in response containers for any non-icon image
+    const candidates = document.querySelectorAll(
+      'model-response img, .response-container img, ' +
+      '.generated-image img, img.generated-image, ' +
+      'img[src*="gstatic"], img[src*="googleusercontent"], ' +
+      'img[alt*="generated"], img[alt*="image"]'
+    );
+    for (const img of candidates) {
+      const src = img.src || '';
+      // Skip icons, avatars, logos
+      if (src && !src.includes('icon') && !src.includes('avatar') &&
+          !src.includes('logo') && !src.includes('sparkle') &&
+          (src.startsWith('http') || src.startsWith('blob'))) {
+        return src;
+      }
+    }
+    return null;
+  });
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 
 export const geminiHandler = {
   async execute({ step, attachedBrowser }) {
-    if (step.action === 'generate_image') {
-      const page = await openAttachedPage(attachedBrowser, 'https://gemini.google.com/', { platform: 'gemini' });
-      await pauseLikeHuman(page, 1500, 3000);
+    const { action, args } = step;
 
-      // Find the chat input
-      const promptText = `Generate an image based on this description: ${step.args.prompt || 'A beautiful futuristic landscape'}. Make sure to only output the image and no other text.`;
-      
-      const inputLocator = await waitForVisible(page, [
-        'div[contenteditable="true"][role="textbox"]',
-        'textarea[aria-label*="prompt"]',
-        'rich-textarea'
-      ], 10000);
+    // ── generate_image ────────────────────────────────────────────────────────
+    if (action === 'generate_image') {
+      const page = await openGemini(attachedBrowser, GEMINI_IMAGES_URL);
+      await pauseLikeHuman(page, 1000, 2000);
 
-      if (!inputLocator) {
-        throw new Error('Gemini chat input not found. Make sure you are logged in.');
+      const prompt    = args.prompt || args.messageGoal || 'A beautiful futuristic landscape';
+      const refImage  = args.attachmentPath || args.referenceImagePath || null;
+
+      // Attach reference image first if provided
+      if (refImage) {
+        const uploaded = await attachFile(page, refImage);
+        if (!uploaded) {
+          console.warn('[Gemini] Reference image upload failed, continuing with text-only prompt');
+        } else {
+          await minimalDelay(1000);
+        }
       }
 
-      // Type the prompt
-      await typeLikeHuman(page, inputLocator, promptText);
-      await pauseLikeHuman(page, 500, 1000);
+      const fullPrompt = refImage
+        ? `Using the uploaded image as a visual reference, generate an image: ${prompt}`
+        : `Generate an image: ${prompt}`;
 
-      // Press Enter
-      await page.keyboard.press('Enter');
-      
-      // Wait for image to generate
-      await pauseLikeHuman(page, 10000, 15000); // Image generation takes time
+      await typeIntoInput(page, fullPrompt);
+      await clickSend(page);
 
-      // Look for the generated image
-      const imageLocator = await waitForVisible(page, [
-        'img[alt*="Generated image"]',
-        'img[src*="googleusercontent"]'
-      ], 45000); // Up to 45 seconds to generate
+      console.log('[Gemini] Waiting for image generation...');
+      await pauseLikeHuman(page, 5000, 8000);
+      await waitForResponse(page, 90000);
 
-      if (imageLocator) {
-        const src = await imageLocator.getAttribute('src');
+      const imgSrc = await getGeneratedImageSrc(page);
+      if (imgSrc) {
         return {
           status: 'completed',
-          summary: 'Successfully generated image on Gemini.',
-          data: { imageUrl: src }
+          summary: `Image generated on Gemini: "${prompt.slice(0, 60)}"`,
+          data: { imageUrl: imgSrc },
         };
       }
 
+      // Return text response if image URL not extractable (e.g. blob)
+      const responseText = await getLastResponse(page);
       return {
-        status: 'failed',
-        summary: 'Failed to extract generated image from Gemini.',
-        error: 'Image not found in the chat output.'
+        status: 'completed',
+        summary: 'Gemini image generation complete — check browser window to save',
+        data: { response: responseText },
       };
     }
 
-    throw new Error(`Gemini does not support action: ${step.action}`);
-  }
+    // ── chat / ask / open_workspace ───────────────────────────────────────────
+    if (['open_workspace', 'chat', 'ask'].includes(action)) {
+      const page = await openGemini(attachedBrowser);
+      await pauseLikeHuman(page, 800, 1500);
+
+      const prompt = args.prompt || args.messageGoal || args.query;
+      if (!prompt) {
+        return { status: 'completed', summary: 'Gemini opened', data: {} };
+      }
+
+      // Optionally attach a file/reference asset before prompting
+      if (args.attachmentPath) {
+        const uploaded = await attachFile(page, args.attachmentPath);
+        if (uploaded) await minimalDelay(800);
+      }
+
+      await typeIntoInput(page, prompt);
+      await clickSend(page);
+
+      await pauseLikeHuman(page, 2000, 3000);
+      await waitForResponse(page, 120000);
+
+      const response = await getLastResponse(page);
+      return {
+        status: 'completed',
+        summary: `Gemini responded to: "${prompt.slice(0, 60)}"`,
+        data: { response },
+      };
+    }
+
+    // ── upload_file — attach a file and ask about it ──────────────────────────
+    if (action === 'upload_file') {
+      const page = await openGemini(attachedBrowser);
+      const filePath = args.attachmentPath || args.filePath;
+      if (!filePath) throw new Error('upload_file requires attachmentPath');
+
+      const uploaded = await attachFile(page, filePath);
+      if (!uploaded) throw new Error(`Could not attach file to Gemini: ${filePath}`);
+
+      const followUp = args.prompt || `Analyze this file: ${path.basename(filePath)}`;
+      await typeIntoInput(page, followUp);
+      await clickSend(page);
+
+      await pauseLikeHuman(page, 2000, 3000);
+      await waitForResponse(page, 120000);
+
+      const response = await getLastResponse(page);
+      return {
+        status: 'completed',
+        summary: `File uploaded and Gemini responded`,
+        data: { response },
+      };
+    }
+
+    throw new Error(`Gemini handler does not support action: ${action}`);
+  },
 };

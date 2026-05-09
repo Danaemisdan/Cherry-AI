@@ -1188,8 +1188,10 @@ function History({ events, tasks }) {
 function TaskCard({ compact = false, task }) {
   const latestArtifact = [...(task.events || [])].reverse().find((event) => event.type === 'artifact.ready');
   const latestFailure = [...(task.events || [])].reverse().find((event) => event.type === 'task.failed' || event.type === 'step.failed');
+  const hitlEvent = [...(task.events || [])].reverse().find((event) => event.type === 'hitl.required');
   const completedEvent = [...(task.events || [])].reverse().find((event) => event.type === 'task.completed');
   const plan = task.events?.find((event) => event.type === 'plan.generated')?.plan;
+
 
   const stepStates = useMemo(() => {
     const state = new Map();
@@ -1203,9 +1205,13 @@ function TaskCard({ compact = false, task }) {
       if (event.type === 'step.failed') {
         state.set(event.stepId, { kind: 'failed', detail: event.error });
       }
+      if (event.type === 'hitl.required') {
+        state.set(event.stepId, { kind: 'paused', detail: event.message });
+      }
     }
     return state;
   }, [task.events]);
+
 
   return (
     <article className={`task-card ${compact ? 'compact' : ''}`}>
@@ -1240,7 +1246,17 @@ function TaskCard({ compact = false, task }) {
       ) : null}
 
       {completedEvent ? <p className="success-note">{completedEvent.summary}</p> : null}
-      {latestFailure ? <p className="error-note">{latestFailure.error || latestFailure.detail}</p> : null}
+      {latestFailure && !hitlEvent ? <p className="error-note">{latestFailure.error || latestFailure.detail}</p> : null}
+      {hitlEvent ? (
+        <div className="hitl-banner">
+          <span className="hitl-icon">⚠️</span>
+          <div>
+            <strong>Action Required — Log In</strong>
+            <p>{hitlEvent.message}</p>
+            <small>Log in to <strong>{hitlEvent.platform}</strong> in the browser window, then re-send this task to retry.</small>
+          </div>
+        </div>
+      ) : null}
       {latestArtifact?.url ? <p className="artifact-note">Artifact: <code>{latestArtifact.url}</code></p> : null}
     </article>
   );
@@ -1269,6 +1285,7 @@ function describeEvent(event) {
   if (event.type === 'step.progress') return event.message;
   if (event.type === 'task.failed') return `Execution Error: ${event.error}`;
   if (event.type === 'task.completed') return `Success: ${event.summary}`;
+  if (event.type === 'hitl.required') return `⚠️ Login required on ${event.platform} — please log in and retry`;
   return 'System Event';
 }
 

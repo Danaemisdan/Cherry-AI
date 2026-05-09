@@ -797,48 +797,45 @@ export const instagramHandler = {
         profileContext = await getInstagramProfileContext(page, username);
       }
       
-      // STEP 2: Try messaging methods
+      // STEP 2: Open chat via the correct method for this operation
       let chatOpened = null;
       let methodUsed = null;
-      const triedMethods = new Set();
-      
+
       if (operation === 'auto_dm_contact') {
-        triedMethods.add('contact_inbox');
+        // Existing contact → use left-rail inbox search bar ONLY
+        console.log('[Instagram] Method 1: Inbox messaging (Contact - left rail search)...');
         chatOpened = await messageContactViaInbox(page, username);
         if (chatOpened) methodUsed = 'contact_inbox';
+        // If left-rail search failed, do NOT fall back to new-message modal — it's a different flow
+        if (!chatOpened) {
+          throw new Error(`Could not find @${username} in your inbox. Make sure they are an existing contact.`);
+        }
+
       } else if (operation === 'auto_dm_new' || operation === 'auto_dm') {
-        triedMethods.add('new_message_modal');
+        // New person → use compose/pencil button → new message modal ONLY
+        console.log('[Instagram] Method 1: Inbox messaging (New Person - compose button)...');
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'new_message_modal';
-      }
-      
-      // Method: Inbox (Fallback if not explicitly defined above, or if defined but failed)
-      if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
-        triedMethods.add('inbox');
+        if (!chatOpened) {
+          throw new Error(`Could not open new message dialog for @${username}.`);
+        }
+
+      } else {
+        // Generic send_message — try all methods in order
         chatOpened = await messageViaInbox(page, username);
         if (chatOpened) methodUsed = 'inbox';
+
+        if (!chatOpened && profileContext.canMessage) {
+          chatOpened = await messageViaProfile(page, username);
+          if (chatOpened) methodUsed = 'profile';
+        }
+
+        if (!chatOpened) {
+          chatOpened = await messageViaExplore(page, username);
+          if (chatOpened) methodUsed = 'explore';
+        }
       }
-      
-      // Method 2: Profile (if inbox failed or not suitable AND we aren't restricted to inbox)
-      if (!chatOpened && profileContext.canMessage && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
-        triedMethods.add('profile');
-        chatOpened = await messageViaProfile(page, username);
-        if (chatOpened) methodUsed = 'profile';
-      }
-      
-      // Method 3: Explore
-      if (!chatOpened && !['auto_dm_contact', 'auto_dm_new', 'auto_dm'].includes(operation)) {
-        triedMethods.add('explore');
-        chatOpened = await messageViaExplore(page, username);
-        if (chatOpened) methodUsed = 'explore';
-      }
-      
-      // Ultimate fallback to generic inbox method if the specific one failed
-      if (!chatOpened && !triedMethods.has('new_message_modal') && !triedMethods.has('inbox')) {
-         chatOpened = await messageViaInbox(page, username);
-         if (chatOpened) methodUsed = 'fallback_inbox';
-      }
-      
+
       if (!chatOpened) {
         throw new Error(`Could not open chat with @${username}. They may have restricted messaging or search failed to find them.`);
       }

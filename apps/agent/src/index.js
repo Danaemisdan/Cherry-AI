@@ -116,6 +116,23 @@ async function runTask(task, socket) {
           payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete', duration: stepDuration },
         }));
       } catch (error) {
+        // Login wall detected — pause task and ask user to log in, don't hard-fail
+        if (error.name === 'LoginWallError') {
+          socket.send(JSON.stringify({
+            type: 'task.event',
+            taskId: task.id,
+            payload: {
+              type: 'hitl.required',
+              stepId: step.id,
+              platform: error.platform,
+              reason: 'login_wall',
+              message: error.message,
+            },
+          }));
+          // Don't mark the whole task as failed — just stop here so user can log in
+          return;
+        }
+
         socket.send(JSON.stringify({
           type: 'task.event',
           taskId: task.id,
