@@ -128,79 +128,107 @@ async function getInstagramProfileContext(page, username) {
 
 // Method 1a: DM a Contact — uses the inbox LEFT RAIL search bar to find an existing thread
 async function messageContactViaInbox(page, username) {
-  console.log(`[Instagram] DM Contact: navigating to inbox and searching left rail...`);
+  const normalizedTarget = username.toLowerCase().replace(/^@+/, '').trim();
+  console.log(`[Instagram] DM Contact: opening inbox and searching for @${normalizedTarget}...`);
 
+  // Instagram's DM inbox — direct/t/0/ is the correct URL shown in the address bar
   await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
   await waitForAppShell(page, 'instagram');
-  await minimalDelay(1500);
+  await minimalDelay(2000);
 
-  // Find the search input in the left rail
+  // Find the search bar — it's always in the left rail
   const searchInput = await firstVisibleLocator(page, [
     'input[placeholder="Search"]',
     'input[aria-label="Search input"]',
-    'input[aria-label*="Search"]'
+    'input[aria-label*="Search"]',
   ]);
 
   if (!searchInput) {
-    console.log('[Instagram] Could not find inbox search bar in left rail');
+    console.log('[Instagram] No inbox search bar found in left rail');
     return false;
   }
 
   await searchInput.click();
-  await minimalDelay(600 + Math.random() * 800);
+  await minimalDelay(500);
   await searchInput.fill('');
-  for (const char of username) {
-    await searchInput.type(char, { delay: Math.floor(Math.random() * 130) + 50 });
+  // Type character-by-character to trigger Instagram's live search
+  for (const char of normalizedTarget) {
+    await searchInput.type(char, { delay: 60 + Math.floor(Math.random() * 80) });
   }
-  await minimalDelay(2500 + Math.random() * 1200);
+  // Wait for search results to populate (Instagram shows Messages + More accounts sections)
+  await minimalDelay(3000 + Math.random() * 1000);
 
-  // Find the matching row in the LEFT RAIL only (left 380px of screen)
-  const matchInfo = await page.evaluate((targetName) => {
-    const target = targetName.toLowerCase().trim();
-    const allEls = Array.from(document.querySelectorAll('div, a')).filter(el => {
+  // Click the best match from search results.
+  // The left rail is roughly 0-380px wide on standard viewport.
+  // Priority: "Messages" section (existing threads) first, then "More accounts".
+  const clickResult = await page.evaluate((target) => {
+    const normalize = (s) => (s || '').toLowerCase().replace(/^@+/, '').trim();
+
+    // Collect all visible elements in the left rail (x < 400)
+    const candidates = Array.from(document.querySelectorAll('a, div[role="button"], div[role="option"]')).filter(el => {
       const rect = el.getBoundingClientRect();
-      if (rect.left > 380 || rect.width < 60) return false;
-      if (rect.height < 40 || rect.height > 120) return false;
+      if (rect.left >= 400) return false;       // must be in left rail
+      if (rect.width < 60 || rect.height < 36) return false;
+      if (rect.height > 130) return false;       // skip large containers
       const style = window.getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
       return true;
     });
-    const getText = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-    let bestRow = null;
-    for (const el of allEls) {
-      const lines = getText(el).split('\n').map(l => l.trim());
-      if (lines.some(l => l === target || l.replace(/^@/, '') === target)) { bestRow = el; break; }
-    }
-    if (!bestRow) {
-      for (const el of allEls) {
-        if (getText(el).includes(target)) { bestRow = el; break; }
+
+    const getText = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+
+    // Score each candidate: exact username match = 3, contains = 2, partial = 1
+    let best = null;
+    let bestScore = 0;
+
+    for (const el of candidates) {
+      const text = normalize(getText(el));
+      let score = 0;
+      if (text === target || text.split('\n')[0] === target) score = 3;
+      else if (text.includes(target)) score = 2;
+      else if (target.split('').every(c => text.includes(c))) score = 1;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = el;
       }
     }
-    if (bestRow) {
-      const rect = bestRow.getBoundingClientRect();
-      return { found: true, x: rect.left + Math.min(80, rect.width / 2), y: rect.top + rect.height / 2, text: getText(bestRow).slice(0, 40) };
-    }
-    return { found: false };
-  }, username);
 
-  if (!matchInfo.found) {
-    console.log(`[Instagram] Could not find "${username}" in inbox search results`);
+    if (!best || bestScore === 0) return { found: false };
+
+    const rect = best.getBoundingClientRect();
+    return {
+      found: true,
+      x: Math.round(rect.left + Math.min(80, rect.width / 3)),
+      y: Math.round(rect.top + rect.height / 2),
+      text: getText(best).slice(0, 60),
+      score: bestScore,
+    };
+  }, normalizedTarget);
+
+  if (!clickResult.found) {
+    console.log(`[Instagram] @${normalizedTarget} not found in inbox search results`);
     return false;
   }
 
-  console.log(`[Instagram] Clicking contact row: "${matchInfo.text}" at (${matchInfo.x}, ${matchInfo.y})`);
-  await page.mouse.click(matchInfo.x, matchInfo.y);
-  await minimalDelay(1500);
+  console.log(`[Instagram] Clicking result (score=${clickResult.score}): "${clickResult.text}" at (${clickResult.x}, ${clickResult.y})`);
+  await page.mouse.click(clickResult.x, clickResult.y);
+  await minimalDelay(2000);
 
-  // Confirm the chat panel opened
-  const composer = await page.locator('div[contenteditable="true"], textarea').first();
-  if (await composer.count() > 0) {
-    console.log('[Instagram] Chat panel confirmed open');
+  // Confirm chat opened: URL changes to a thread URL OR a composer appears
+  const urlChanged = page.url().includes('/direct/t/');
+  const composerCount = await page.locator('div[contenteditable="true"][aria-label], div[contenteditable="true"][role="textbox"], div[contenteditable="true"]').count();
+
+  if (urlChanged || composerCount > 0) {
+    console.log(`[Instagram] Chat opened ✓ (url=${page.url().split('?')[0]}, composer=${composerCount > 0})`);
     return { success: true, method: 'contact_inbox' };
   }
 
+  console.log('[Instagram] Chat did not open after clicking result');
   return false;
 }
+
+
 
 // Method 1b: DM a New Person — clicks the compose/pencil icon, searches in modal, clicks Chat
 async function messageViaInbox(page, username) {

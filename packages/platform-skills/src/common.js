@@ -692,27 +692,61 @@ function buildTemplateFallback({ username, goal, tone, platform }) {
   const t = String(tone || 'casual').toLowerCase();
 
   const isFormal   = t.includes('formal') || t.includes('professional');
-  const isCasual   = t.includes('casual') || t.includes('friendly') || t.includes('brief');
   const isQuestion = g.includes('ask') || g.includes('question');
   const isCollab   = g.includes('collab') || g.includes('work together') || g.includes('partner');
   const isFeedback = g.includes('feedback') || g.includes('review') || g.includes('opinion');
-  const isIntro    = g.includes('intro') || g.includes('connect') || g.includes('meet') || g.includes('say hi');
+  const isIntro    = g.includes('intro') || g.includes('connect') || g.includes('meet') || g.includes('say hi') || g.includes('introduce');
+
+  // Pick a random variant so repeated sends don't look identical
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
   if (isFormal) {
-    if (isIntro)    return `Hi @${handle}, I came across your profile and wanted to reach out. Would love to connect if you're open to it!`;
-    if (isCollab)   return `Hi @${handle}, I've been following your work and would love to explore a potential collaboration. Would you be open to a quick chat?`;
-    if (isFeedback) return `Hi @${handle}, I'd really appreciate your thoughts on something I'm working on. Would you mind taking a look?`;
-    if (isQuestion) return `Hi @${handle}, I had a quick question for you — would you be open to sharing your perspective?`;
-    return `Hi @${handle}, I came across your profile and wanted to connect. Looking forward to hearing from you!`;
+    if (isIntro)    return pick([
+      `Hi @${handle}, I came across your profile and wanted to reach out — would love to connect!`,
+      `Hi @${handle}, great work on your profile. I'd love to connect if you're open to it.`,
+      `Hello @${handle}, I came across your page and thought it'd be worth reaching out. Hope you're well!`,
+    ]);
+    if (isCollab)   return pick([
+      `Hi @${handle}, I've been following your work and would love to explore a potential collaboration. Would you be open to a quick chat?`,
+      `Hi @${handle}, I think there could be a great opportunity for us to collaborate. Happy to share more details if you're interested!`,
+    ]);
+    if (isFeedback) return pick([
+      `Hi @${handle}, I'd really appreciate your thoughts on something I'm working on. Would you mind taking a look?`,
+      `Hi @${handle}, your perspective would mean a lot to me. Would you have a moment to share some feedback?`,
+    ]);
+    if (isQuestion) return pick([
+      `Hi @${handle}, I had a quick question for you — would you be open to sharing your thoughts?`,
+      `Hi @${handle}, hope you don't mind me reaching out. I had a question I'd love your insight on.`,
+    ]);
+    return `Hi @${handle}, I came across your profile and thought it'd be worth connecting. Looking forward to hearing from you!`;
   }
 
-  // Default: casual
-  if (isIntro)    return `Hey! Just came across your profile and thought I'd say hi 👋`;
-  if (isCollab)   return `Hey! Love what you're doing — would be cool to collab sometime 🙌`;
-  if (isFeedback) return `Hey! Would love to get your thoughts on something — got a sec?`;
-  if (isQuestion) return `Hey! Quick question for you if you don't mind 😊`;
-  return `Hey! Came across your profile and wanted to reach out 👋`;
+  // Casual (default)
+  if (isIntro)    return pick([
+    `Hey @${handle}! Came across your profile and loved it — thought I'd say hi 👋`,
+    `Hey! Just discovered your page @${handle} and had to reach out 😊`,
+    `Hey @${handle}, love what you've got going on — just wanted to connect!`,
+  ]);
+  if (isCollab)   return pick([
+    `Hey @${handle}! Love your content — would be super cool to collab sometime 🙌`,
+    `Hey! Stumbled across your page @${handle} and think we'd make a great collab. What do you think?`,
+    `Hey @${handle}, your work is 🔥 — would love to explore something together!`,
+  ]);
+  if (isFeedback) return pick([
+    `Hey @${handle}! Would love to get your honest take on something — got a sec?`,
+    `Hey! Quick one @${handle} — would you mind sharing your thoughts on something I'm working on?`,
+  ]);
+  if (isQuestion) return pick([
+    `Hey @${handle}! Quick question for you if you don't mind 😊`,
+    `Hey! Had a question for you @${handle} — hope it's cool if I ask!`,
+  ]);
+  return pick([
+    `Hey @${handle}! Just came across your profile and wanted to reach out 👋`,
+    `Hey @${handle}! Love your vibe — thought I'd shoot my shot and say hi 😄`,
+    `Hey! Discovered your page @${handle} and had to reach out. Really cool stuff!`,
+  ]);
 }
+
 
 
 export async function composeComment({ tone, goal, postContent = '' }) {
