@@ -131,12 +131,11 @@ async function messageContactViaInbox(page, username) {
   const normalizedTarget = username.toLowerCase().replace(/^@+/, '').trim();
   console.log(`[Instagram] DM Contact: opening inbox and searching for @${normalizedTarget}...`);
 
-  // Instagram's DM inbox — direct/t/0/ is the correct URL shown in the address bar
   await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
   await waitForAppShell(page, 'instagram');
   await minimalDelay(2000);
 
-  // Find the search bar — it's always in the left rail
+  // Find the search bar in the left rail
   const searchInput = await firstVisibleLocator(page, [
     'input[placeholder="Search"]',
     'input[aria-label="Search input"]',
@@ -151,42 +150,80 @@ async function messageContactViaInbox(page, username) {
   await searchInput.click();
   await minimalDelay(500);
   await searchInput.fill('');
-  // Type character-by-character to trigger Instagram's live search
   for (const char of normalizedTarget) {
     await searchInput.type(char, { delay: 60 + Math.floor(Math.random() * 80) });
   }
-  // Wait for search results to populate (Instagram shows Messages + More accounts sections)
-  await minimalDelay(3000 + Math.random() * 1000);
+  // Wait for both sections to render
+  await minimalDelay(3500);
 
-  // Click the best match from search results.
-  // The left rail is roughly 0-380px wide on standard viewport.
-  // Priority: "Messages" section (existing threads) first, then "More accounts".
+  // ── Pick from "More accounts" section ONLY ──────────────────────────────
+  // Instagram's inbox search shows TWO sections:
+  //   1. "Messages" — content matches (threads where message TEXT contains the query)
+  //      → clicking these FILTERS the inbox, does NOT open a chat
+  //   2. "More accounts" — actual people/accounts matching the name
+  //      → clicking these navigates to a direct thread
+  //
+  // Strategy: find the "More accounts" section header, then pick the best
+  // matching account row that appears after it.
   const clickResult = await page.evaluate((target) => {
     const normalize = (s) => (s || '').toLowerCase().replace(/^@+/, '').trim();
 
-    // Collect all visible elements in the left rail (x < 400)
-    const candidates = Array.from(document.querySelectorAll('a, div[role="button"], div[role="option"]')).filter(el => {
+    // Find the "More accounts" section header span/div
+    const allText = Array.from(document.querySelectorAll('span, div, p, h3, h4'));
+    const moreAccountsHeader = allText.find(el => {
+      const t = (el.innerText || el.textContent || '').trim();
+      return t === 'More accounts' && el.getBoundingClientRect().width > 0;
+    });
+
+    // Collect candidate rows. If we found the header, only look at elements
+    // that appear AFTER it in DOM order (inside the left rail).
+    const allCandidates = Array.from(
+      document.querySelectorAll('a[href*="/"], div[role="button"], div[role="option"]')
+    ).filter(el => {
       const rect = el.getBoundingClientRect();
-      if (rect.left >= 400) return false;       // must be in left rail
-      if (rect.width < 60 || rect.height < 36) return false;
-      if (rect.height > 130) return false;       // skip large containers
+      if (rect.left >= 400) return false;        // left rail only
+      if (rect.width < 60 || rect.height < 40) return false;
+      if (rect.height > 130) return false;
       const style = window.getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+      // If we found the header, skip anything that comes BEFORE it in the DOM
+      if (moreAccountsHeader) {
+        const pos = moreAccountsHeader.compareDocumentPosition(el);
+        // DOCUMENT_POSITION_FOLLOWING = 4
+        if (!(pos & 4)) return false;
+      }
       return true;
     });
 
     const getText = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
 
-    // Score each candidate: exact username match = 3, contains = 2, partial = 1
+    // For each candidate row, extract:
+    //   - The first line (display name)
+    //   - The second line (usually the @handle on Instagram)
+    // Match primarily against the @handle, then the display name.
     let best = null;
     let bestScore = 0;
 
-    for (const el of candidates) {
-      const text = normalize(getText(el));
+    for (const el of allCandidates) {
+      const raw = getText(el);
+      const lines = raw.split('\n').map(l => normalize(l)).filter(Boolean);
+      const handle = lines[1] || '';   // second line is usually the @handle
+      const displayName = lines[0] || '';
+
+      // Skip content-match rows: they say things like "2 matched messages"
+      if (/\d+\s+matched\s+message/i.test(raw)) continue;
+      // Skip section header rows themselves
+      if (normalize(raw) === 'more accounts' || normalize(raw) === 'messages') continue;
+
       let score = 0;
-      if (text === target || text.split('\n')[0] === target) score = 3;
-      else if (text.includes(target)) score = 2;
-      else if (target.split('').every(c => text.includes(c))) score = 1;
+      // Exact handle match = best possible
+      if (handle === target) score = 10;
+      else if (handle.includes(target) || target.includes(handle)) score = 6;
+      // Display name fallback
+      else if (displayName === target) score = 5;
+      else if (displayName.includes(target)) score = 3;
+      else if (normalize(raw).includes(target)) score = 1;
 
       if (score > bestScore) {
         bestScore = score;
@@ -194,39 +231,42 @@ async function messageContactViaInbox(page, username) {
       }
     }
 
-    if (!best || bestScore === 0) return { found: false };
+    if (!best || bestScore === 0) return { found: false, debug: allCandidates.length };
 
     const rect = best.getBoundingClientRect();
     return {
       found: true,
       x: Math.round(rect.left + Math.min(80, rect.width / 3)),
       y: Math.round(rect.top + rect.height / 2),
-      text: getText(best).slice(0, 60),
+      text: getText(best).slice(0, 80),
       score: bestScore,
     };
   }, normalizedTarget);
 
   if (!clickResult.found) {
-    console.log(`[Instagram] @${normalizedTarget} not found in inbox search results`);
+    console.log(`[Instagram] @${normalizedTarget} not found in "More accounts" section (${clickResult.debug ?? 0} candidates scanned)`);
     return false;
   }
 
-  console.log(`[Instagram] Clicking result (score=${clickResult.score}): "${clickResult.text}" at (${clickResult.x}, ${clickResult.y})`);
+  console.log(`[Instagram] Clicking "More accounts" result (score=${clickResult.score}): "${clickResult.text}" at (${clickResult.x}, ${clickResult.y})`);
   await page.mouse.click(clickResult.x, clickResult.y);
-  await minimalDelay(2000);
+  await minimalDelay(2500);
 
-  // Confirm chat opened: URL changes to a thread URL OR a composer appears
+  // Confirm chat opened
   const urlChanged = page.url().includes('/direct/t/');
-  const composerCount = await page.locator('div[contenteditable="true"][aria-label], div[contenteditable="true"][role="textbox"], div[contenteditable="true"]').count();
+  const composerCount = await page.locator(
+    'div[contenteditable="true"][aria-label], div[contenteditable="true"][role="textbox"], div[contenteditable="true"]'
+  ).count();
 
   if (urlChanged || composerCount > 0) {
     console.log(`[Instagram] Chat opened ✓ (url=${page.url().split('?')[0]}, composer=${composerCount > 0})`);
     return { success: true, method: 'contact_inbox' };
   }
 
-  console.log('[Instagram] Chat did not open after clicking result');
+  console.log('[Instagram] Chat did not open after clicking "More accounts" result');
   return false;
 }
+
 
 
 
