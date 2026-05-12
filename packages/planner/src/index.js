@@ -151,6 +151,11 @@ function buildArgs({ prompt, platform, action, context = {} }) {
     destination: context.destination,
     requireManualReview: context.requireManualReview ?? false,
     oneByOne: action === 'message_batch',
+    // Gmail-specific fields
+    emailSubject: context.emailSubject,
+    emailCc: context.emailCc,
+    emailBcc: context.emailBcc,
+    emailSignature: context.emailSignature,
   };
 }
 

@@ -166,6 +166,13 @@ export const CANONICAL_SKILL_ACTIONS = [
   'report_user',
   'map_contacts',
   'generate_image',
+  // Engagement actions
+  'like_post',
+  'comment_post',
+  // Gmail actions
+  'get_context',
+  'get_profile_context',
+  'reply_to_email',
 ];
 
 const socialCoreActions = [
@@ -193,6 +200,8 @@ const socialCoreActions = [
   'continue_outreach',
   'extract_context',
   'export_artifact',
+  'like_post',
+  'comment_post',
 ];
 
 export const PLATFORM_SKILL_CAPABILITIES = {
@@ -213,6 +222,9 @@ export const PLATFORM_SKILL_CAPABILITIES = {
     'continue_outreach',
     'extract_context',
     'export_artifact',
+    'get_context',
+    'get_profile_context',
+    'reply_to_email',
   ],
   whatsapp: [
     'open_workspace',
@@ -260,6 +272,8 @@ export const WORKFLOW_TEMPLATES = {
   lead_and_message: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact', 'message_batch'],
   scrape_and_message: ['open_workspace', 'open_home', 'search', 'apply_filters', 'scroll_collect', 'scrape_results', 'export_artifact', 'message_batch'],
   like_ai_comment: ['open_workspace', 'open_target', 'engage_post'],
+  like_post:        ['open_workspace', 'open_target', 'like_post'],
+  auto_comment:     ['open_workspace', 'open_target', 'comment_post'],
   bulk_engage_csv: ['open_workspace', 'engage_batch'],
   bulk_follow_csv: ['open_workspace', 'follow_batch'],
   auto_post: ['open_workspace', 'compose_post', 'publish_post'],

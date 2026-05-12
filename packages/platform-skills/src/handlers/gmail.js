@@ -444,16 +444,17 @@ export const gmailHandler = {
       };
     }
 
-    // ── Open target (open compose to a specific email) ────────────────────────
+    // ── Open target ────────────────────────────────────────────────────────────
+    // For Gmail, open_target just ensures Gmail is open at inbox.
+    // The actual compose open+fill is done in send_message to avoid double-compose.
     if (action === 'open_target') {
-      const { username } = args;
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.gmail, { platform: 'gmail' });
-      await waitForAppShell(page, 'gmail');
-      await openGmailCompose(page);
-      if (username) {
-        await fillGmailCompose(page, { to: username, subject: '', body: '' });
+      const currentUrl = page.url();
+      if (!currentUrl.includes('mail.google.com')) {
+        await navigate(page, 'https://mail.google.com/mail/u/0/#inbox', 'gmail');
+        await minimalDelay(1500);
       }
-      return { status: 'ready', summary: summarizeAction('gmail', step), data: await pageSnapshot(page) };
+      return { status: 'ready', summary: 'Gmail workspace ready', data: await pageSnapshot(page) };
     }
 
     // ── Draft message ─────────────────────────────────────────────────────────
@@ -492,41 +493,33 @@ export const gmailHandler = {
       } = args;
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.gmail, { platform: 'gmail' });
+
+      // Make sure we're on Gmail inbox (not some other page)
+      const currentUrl = page.url();
+      if (!currentUrl.includes('mail.google.com')) {
+        await navigate(page, 'https://mail.google.com/mail/u/0/#inbox', 'gmail');
+        await minimalDelay(2000);
+      }
       await waitForAppShell(page, 'gmail');
 
-      // Get profile context from email history to personalise the message
-      let profileContext = {};
-      try {
-        profileContext = await getProfileContextFromEmail(page, username);
-        console.log(`[Gmail] Profile: ${profileContext.displayName}, ${profileContext.threadCount} past threads`);
-      } catch (e) {
-        console.warn('[Gmail] Could not extract profile context:', e.message);
-      }
-
-      // Generate message
+      // Generate message BEFORE opening compose (no navigation needed)
       const message = await generateOutreachMessage({
         username,
-        goal: messageGoal,
-        tone,
+        goal: messageGoal || query || 'Introduce myself',
+        tone: tone || 'Casual and brief',
         query,
         platform: 'gmail',
-        chatContext: profileContext.latestEmailBody
-          ? [{ role: 'them', text: profileContext.latestEmailBody }]
-          : [],
-        profileInfo: { displayName: profileContext.displayName },
+        chatContext: [],
+        profileInfo: {},
       });
 
-      // Compose subject — use explicit subject from args if set, else derive from goal
-      const subject = emailSubject
-        || (profileContext.recentSubjects?.[0] ? `Re: ${profileContext.recentSubjects[0]}` : null)
-        || messageGoal
-        || query
-        || 'Quick note';
+      // Subject: use explicit subject if provided, else derive
+      const subject = emailSubject || messageGoal || query || 'Quick note';
 
       // Open compose window
       await openGmailCompose(page);
 
-      // Fill all compose fields
+      // Fill all compose fields (To, CC, BCC, Subject, Body + Signature)
       const { ok } = await fillGmailCompose(page, {
         to: username,
         cc: emailCc,
@@ -537,7 +530,7 @@ export const gmailHandler = {
       });
 
       if (!ok) {
-        throw new Error(`Could not prepare Gmail draft for "${username}"`);
+        throw new Error(`Could not fill Gmail compose for "${username}". Is Gmail open and logged in?`);
       }
 
       // Attach file if provided (HTML, image, video, document)
@@ -545,7 +538,7 @@ export const gmailHandler = {
         await attachFileToGmail(page, attachmentPath);
       }
 
-      await minimalDelay(400);
+      await minimalDelay(500);
 
       // Send
       let sent = false;
@@ -568,6 +561,7 @@ export const gmailHandler = {
         },
       };
     }
+
 
     // ── Batch send ────────────────────────────────────────────────────────────
     if (action === 'message_batch') {
