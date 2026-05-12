@@ -216,6 +216,13 @@ function Workspace({ refreshTasks, tasks }) {
   const [submitting, setSubmitting] = useState(false);
   const [automationMode, setAutomationMode] = useState('auto');
 
+  // Gmail-specific fields
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailCc, setEmailCc] = useState('');
+  const [emailBcc, setEmailBcc] = useState('');
+  const [emailSignature, setEmailSignature] = useState('');
+  const [gmailSearchQuery, setGmailSearchQuery] = useState('');
+
   const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
   const selectedPlatformMeta = platformMeta.find((item) => item.id === selectedPlatform) || platformMeta[0];
   const capabilities = PLATFORM_SKILL_CAPABILITIES[selectedPlatform] || [];
@@ -333,6 +340,10 @@ function Workspace({ refreshTasks, tasks }) {
       requireManualReview: autoOnlyOperations.has(operation) ? false : automationMode === 'manual',
       tone,
       attachmentPath: attachmentPath.trim() || undefined,
+      emailSubject: emailSubject.trim() || undefined,
+      emailCc: emailCc.trim() || undefined,
+      emailBcc: emailBcc.trim() || undefined,
+      emailSignature: emailSignature.trim() || undefined,
       username: targetHandle,
       usernames,
     };
@@ -405,6 +416,23 @@ function Workspace({ refreshTasks, tasks }) {
       auto_post: {
         prompt: `Automatically create a post on ${selectedPlatformMeta.label}. Content goal: ${goal}. Tone: ${tone}. Asset: ${attachmentPath || 'none'}.`,
         context: { ...baseContext, operation: 'auto_post', attachmentPath },
+      },
+      // Gmail-specific
+      gmail_search: {
+        prompt: `Search Gmail for: ${gmailSearchQuery || query}`,
+        context: { ...baseContext, operation: 'gmail_search', query: gmailSearchQuery || query },
+      },
+      gmail_get_context: {
+        prompt: `Read and extract context from my Gmail inbox.`,
+        context: { ...baseContext, operation: 'gmail_get_context', maxResults: 20 },
+      },
+      gmail_get_profile: {
+        prompt: `Get profile context for email ${targetUsername} from Gmail history.`,
+        context: { ...baseContext, operation: 'gmail_get_profile' },
+      },
+      gmail_reply: {
+        prompt: `Reply to the latest email from ${targetUsername} on Gmail. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'gmail_reply' },
       },
       bulk_dm_csv: {
         prompt: `Execute a bulk DM campaign from CSV on ${selectedPlatformMeta.label}. List size: ${usernames.length}. Goal: ${goal}. Tone: ${tone}.`,
@@ -777,6 +805,59 @@ function Workspace({ refreshTasks, tasks }) {
                         {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
                         {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
                         {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
+                      </div>
+                    ) : null}
+
+                    {/* Gmail-specific expanded panel */}
+                    {selectedPlatform === 'gmail' ? (
+                      <div className="space-y-6 p-6 rounded-[2rem] bg-zinc-900/40 border border-zinc-800">
+                        <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Gmail — Email Options</p>
+
+                        {/* Row 1: Subject + CC */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Subject</label>
+                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="Email subject (optional, AI picks one)" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">CC</label>
+                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="cc@example.com" value={emailCc} onChange={e => setEmailCc(e.target.value)} />
+                          </div>
+                        </div>
+
+                        {/* Row 2: BCC + Attachment */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">BCC</label>
+                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="bcc@example.com" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Attachment (HTML / Image / Video)</label>
+                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="/path/to/file.html" value={attachmentPath} onChange={e => setAttachmentPath(e.target.value)} />
+                          </div>
+                        </div>
+
+                        {/* Signature */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Email Signature (optional)</label>
+                          <textarea rows={3} className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none resize-none" placeholder={"Best,\nYour Name\nyoursite.com"} value={emailSignature} onChange={e => setEmailSignature(e.target.value)} />
+                        </div>
+
+                        {/* Gmail utility buttons */}
+                        <div className="space-y-3 pt-2 border-t border-zinc-800">
+                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Gmail Tools</p>
+                          <div className="flex gap-3 flex-wrap">
+                            <div className="flex gap-2 flex-1">
+                              <input className="flex-1 bg-black border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-zinc-500 outline-none" placeholder="Search query..." value={gmailSearchQuery} onChange={e => setGmailSearchQuery(e.target.value)} />
+                              <button onClick={() => runPlatformAction('gmail_search')} className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-black text-xs transition-all whitespace-nowrap">🔍 Search</button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <button onClick={() => runPlatformAction('gmail_get_context')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">📬 Get Inbox Context</button>
+                            <button onClick={() => runPlatformAction('gmail_get_profile')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">👤 Get Sender Profile</button>
+                            <button onClick={() => runPlatformAction('gmail_reply')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">↩️ Reply to Email</button>
+                          </div>
+                        </div>
                       </div>
                     ) : null}
 

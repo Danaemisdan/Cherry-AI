@@ -100,6 +100,12 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'like_post')       return ['open_workspace', 'open_target', 'like_post'];
   if (operation === 'auto_comment')    return ['open_workspace', 'open_target', 'comment_post'];
 
+  // Gmail-specific operations
+  if (operation === 'gmail_search')       return ['open_workspace', 'search'];
+  if (operation === 'gmail_get_context')  return ['open_workspace', 'get_context'];
+  if (operation === 'gmail_get_profile')  return ['open_workspace', 'get_profile_context'];
+  if (operation === 'gmail_reply')        return ['open_workspace', 'reply_to_email'];
+
   if (operation === 'follow_user') return ['open_workspace', 'open_target', 'follow_user'];
   if (operation === 'auto_post') return ['open_workspace', 'compose_post', 'publish_post'];
   if (operation === 'bulk_engage_csv') return ['open_workspace', 'engage_batch'];
