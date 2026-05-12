@@ -602,110 +602,138 @@ async function sendInstagramMessage(page, message, options = {}) {
 }
 
 // Like post via UI
-async function likeInstagramPost(page, postUrl) {
-  console.log('[Instagram] Liking post...');
-  
+async function likeInstagramPost(page, postUrl, username) {
+  console.log(`[Instagram] likeInstagramPost — postUrl=${postUrl}, username=${username}`);
+
+  // 1. If a direct post URL is given, navigate to it
   if (postUrl) {
     await navigate(page, postUrl, 'instagram');
     await waitForAppShell(page, 'instagram');
-    await minimalDelay(800);
+    await minimalDelay(1000);
+  } else if (username) {
+    // 2. Navigate to profile and open the first post
+    console.log(`[Instagram] Navigating to @${username}'s profile to find first post...`);
+    await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(1500);
+
+    // Click the first post thumbnail
+    const firstPost = await firstVisibleLocator(page, [
+      'a[href*="/p/"]',
+      'a[href*="/reel/"]',
+    ]);
+    if (!firstPost) throw new Error(`Could not find any posts on @${username}'s profile`);
+    await firstPost.click();
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(1500);
+  } else {
+    console.log('[Instagram] likeInstagramPost: no postUrl or username — attempting to like whatever post is open');
   }
-  
+
+  // 3. Try Playwright locator first (most reliable)
+  const likeBtn = page.locator('svg[aria-label="Like"]').first();
+  if (await likeBtn.count() > 0) {
+    await likeBtn.evaluate(el => {
+      const btn = el.closest('button') || el.closest('[role="button"]') || el;
+      btn.click();
+    }).catch(() => {});
+    await minimalDelay(600);
+    console.log('[Instagram] Post liked via SVG aria-label');
+    return { liked: true };
+  }
+
+  // 4. Fallback: extractPageContent scan
   const content = await extractPageContent(page);
-  // Find like button (Accessibility-first)
-  let likeElement = content.interactiveElements.find(e => 
+  const likeElement = content.interactiveElements.find(e =>
     e.ariaLabel === 'Like' || e.ariaLabel?.includes('Like')
   );
-  
-  if (!likeElement) {
-    const likeBtns = await findElementsByText(page, 'Like', {
-      tagNames: ['button', 'svg', 'span'],
-      fuzzy: true
-    });
-    if (likeBtns.length > 0) likeElement = likeBtns[0];
-  }
-  
   if (likeElement) {
     await page.evaluate(({ tag, index }) => {
       const elements = document.querySelectorAll(tag);
       if (elements[index]) elements[index].click();
     }, { tag: likeElement.tag, index: likeElement.index });
-    
-    await minimalDelay(500);
-    console.log('[Instagram] Post liked');
+    await minimalDelay(600);
+    console.log('[Instagram] Post liked via extractPageContent');
     return { liked: true };
   }
-  
+
+  console.warn('[Instagram] Could not find Like button');
   return { liked: false };
 }
 
+
 // Comment on post
-async function commentOnInstagramPost(page, comment, postUrl) {
-  console.log('[Instagram] Commenting on post...');
-  
+async function commentOnInstagramPost(page, comment, postUrl, username) {
+  console.log(`[Instagram] commentOnInstagramPost — postUrl=${postUrl}, username=${username}`);
+
+  // 1. Navigate to the post
   if (postUrl) {
     await navigate(page, postUrl, 'instagram');
     await waitForAppShell(page, 'instagram');
-    await minimalDelay(800);
+    await minimalDelay(1200);
+  } else if (username) {
+    console.log(`[Instagram] Navigating to @${username}'s profile to open first post...`);
+    await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(1500);
+
+    const firstPost = await firstVisibleLocator(page, [
+      'a[href*="/p/"]',
+      'a[href*="/reel/"]',
+    ]);
+    if (!firstPost) throw new Error(`Could not find any posts on @${username}'s profile`);
+    await firstPost.click();
+    await waitForAppShell(page, 'instagram');
+    await minimalDelay(1500);
   }
-  
-  // Find comment box (Accessibility-first)
-  let commentBox = [];
-  const textareas = await page.locator('textarea[aria-label*="Add a comment"], textarea[placeholder*="Add a comment"]').all();
-  if (textareas.length > 0) {
-    commentBox = [{ index: -1, element: textareas[0] }];
-  } else {
-    commentBox = await findElementsByText(page, 'Add a comment', {
-      tagNames: ['textarea', 'div[contenteditable="true"]'],
-      fuzzy: true
-    });
-  }
-  
-  if (commentBox.length === 0) {
-    throw new Error('Comment box not found');
-  }
-  
-  // Click and type comment
-  if (commentBox[0].index === -1 && commentBox[0].element) {
-    await commentBox[0].element.click().catch(() => {});
-    await commentBox[0].element.focus().catch(() => {});
-  } else {
-    await page.evaluate(({ tag, index }) => {
-      const elements = document.querySelectorAll(tag);
-      if (elements[index]) {
-        elements[index].click();
-        elements[index].focus();
+
+  // 2. Find comment textarea
+  const textarea = await firstVisibleLocator(page, [
+    'textarea[aria-label="Add a comment\u2026"]',
+    'textarea[placeholder="Add a comment\u2026"]',
+    'textarea[aria-label*="comment"]',
+    'textarea[placeholder*="comment"]',
+    'textarea',
+  ]);
+
+  if (!textarea) throw new Error('Comment textarea not found on post');
+
+  await textarea.click();
+  await minimalDelay(400);
+  await textarea.focus();
+  await page.keyboard.type(comment, { delay: 18 });
+  await minimalDelay(600);
+
+  // 3. Submit — walk from textarea up to its container, find button with exact text "Post"
+  const submitted = await page.evaluate(() => {
+    const ta = document.querySelector(
+      'textarea[aria-label="Add a comment\u2026"], textarea[placeholder="Add a comment\u2026"], textarea[aria-label*="comment"]'
+    );
+    if (!ta) return false;
+    let container = ta.parentElement;
+    for (let i = 0; i < 12 && container; i++) {
+      for (const btn of Array.from(container.querySelectorAll('button, div[role="button"]'))) {
+        const text = (btn.innerText || btn.textContent || '').trim();
+        if (text === 'Post') { btn.click(); return true; }
       }
-    }, { tag: commentBox[0].tag, index: commentBox[0].index });
-  }
-  
-  await minimalDelay(200);
-  await page.keyboard.type(comment, { delay: 10 });
-  await minimalDelay(300);
-  
-  // Find Post button (NOT Share)
-  const postBtn = await findElementsByText(page, 'Post', {
-    tagNames: ['button', 'div'],
-    fuzzy: false
+      container = container.parentElement;
+    }
+    return false;
   });
-  
-  if (postBtn.length > 0) {
-    await page.evaluate(({ tag, index }) => {
-      const elements = document.querySelectorAll(tag);
-      if (elements[index]) elements[index].click();
-    }, { tag: postBtn[0].tag, index: postBtn[0].index });
-    
-    await minimalDelay(500);
-    console.log('[Instagram] Comment posted');
+
+  if (submitted) {
+    await minimalDelay(1500);
+    console.log('[Instagram] Comment posted via Post button');
     return { commented: true };
   }
-  
-  // Fallback to Enter
+
+  // Fallback
   await page.keyboard.press('Enter');
-  await minimalDelay(500);
-  
+  await minimalDelay(1000);
+  console.log('[Instagram] Comment posted via Enter key');
   return { commented: true };
 }
+
 
 // Search for content/users via UI
 async function instagramSearch(page, query, type = 'all') {
@@ -979,9 +1007,8 @@ export const instagramHandler = {
     
     // ACTION: Like post
     if (action === 'like_post') {
-      const { postUrl } = args;
-      const result = await likeInstagramPost(page, postUrl);
-      
+      const { postUrl, username } = args;
+      const result = await likeInstagramPost(page, postUrl, username);
       return {
         status: 'completed',
         summary: summarizeAction('instagram', step),
@@ -991,24 +1018,23 @@ export const instagramHandler = {
     
     // ACTION: Comment on post
     if (action === 'comment_post') {
-      const { postUrl, comment, messageGoal, tone, query } = args;
-      
+      const { postUrl, comment, messageGoal, tone, query, username } = args;
+
       // Generate AI comment if not provided
       let finalComment = comment;
-      if (!finalComment && messageGoal) {
+      if (!finalComment) {
         finalComment = await generateOutreachMessage({
-          username: 'post',
-          goal: messageGoal,
-          tone,
+          username: username || 'post',
+          goal: messageGoal || goal || 'leave an engaging comment',
+          tone: tone || 'casual',
           query,
           platform: 'instagram',
           chatContext: [],
           profileInfo: {}
         });
       }
-      
-      const result = await commentOnInstagramPost(page, finalComment, postUrl);
-      
+
+      const result = await commentOnInstagramPost(page, finalComment, postUrl, username);
       return {
         status: 'completed',
         summary: summarizeAction('instagram', step),

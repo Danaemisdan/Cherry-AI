@@ -22,53 +22,89 @@ import * as path from 'path';
 async function openGmailCompose(page) {
   console.log('[Gmail] Opening Compose...');
 
-  // Dismiss any notification banners first (they can cover the Compose button)
-  await tryClick(page, ['button[aria-label="No thanks"]', 'button:has-text("No thanks")', '.bAp .T-I']).catch(() => {});
-  await minimalDelay(300);
+  // Dismiss any overlays/banners (e.g. "Enable desktop notifications")
+  for (const noBtn of ['button[aria-label="No thanks"]', 'button:has-text("No thanks")', 'button:has-text("Dismiss")']) {
+    const el = page.locator(noBtn).first();
+    if (await el.count() > 0 && await el.isVisible().catch(() => false)) {
+      await el.click().catch(() => {});
+      await minimalDelay(300);
+    }
+  }
 
-  // 1. Try the blue Compose button by its exact aria-label / data-tooltip
+  // Helper: check if compose dialog is open
+  const isComposeOpen = async () => {
+    const indicators = [
+      'input[aria-label="To"]',
+      'input[aria-label*="To"]',
+      'input[name="to"]',
+      'div[aria-label="Message Body"][contenteditable="true"]',
+      'input[name="subjectbox"]',
+      'div[role="dialog"] div[contenteditable="true"]',
+    ];
+    for (const sel of indicators) {
+      if (await page.locator(sel).count() > 0) return true;
+    }
+    return false;
+  };
+
+  // If compose is already open, return immediately
+  if (await isComposeOpen()) {
+    console.log('[Gmail] Compose window already open');
+    return true;
+  }
+
+  // Strategy 1: Specific Compose button selectors
   const composeSelectors = [
     'div[role="button"][aria-label="Compose"]',
     'div[role="button"][data-tooltip="Compose"]',
+    '.T-I.J-J5-Ji.T-I-KE',              // Gmail's compose button CSS class
+    '[gh="cm"]',                           // Gmail compose shortcut element
     'div[role="button"][aria-label*="Compose"]',
-    '.T-I-KE',           // Gmail's compose button CSS class
-    'div.T-I.J-J5-Ji.T-I-KE.L3',
-    '[gh="cm"]',         // Gmail compose shortcut element
+    'div[data-tooltip*="Compose"]',
+    '.T-I-KE',
   ];
 
-  const clicked = await tryClick(page, composeSelectors);
-  if (clicked) {
-    await minimalDelay(800);
-    return true;
+  for (const sel of composeSelectors) {
+    try {
+      const el = page.locator(sel).first();
+      if (await el.count() > 0 && await el.isVisible().catch(() => false)) {
+        await el.click({ timeout: 3000 });
+        await minimalDelay(1000);
+        if (await isComposeOpen()) {
+          console.log(`[Gmail] Compose opened via: ${sel}`);
+          return true;
+        }
+      }
+    } catch { /* continue */ }
   }
 
-  // 2. Playwright role-based click
+  // Strategy 2: Playwright role-based click
   try {
     await page.getByRole('button', { name: /^compose$/i }).click({ timeout: 3000 });
-    await minimalDelay(800);
-    return true;
+    await minimalDelay(1000);
+    if (await isComposeOpen()) { console.log('[Gmail] Compose opened via role button'); return true; }
   } catch { /* continue */ }
 
-  // 3. Text-based click
-  const textClicked = await clickByText(page, ['div[role="button"]', 'button'], ['Compose', 'COMPOSE']);
-  if (textClicked) {
-    await minimalDelay(800);
-    return true;
-  }
+  // Strategy 3: Text-based click
+  try {
+    const textClicked = await clickByText(page, ['div[role="button"]', 'button'], ['Compose', 'COMPOSE']);
+    if (textClicked) {
+      await minimalDelay(1000);
+      if (await isComposeOpen()) { console.log('[Gmail] Compose opened via text click'); return true; }
+    }
+  } catch { /* continue */ }
 
-  // 4. Keyboard shortcut 'c' (Gmail hotkey for Compose)
+  // Strategy 4: Keyboard shortcut 'c' (Gmail hotkey)
   await page.keyboard.press('c');
-  await minimalDelay(1000);
+  await minimalDelay(1200);
+  if (await isComposeOpen()) { console.log('[Gmail] Compose opened via keyboard shortcut c'); return true; }
 
-  // Verify compose opened
-  const composer = await firstVisibleLocator(page, [
-    'div[aria-label="Message Body"][contenteditable="true"]',
-    'div[role="dialog"] input[name="subjectbox"]',
-    'input[aria-label*="To"]',
-  ]);
-  if (composer) return true;
+  // Strategy 5: Navigate directly to compose URL
+  await navigate(page, 'https://mail.google.com/mail/u/0/#inbox?compose=new', 'gmail');
+  await minimalDelay(2000);
+  if (await isComposeOpen()) { console.log('[Gmail] Compose opened via compose URL'); return true; }
 
-  throw new Error('Could not open Gmail compose window — make sure you are logged in to Gmail');
+  throw new Error('Could not open Gmail compose window. Make sure you are logged in to Gmail in the Cherry browser profile.');
 }
 
 async function fillGmailField(page, selectors, value) {

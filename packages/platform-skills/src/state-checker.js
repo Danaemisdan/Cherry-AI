@@ -62,11 +62,29 @@ export async function checkLoginState(page, platform) {
     },
     gmail: async () => {
       try {
-        await page.waitForSelector('div[role="button"][aria-label="Compose"], a[href="#inbox"], .gb_ea, [data-testid="compose-button"]', { timeout: 5000 });
-        return { loggedIn: true, ready: true };
+        // Gmail is loaded if ANY of these logged-in indicators are present
+        const checks = await Promise.allSettled([
+          page.waitForSelector('div[role="button"][aria-label="Compose"]', { timeout: 4000 }),
+          page.waitForSelector('.T-I.J-J5-Ji.T-I-KE', { timeout: 4000 }),     // Compose button CSS class
+          page.waitForSelector('[gh="cm"]', { timeout: 4000 }),                // Gmail compose element
+          page.waitForSelector('a[href="#inbox"], a[href="#starred"]', { timeout: 4000 }),
+          page.waitForSelector('.gb_ea, .gb_d, .gb_A', { timeout: 4000 }),    // Google account avatar
+          page.waitForSelector('div[data-tooltip="Compose"]', { timeout: 4000 }),
+          page.waitForSelector('.nH .aAy', { timeout: 4000 }),                 // Gmail main nav
+        ]);
+        const anySuccess = checks.some(c => c.status === 'fulfilled');
+        if (anySuccess) return { loggedIn: true, ready: true };
+
+        // Fallback: check URL — if we're on mail.google.com and NOT on accounts page, assume logged in
+        const url = page.url();
+        if (url.includes('mail.google.com') && !url.includes('accounts.google.com')) {
+          return { loggedIn: true, ready: true };
+        }
+
+        throw new Error('Not logged in');
       } catch {
-        const hasLoginBtn = await page.locator('#identifierId, input[type="email"], button:has-text("Sign in")').count() > 0;
-        return { loggedIn: false, ready: false, needsLogin: hasLoginBtn, message: 'Please log in to Gmail' };
+        const hasLoginBtn = await page.locator('#identifierId, input[type="email"], button:has-text("Sign in"), [data-action="sign in"]').count() > 0;
+        return { loggedIn: false, ready: false, needsLogin: hasLoginBtn, message: 'gmail requires login in this Cherry browser profile. Sign in once inside the Cherry debug profile, then retry.' };
       }
     },
     whatsapp: async () => {
