@@ -814,15 +814,49 @@ export const instagramHandler = {
   async execute({ step, attachedBrowser }) {
     const { action, args } = step;
     
-    // Check login state
-    if (['send_message', 'draft_message', 'open_target', 'message_batch', 'like_post', 'comment_post'].includes(action)) {
+    // Check login state for actions that write/navigate
+    if (['send_message', 'draft_message', 'open_target', 'message_batch'].includes(action)) {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
       const state = await checkLoginState(page, 'instagram');
       if (!state.ready) {
         throw new Error(state.message || 'Please log in to Instagram');
       }
     }
-    
+
+    // For like_post / comment_post: get the existing Instagram tab WITHOUT resetting URL.
+    // openAttachedPage(PLATFORM_URLS.instagram) would navigate back to instagram.com home
+    // if the tab is currently on a profile/post page, destroying context.
+    if (action === 'like_post' || action === 'comment_post') {
+      // Get the existing Instagram tab (or open at home as fallback)
+      let page = await attachedBrowser.findPage((p) => p.url().includes('instagram.com')).catch(() => null);
+      if (!page) {
+        page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
+      }
+      const { postUrl, username, comment, messageGoal, tone, query } = args;
+
+      if (action === 'like_post') {
+        const result = await likeInstagramPost(page, postUrl, username);
+        return { status: 'completed', summary: summarizeAction('instagram', step), data: result };
+      }
+
+      if (action === 'comment_post') {
+        let finalComment = comment;
+        if (!finalComment) {
+          finalComment = await generateOutreachMessage({
+            username: username || 'post',
+            goal: messageGoal || 'leave an engaging, genuine comment',
+            tone: tone || 'casual',
+            query,
+            platform: 'instagram',
+            chatContext: [],
+            profileInfo: {}
+          });
+        }
+        const result = await commentOnInstagramPost(page, finalComment, postUrl, username);
+        return { status: 'completed', summary: summarizeAction('instagram', step), data: { comment: finalComment, ...result } };
+      }
+    }
+
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
     
     // ACTION: Open profile

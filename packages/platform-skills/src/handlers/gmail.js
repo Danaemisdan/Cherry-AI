@@ -389,12 +389,17 @@ export const gmailHandler = {
   async execute({ step, attachedBrowser }) {
     const { action, args } = step;
 
-    // Auth check for write actions
-    if (['send_message', 'draft_message', 'open_target', 'message_batch'].includes(action)) {
+    // Auth check for write actions (NOT open_target — it's just inbox navigation for Gmail)
+    if (['send_message', 'draft_message', 'message_batch'].includes(action)) {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.gmail, { platform: 'gmail' });
-      const state = await checkLoginState(page, 'gmail');
-      if (!state.ready) {
-        throw new Error(state.message || 'Please log in to Gmail in the Cherry browser profile');
+      const url = page.url();
+      // Fast URL check first — if we're on mail.google.com we're logged in
+      const loggedIn = url.includes('mail.google.com') && !url.includes('accounts.google.com');
+      if (!loggedIn) {
+        const state = await checkLoginState(page, 'gmail');
+        if (!state.ready) {
+          throw new Error(state.message || 'gmail requires login in the Cherry browser profile. Open Gmail in your attached Chrome session and sign in.');
+        }
       }
     }
 
