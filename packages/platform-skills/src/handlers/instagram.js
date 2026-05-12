@@ -1204,12 +1204,46 @@ export const instagramHandler = {
         }
       },
       async sendComment(page) {
-        const postBtn = await page.locator('div[role="button"]:has-text("Post"), button:has-text("Post")').first();
-        if (await postBtn.count() > 0 && await postBtn.isVisible()) {
-          await postBtn.click().catch(() => {});
+        // The comment submit button is labelled "Post" and lives INSIDE the comment form,
+        // NOT in the action bar (where Repost lives).
+        // Strategy:
+        //   1. Find the active comment textarea first
+        //   2. Walk UP to its form/container
+        //   3. Find a "Post" button WITHIN that container
+        //   4. Fall back to Enter key only if nothing found
+        const submitted = await page.evaluate(() => {
+          // Locate the comment textarea
+          const textarea = document.querySelector(
+            'textarea[aria-label="Add a comment…"], textarea[placeholder="Add a comment…"], textarea[aria-label*="comment"]'
+          );
+          if (!textarea) return false;
+
+          // Walk up to a reasonable form ancestor (max 10 levels)
+          let container = textarea.parentElement;
+          for (let i = 0; i < 10 && container; i++) {
+            // Look for a button/div with exact text "Post" inside this container
+            const candidates = Array.from(container.querySelectorAll(
+              'button, div[role="button"]'
+            ));
+            for (const btn of candidates) {
+              const text = (btn.innerText || btn.textContent || '').trim();
+              // Must be exactly "Post" — not "Repost", not "Share", not "Post anyway"
+              if (text === 'Post') {
+                btn.click();
+                return true;
+              }
+            }
+            container = container.parentElement;
+          }
+          return false;
+        });
+
+        if (submitted) {
           await minimalDelay(1500);
           return true;
         }
+
+        // Nothing found via DOM walk — press Enter as last resort
         await page.keyboard.press('Enter');
         await minimalDelay(1500);
         return true;

@@ -317,7 +317,7 @@ function Workspace({ refreshTasks, tasks }) {
   async function runPlatformAction(operation) {
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
-    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
+    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
     const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'auto_dm_contact', 'auto_dm_new', 'bulk_dm_csv']);
     const trimmedQuery = query.trim();
     const noisyDefaults = new Set(['customer follow up']);
@@ -381,6 +381,14 @@ function Workspace({ refreshTasks, tasks }) {
       like_ai_comment: {
         prompt: `Like and leave an AI-generated comment on ${targetHandle || 'the user'}'s recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
         context: { ...baseContext, operation: 'like_ai_comment' },
+      },
+      like_post: {
+        prompt: `Like ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'like_post' },
+      },
+      auto_comment: {
+        prompt: `Leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'auto_comment' },
       },
       follow_user: {
         prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
@@ -751,7 +759,12 @@ function Workspace({ refreshTasks, tasks }) {
                           {selectedPlatform !== 'gmail' && <button onClick={() => runPlatformAction('auto_dm_new')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">DM a new person</button>}
                         </>
                       ) : null}
-                      {supports('engage_post') ? <button onClick={() => runPlatformAction('like_ai_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Like + AI Comment</button> : null}
+                      {supports('engage_post') ? (
+                        <>
+                          <button onClick={() => runPlatformAction('like_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">❤️ Like Post</button>
+                          <button onClick={() => runPlatformAction('auto_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">💬 AI Comment</button>
+                        </>
+                      ) : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
                       {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
                     </div>

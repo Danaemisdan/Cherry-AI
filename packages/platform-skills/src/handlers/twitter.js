@@ -91,105 +91,149 @@ async function checkTwitterFollowStatus(page) {
   };
 }
 
-async function openTwitterMessageFromInbox(page, username) {
-  // Strategy: Navigate to Twitter DM inbox and search for user
-  try {
-    await navigate(page, 'https://twitter.com/messages', 'twitter');
-    await waitForAppShell(page, 'twitter');
-    await minimalDelay(800);
+// Method A: DM an existing contact — uses the Search box in the left DM rail
+async function openTwitterDMContact(page, username) {
+  console.log(`[Twitter] DM Contact: navigating to messages and searching left rail...`);
+  await navigate(page, 'https://x.com/messages', 'twitter');
+  await waitForAppShell(page, 'twitter');
+  await minimalDelay(2000);
 
-    // Look for "New message" button
-    const newMessageSelectors = [
-      'button[aria-label="New message"]',
-      'button[data-testid="newDmButton"]',
-      'a[href="/messages/compose"]',
-      'button:has-text("New message")',
-    ];
+  // Click the Search button/input in the left DM rail (NOT the global search or compose button)
+  const searchInput = await firstVisibleLocator(page, [
+    'input[placeholder="Search Direct Messages"]',
+    'input[aria-label="Search Direct Messages"]',
+    'input[data-testid="dmSearchInput"]',
+    'input[placeholder*="Search"]',
+  ]);
 
-    let opened = await tryClick(page, newMessageSelectors);
-    if (!opened) {
-      opened = await clickByText(page, ['button'], ['New message']);
-    }
+  if (!searchInput) {
+    console.log('[Twitter] DM search box not found in messages panel');
+    return false;
+  }
 
-    if (!opened) {
-      return false;
-    }
+  await searchInput.click();
+  await minimalDelay(400);
+  await searchInput.fill('');
+  await searchInput.type(username, { delay: 60 });
+  await minimalDelay(2500);
 
-    await waitForAppShell(page, 'twitter');
-    await minimalDelay(500);
+  // Click the first matching result in the left rail
+  const result = await firstVisibleLocator(page, [
+    `div[data-testid="conversation"]:has-text("@${username}")`,
+    `div[data-testid="conversation"]:has-text("${username}")`,
+    'div[data-testid="conversation"]',
+    `div[role="option"]:has-text("${username}")`,
+    'div[role="option"]',
+  ]);
 
-    // Find search input for recipient
-    const searchBox = await firstVisibleLocator(page, [
-      'input[placeholder*="Search people"]',
-      'input[aria-label*="Search"]',
-      'input[data-testid="dmComposerRecipientInput"]',
-      'input[type="text"]',
-    ]);
+  if (!result) {
+    console.log(`[Twitter] No DM conversation found for @${username}`);
+    return false;
+  }
 
-    if (!searchBox) {
-      return false;
-    }
+  await result.click();
+  await minimalDelay(1500);
 
-    // Type username
-    await searchBox.click().catch(() => {});
-    await searchBox.fill('').catch(() => {});
-    await searchBox.type(username, { delay: 50 }).catch(() => {});
-    await minimalDelay(2000);
-    // Force press Enter to trigger search if needed
-    await page.keyboard.press('Enter').catch(() => {});
-    await minimalDelay(1500);
+  // Verify the DM composer opened (not a tweet composer)
+  const composer = await firstVisibleLocator(page, [
+    'div[data-testid="dmComposerTextInput"]',
+    'div[contenteditable="true"][data-testid*="dm"]',
+  ]);
+  return !!composer;
+}
 
-    // Click on user result
-    const userResultSelectors = [
-      `div[data-testid="TypeaheadUser"]:has-text("@${username}")`,
-      `div[data-testid="TypeaheadUser"]`,
-      'div[role="option"]',
-      'div[data-testid="cellInnerDiv"]',
-    ];
+// Method B: DM a new person — clicks the New message (pencil) button, searches, confirms
+async function openTwitterDMNew(page, username) {
+  console.log(`[Twitter] DM New: opening new message composer...`);
+  await navigate(page, 'https://x.com/messages', 'twitter');
+  await waitForAppShell(page, 'twitter');
+  await minimalDelay(2000);
 
-    let foundUser = false;
-    for (const selector of userResultSelectors) {
-      const result = page.locator(selector).first();
-      if (await result.isVisible().catch(() => false)) {
-        await result.click().catch(() => {});
-        foundUser = true;
-        await minimalDelay(1000);
+  // Click the "New message" pencil/compose button — NOT the global compose tweet button
+  const newMsgClicked = await tryClick(page, [
+    'button[aria-label="New message"]',
+    'button[data-testid="newDmButton"]',
+    'a[href="/messages/compose"]',
+  ]);
+
+  if (!newMsgClicked) {
+    // Try clicking by visible text, but be careful to avoid the global tweet compose button
+    const btns = await page.locator('button, a[role="button"]').all();
+    let clicked = false;
+    for (const btn of btns) {
+      const label = await btn.getAttribute('aria-label').catch(() => '');
+      const text  = await btn.innerText().catch(() => '');
+      if (/^new message$/i.test(label) || /^new message$/i.test(text.trim())) {
+        await btn.click();
+        clicked = true;
         break;
       }
     }
-    
-    // Sometimes pressing Enter selects the first user automatically
-    if (!foundUser) {
-      await page.keyboard.press('Enter').catch(() => {});
-      await minimalDelay(1000);
+    if (!clicked) {
+      console.log('[Twitter] New message button not found');
+      return false;
     }
+  }
 
-    // Look for "Next" button to proceed to conversation
-    const nextClicked = await tryClick(page, [
-      'button[data-testid="nextButton"]',
-      'button:has-text("Next")',
-      'button[type="submit"]',
-    ]);
+  await minimalDelay(1200);
 
-    if (!nextClicked) {
-      await clickByText(page, ['button'], ['Next']);
-    }
+  // In the compose-recipient modal, find the people search input
+  const searchBox = await firstVisibleLocator(page, [
+    'input[placeholder="Search people"]',
+    'input[aria-label="Search people"]',
+    'input[data-testid="dmComposerRecipientInput"]',
+    'input[placeholder*="Search"]',
+  ]);
 
-    await minimalDelay(800);
-
-    // Verify composer is available
-    const composer = await firstVisibleLocator(page, [
-      'div[data-testid="dmComposerTextInput"]',
-      'div[contenteditable="true"]',
-      'textarea',
-    ]);
-
-    return !!composer;
-  } catch (error) {
-    console.log('[Twitter] Inbox search error:', error.message);
+  if (!searchBox) {
+    console.log('[Twitter] Recipient search box not found in new DM modal');
     return false;
   }
+
+  await searchBox.click();
+  await searchBox.fill('');
+  await searchBox.type(username, { delay: 50 });
+  await minimalDelay(2000);
+
+  // Click the matching user in the typeahead dropdown
+  const userResult = await firstVisibleLocator(page, [
+    `div[data-testid="TypeaheadUser"]:has-text("@${username}")`,
+    `div[data-testid="TypeaheadUser"]:has-text("${username}")`,
+    'div[data-testid="TypeaheadUser"]',
+    'div[role="option"]',
+  ]);
+
+  if (userResult) {
+    await userResult.click();
+    await minimalDelay(1000);
+  } else {
+    // Try Enter as fallback
+    await page.keyboard.press('Enter');
+    await minimalDelay(1000);
+  }
+
+  // Click "Next" to open the conversation
+  const nextClicked = await tryClick(page, [
+    'button[data-testid="nextButton"]',
+    'button:has-text("Next")',
+  ]);
+  if (!nextClicked) await clickByText(page, ['button'], ['Next']);
+  await minimalDelay(1000);
+
+  // Confirm DM composer appeared (NOT the tweet composer)
+  const composer = await firstVisibleLocator(page, [
+    'div[data-testid="dmComposerTextInput"]',
+    'div[contenteditable="true"][data-testid*="dm"]',
+  ]);
+  return !!composer;
 }
+
+// Legacy wrapper — always uses New message flow
+async function openTwitterMessageFromInbox(page, username) {
+  return openTwitterDMNew(page, username);
+}
+
+
 
 async function openTwitterMessage(page, username) {
   // Twitter DM rules:
@@ -404,38 +448,66 @@ export const twitterHandler = {
     }
 
     if (action === 'send_message') {
-      const { username, messageGoal, tone, query, requireManualReview } = args;
+      const { username, messageGoal, tone, query, requireManualReview, operation } = args;
 
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.twitter, { platform: 'twitter' });
-      
-      // Strategy: Try DM inbox search FIRST
-      // Only use direct profile URL as fallback
-      let openedViaInbox = await openTwitterMessageFromInbox(page, username);
+
+      // Route to the correct DM flow based on operation
+      let chatOpened = false;
       let messageStatus;
-      
-      if (!openedViaInbox) {
-        // Fallback: Navigate to profile and try message button
-        console.log(`[Twitter] Inbox search failed for ${username}, trying profile...`);
-        try {
-          await navigateToTwitterProfile(page, username);
-          messageStatus = await openTwitterMessage(page, username);
-        } catch (profileError) {
-          throw new Error(`Could not message @${username} on Twitter. They may have restricted DMs. Try following them first.`);
+
+      if (operation === 'auto_dm_contact') {
+        // Existing contact → search in left DM rail
+        console.log(`[Twitter] auto_dm_contact: using left-rail DM search for @${username}`);
+        chatOpened = await openTwitterDMContact(page, username);
+        if (!chatOpened) {
+          throw new Error(`Could not find @${username} in your Twitter DMs. Make sure they are an existing contact.`);
         }
+        messageStatus = { type: 'message', canSend: true, method: 'dm_search' };
+
+      } else if (operation === 'auto_dm_new' || operation === 'auto_dm') {
+        // New person → New message button → recipient search modal
+        console.log(`[Twitter] auto_dm_new: using New message button for @${username}`);
+        chatOpened = await openTwitterDMNew(page, username);
+        if (!chatOpened) {
+          // Fallback: navigate to profile and click Message button
+          console.log(`[Twitter] New message modal failed, trying profile Message button...`);
+          try {
+            await navigateToTwitterProfile(page, username);
+            messageStatus = await openTwitterMessage(page, username);
+            chatOpened = true;
+          } catch (profileError) {
+            throw new Error(`Could not open Twitter DM for @${username}. They may have restricted DMs.`);
+          }
+        } else {
+          messageStatus = { type: 'message', canSend: true, method: 'new_message_modal' };
+        }
+
       } else {
-        messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
+        // Generic: try inbox search first, then profile fallback
+        chatOpened = await openTwitterDMNew(page, username);
+        if (!chatOpened) {
+          try {
+            await navigateToTwitterProfile(page, username);
+            messageStatus = await openTwitterMessage(page, username);
+            chatOpened = true;
+          } catch (profileError) {
+            throw new Error(`Could not message @${username} on Twitter. They may have restricted DMs.`);
+          }
+        } else {
+          messageStatus = { type: 'message', canSend: true, method: 'inbox_search' };
+        }
       }
 
-      // Extract chat context AND full profile context
+      // Extract chat context
       const chatContext = await extractChatContext(page, 'twitter', 6);
-      
-      // Extract comprehensive profile info (bio, recent tweets, location)
-      console.log(`[Twitter] Extracting full profile context for ${username}...`);
+
+      // Extract profile context
+      console.log(`[Twitter] Extracting profile context for ${username}...`);
       const rawProfileInfo = await extractProfileContext(page, 'twitter', username);
       const profileInfo = formatProfileContext(rawProfileInfo, 'twitter');
-      console.log(`[Twitter] Profile context: ${rawProfileInfo.isVerified ? 'verified' : 'not verified'}, ${rawProfileInfo.followers || 'unknown followers'}`);
 
-      // Generate message with FULL context
+      // Generate message
       const message = await generateOutreachMessage({
         username,
         goal: messageGoal,
@@ -446,25 +518,30 @@ export const twitterHandler = {
         profileInfo,
       });
 
-      // Fill composer
+      // Fill the DM composer — use ONLY the DM text input, never the tweet composer
       const filled = await fillEditable(page, [
         'div[data-testid="dmComposerTextInput"]',
-        'div[contenteditable="true"][role="textbox"]',
-        'textarea',
+        'div[contenteditable="true"][data-testid*="dm"]',
       ], message);
 
       if (!filled.ok) {
-        throw new Error(`Could not fill Twitter message composer for "${username}"`);
+        throw new Error(`Could not fill Twitter DM composer for "@${username}"`);
       }
 
-      // Send if not manual review
+      // Send using ONLY the DM send button — never tweetButton / Post
       let sent = false;
       if (!requireManualReview) {
-        sent = await submitComposer(page, ['button[data-testid="dmComposerSendButton"]'], ['Send']);
-        if (!sent) {
-          await page.keyboard.press('Enter').catch(() => {});
+        // dmComposerSendButton is the ↑ arrow in the DM input
+        const sendBtn = page.locator('button[data-testid="dmComposerSendButton"]').first();
+        if (await sendBtn.isVisible().catch(() => false)) {
+          await sendBtn.click();
+          sent = true;
+        } else {
+          // Enter key sends in DM composer without risking tweet submission
+          await page.keyboard.press('Enter');
           sent = true;
         }
+        await minimalDelay(1500);
       }
 
       return {
@@ -473,6 +550,8 @@ export const twitterHandler = {
         data: { page: await pageSnapshot(page), message, sent, ...messageStatus },
       };
     }
+
+
 
     // Handle actions that should be delegated to base handler
     const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results'];

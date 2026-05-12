@@ -97,6 +97,9 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'lead_and_message') return ['open_workspace', 'search', 'scrape_results', 'export_artifact', 'message_batch'];
   if (operation === 'run_campaign') return ['open_workspace', 'review_queue', 'continue_outreach'];
   if (operation === 'like_ai_comment') return ['open_workspace', 'open_target', 'engage_post'];
+  if (operation === 'like_post')       return ['open_workspace', 'open_target', 'like_post'];
+  if (operation === 'auto_comment')    return ['open_workspace', 'open_target', 'comment_post'];
+
   if (operation === 'follow_user') return ['open_workspace', 'open_target', 'follow_user'];
   if (operation === 'auto_post') return ['open_workspace', 'compose_post', 'publish_post'];
   if (operation === 'bulk_engage_csv') return ['open_workspace', 'engage_batch'];
