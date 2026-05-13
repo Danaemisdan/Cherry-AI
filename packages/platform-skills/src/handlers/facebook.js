@@ -288,6 +288,14 @@ const baseHandler = createSocialHandler('facebook', {
     await page.keyboard.press('Enter').catch(() => {});
   },
   followLabels: ['Follow', 'Add friend'],
+  async openLatestPost(page) {
+    const postLinks = await page.locator('a[href*="/posts/"], a[href*="/photos/"]').all();
+    if (postLinks.length > 0) {
+      await postLinks[0].click().catch(() => {});
+      await waitForAppShell(page, 'facebook');
+      await minimalDelay(1000);
+    }
+  },
   async likePost(page) {
     await clickByText(page, ['div[role="button"]', 'button'], ['Like']).catch(() => {});
   },

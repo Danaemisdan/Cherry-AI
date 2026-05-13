@@ -634,7 +634,22 @@ export const linkedinHandler = {
     }
     
     // Delegate other actions to base handler
-    const baseHandler = createSocialHandler('linkedin', {});
+    const baseHandler = createSocialHandler('linkedin', {
+  async openLatestPost(page) {
+    const postLinks = await page.locator('a[href*="/posts/"], a[href*="/activity/"]').all();
+    if (postLinks.length > 0) {
+      await postLinks[0].click().catch(() => {});
+      await waitForAppShell(page, 'linkedin');
+      await minimalDelay(1000);
+    }
+  },
+  async likePost(page) {
+    await clickByText(page, ['div[role="button"]', 'button'], ['Like']).catch(() => {});
+  },
+  commentSelectors: ['div[role="textbox"][contenteditable="true"]', 'textarea'],
+  commentSubmitSelectors: ['button[aria-label="Send"], button:has-text("Comment")'],
+  commentSubmitLabels: ['Comment', 'Send'],
+});
     return baseHandler.execute({ step, attachedBrowser });
   }
 };

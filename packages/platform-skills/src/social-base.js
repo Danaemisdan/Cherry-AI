@@ -146,6 +146,186 @@ export function createSocialHandler(platform, config) {
     console.log(`[${platform}] engagePost complete`);
     return { page, comment, sent: !step.args.requireManualReview };
   }
+  async function likePost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] likePost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    if (config.likePost) {
+      try {
+        await config.likePost(page);
+      } catch (e) {
+        throw new Error(`Could not like post for "${username}" on ${platform}: ${e.message}`);
+      }
+    } else {
+      throw new Error(`like_post is not supported for ${platform}`);
+    }
+
+    return { page, liked: true };
+  }
+
+  async function commentPost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] commentPost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    const comment = await composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    const filled = await fillEditable(page, config.commentSelectors || [], comment);
+    if (!filled.ok) {
+      throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
+    }
+
+    if (!step.args.requireManualReview) {
+      if (config.sendComment) {
+        await config.sendComment(page);
+      } else {
+        await submitComposer(page, config.commentSubmitSelectors || [], config.commentSubmitLabels || ['Post', 'Reply']);
+      }
+    }
+
+    return { page, comment, sent: !step.args.requireManualReview };
+  }
+
+
+  async function likePost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] likePost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    if (config.likePost) {
+      try {
+        await config.likePost(page);
+      } catch (e) {
+        throw new Error(`Could not like post for "${username}" on ${platform}: ${e.message}`);
+      }
+    } else {
+      throw new Error(`like_post is not supported for ${platform}`);
+    }
+
+    return { page, liked: true };
+  }
+
+  async function commentPost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] commentPost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    const comment = await composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    const filled = await fillEditable(page, config.commentSelectors || [], comment);
+    if (!filled.ok) {
+      throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
+    }
+
+    if (!step.args.requireManualReview) {
+      if (config.sendComment) {
+        await config.sendComment(page);
+      } else {
+        await submitComposer(page, config.commentSubmitSelectors || [], config.commentSubmitLabels || ['Post', 'Reply']);
+      }
+    }
+
+    return { page, comment, sent: !step.args.requireManualReview };
+  }
+  async function likePost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] likePost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    if (config.likePost) {
+      try {
+        await config.likePost(page);
+      } catch (e) {
+        throw new Error(`Could not like post for "${username}" on ${platform}: ${e.message}`);
+      }
+    } else {
+      throw new Error(`like_post is not supported for ${platform}`);
+    }
+
+    return { page, liked: true };
+  }
+
+  async function commentPost(attachedBrowser, step, usernameOverride) {
+    const username = usernameOverride || step.args.username;
+    console.log(`[${platform}] commentPost starting for ${username}`);
+    
+    const page = await openTargetPage(attachedBrowser, { platform, username });
+    
+    const comment = await composeComment({ tone: step.args.tone, goal: step.args.messageGoal });
+
+    if (config.openLatestPost) {
+      try {
+        await config.openLatestPost(page);
+      } catch (e) {
+        console.error(`[${platform}] Failed to open latest post: ${e.message}`);
+      }
+    }
+    
+    const filled = await fillEditable(page, config.commentSelectors || [], comment);
+    if (!filled.ok) {
+      throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
+    }
+
+    if (!step.args.requireManualReview) {
+      if (config.sendComment) {
+        await config.sendComment(page);
+      } else {
+        await submitComposer(page, config.commentSubmitSelectors || [], config.commentSubmitLabels || ['Post', 'Reply']);
+      }
+    }
+
+    return { page, comment, sent: !step.args.requireManualReview };
+  }
+
+
+
+
 
   async function composeOrPublishPost(attachedBrowser, step) {
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
@@ -306,6 +486,17 @@ export function createSocialHandler(platform, config) {
       if (step.action === 'engage_post') {
         const result = await engagePost(attachedBrowser, step);
         return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), comment: result.comment, sent: result.sent } };
+      }
+
+      if (step.action === 'like_post') {
+        const result = await likePost(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), liked: result.liked } };
+      }
+
+      if (step.action === 'comment_post') {
+        const result = await commentPost(attachedBrowser, step);
+        return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), comment: result.comment, sent: result.sent } };
+      }
       }
 
       if (step.action === 'engage_batch' || step.action === 'follow_batch') {

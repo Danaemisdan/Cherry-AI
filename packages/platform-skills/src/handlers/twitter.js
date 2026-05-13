@@ -554,7 +554,7 @@ export const twitterHandler = {
 
 
     // Handle actions that should be delegated to base handler
-    const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results'];
+    const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results', 'like_post', 'comment_post'];
     if (baseHandlerActions.includes(action)) {
       return baseHandler.execute({ step, attachedBrowser });
     }
