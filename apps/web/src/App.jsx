@@ -89,6 +89,28 @@ function usePlatformData() {
     refreshContactMetrics().catch(() => {});
 
     const socket = new WebSocket(`${backendWsUrl}/ws?role=web`);
+    
+    socket.onopen = () => {
+      console.log('WebSocket connected successfully');
+    };
+    
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    socket.onclose = (event) => {
+      console.log('WebSocket closed:', event.code, event.reason);
+      // Attempt to reconnect after 3 seconds
+      setTimeout(() => {
+        console.log('Attempting to reconnect WebSocket...');
+        const newSocket = new WebSocket(`${backendWsUrl}/ws?role=web`);
+        newSocket.onmessage = socket.onmessage;
+        newSocket.onopen = socket.onopen;
+        newSocket.onerror = socket.onerror;
+        newSocket.onclose = socket.onclose;
+      }, 3000);
+    };
+    
     socket.onmessage = (event) => {
       const payload = JSON.parse(event.data);
       if (payload.type === 'agent.status') {

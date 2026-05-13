@@ -192,8 +192,6 @@ const socialCoreActions = [
   'open_result',
   'open_target',
   'scrape_profile',
-  'follow',
-  'open_message',
   'draft_message',
   'send_message',
   'message_batch',
