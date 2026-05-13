@@ -226,7 +226,11 @@ function Workspace({ refreshTasks, tasks }) {
   const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
   const selectedPlatformMeta = platformMeta.find((item) => item.id === selectedPlatform) || platformMeta[0];
   const capabilities = PLATFORM_SKILL_CAPABILITIES[selectedPlatform] || [];
-  const supports = (action) => capabilities.includes(action);
+  const supports = (action) => {
+    const supported = capabilities.includes(action);
+    console.log(`Platform: ${selectedPlatform}, Action: ${action}, Supported: ${supported}, Capabilities:`, capabilities);
+    return supported;
+  };
 
   function cn(...classes) {
     return classes.filter(Boolean).join(' ');
@@ -836,10 +840,20 @@ function Workspace({ refreshTasks, tasks }) {
                     {/* ChatGPT & Gemini specific buttons - only 2 options */}
                     {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
                       <div className="grid grid-cols-2 gap-4">
-                        {supports('ask') ? <button onClick={() => runPlatformAction('ask')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button> : null}
-                        {supports('generate_image') ? <button onClick={() => runPlatformAction('generate_image')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button> : null}
+                        {supports('ask') ? (
+                          <button onClick={() => { console.log('Ask Question clicked'); runPlatformAction('ask'); }} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button>
+                        ) : (
+                          <div className="p-6 rounded-[1.5rem] bg-zinc-900/40 text-zinc-500 text-center">Ask not supported</div>
+                        )}
+                        {supports('generate_image') ? (
+                          <button onClick={() => { console.log('Generate Image clicked'); runPlatformAction('generate_image'); }} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button>
+                        ) : (
+                          <div className="p-6 rounded-[1.5rem] bg-zinc-900/40 text-zinc-500 text-center">Generate not supported</div>
+                        )}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="text-zinc-600 text-sm">Select ChatGPT or Gemini to see options</div>
+                    )}
 
                     {/* Gmail-specific expanded panel */}
                     {selectedPlatform === 'gmail' ? (
