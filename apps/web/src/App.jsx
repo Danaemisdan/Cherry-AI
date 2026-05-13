@@ -326,6 +326,10 @@ function Workspace({ refreshTasks, tasks }) {
   }
 
   async function runPlatformAction(operation) {
+    console.log('[runPlatformAction] Starting operation:', operation);
+    console.log('[runPlatformAction] Selected platform:', selectedPlatform);
+    console.log('[runPlatformAction] Query value:', query);
+
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
     const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
@@ -351,6 +355,8 @@ function Workspace({ refreshTasks, tasks }) {
       username: targetHandle,
       usernames,
     };
+
+    console.log('[runPlatformAction] Base context:', baseContext);
 
     const payloads = {
       open_workspace: {
@@ -502,8 +508,11 @@ function Workspace({ refreshTasks, tasks }) {
     };
 
     const operationPayload = payloads[operation];
+    console.log('[runPlatformAction] Operation payload:', operationPayload);
+
     if (!operationPayload) {
-      console.error(`Missing payload for operation: ${operation}`);
+      console.error(`[runPlatformAction] Missing payload for operation: ${operation}`);
+      console.error('[runPlatformAction] Available operations:', Object.keys(payloads));
       return;
     }
 
@@ -511,6 +520,7 @@ function Workspace({ refreshTasks, tasks }) {
       ...operationPayload,
       preferredBrowserMode: selectedPlatform === 'research' ? 'managed' : 'attached',
     });
+    console.log('[runPlatformAction] Task dispatched successfully');
   }
 
   return (
