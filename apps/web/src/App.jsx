@@ -427,6 +427,10 @@ function Workspace({ refreshTasks, tasks }) {
         prompt: `Scrape ${maxResults} followers of ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
         context: { ...baseContext, operation: 'scrape_followers', maxResults: Number(maxResults) || 100 },
       },
+      scrape_followers: {
+        prompt: `Scrape ${maxResults} followers of ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'scrape_followers', maxResults: Number(maxResults) || 100 },
+      },
       follow_and_message: {
         prompt: `Follow ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}, then send a contextual message. Goal: ${goal}. Tone: ${tone}.`,
         context: { ...baseContext, operation: 'follow_and_message' },
@@ -886,6 +890,7 @@ function Workspace({ refreshTasks, tasks }) {
                         </>
                       ) : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
+                      {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Scrape Followers</button> : null}
                       {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Scrape Followers</button> : null}
                       {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
                     </div>
