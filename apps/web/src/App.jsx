@@ -489,15 +489,11 @@ function Workspace({ refreshTasks, tasks }) {
       // ChatGPT & Gemini specific
       generate_image: {
         prompt: `Generate an image on ${selectedPlatformMeta.label}. Description: ${query || 'A cinematic landscape'}`,
-        context: { ...baseContext, operation: 'generate_image', messageGoal: query || 'A cinematic landscape' },
-      },
-      upload_file: {
-        prompt: `Upload a file to ${selectedPlatformMeta.label}. Path: ${attachmentPath || 'No file specified'}`,
-        context: { ...baseContext, operation: 'upload_file', attachmentPath },
+        context: { ...baseContext, operation: 'generate_image', messageGoal: query || 'A cinematic landscape', query: query || 'A cinematic landscape' },
       },
       ask: {
-        prompt: `Ask ${selectedPlatformMeta.label} a question: ${query || 'What can you help me with?'}`,
-        context: { ...baseContext, operation: 'ask' },
+        prompt: query || 'What can you help me with?',
+        context: { ...baseContext, operation: 'ask', messageGoal: query || 'What can you help me with?', query: query || 'What can you help me with?' },
       },
     };
 
@@ -832,18 +828,16 @@ function Workspace({ refreshTasks, tasks }) {
                     {/* ChatGPT & Gemini specific prompt input */}
                     {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Image Generation Prompt / Question</label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="Describe the image you want to generate..." value={query} onChange={(event) => setQuery(event.target.value)} />
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Your Question or Image Description</label>
+                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="Type your question or describe the image you want to generate..." value={query} onChange={(event) => setQuery(event.target.value)} />
                       </div>
                     ) : null}
 
-                    {/* ChatGPT & Gemini specific buttons */}
+                    {/* ChatGPT & Gemini specific buttons - only 2 options */}
                     {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
                       <div className="grid grid-cols-2 gap-4">
-                        {supports('open_workspace') ? <button onClick={() => runPlatformAction('open_workspace')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Open Workspace</button> : null}
-                        {supports('generate_image') ? <button onClick={() => runPlatformAction('generate_image')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button> : null}
-                        {supports('upload_file') ? <button onClick={() => runPlatformAction('upload_file')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Upload File</button> : null}
-                        {supports('ask') ? <button onClick={() => runPlatformAction('ask')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button> : null}
+                        {supports('ask') ? <button onClick={() => runPlatformAction('ask')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button> : null}
+                        {supports('generate_image') ? <button onClick={() => runPlatformAction('generate_image')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button> : null}
                       </div>
                     ) : null}
 

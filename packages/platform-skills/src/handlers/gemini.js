@@ -234,38 +234,76 @@ export const geminiHandler = {
   async execute({ step, attachedBrowser }) {
     const { action, args } = step;
 
-    // ── generate_image ────────────────────────────────────────────────────────
+    // ── generate_image — multi-step process ───────────────────────────────────────
     if (action === 'generate_image') {
-      const page = await openGemini(attachedBrowser, GEMINI_IMAGES_URL);
+      console.log('[Gemini] Starting image generation process...');
+
+      // Step 1: Open Gemini
+      const page = await openGemini(attachedBrowser, GEMINI_HOME_URL);
       await pauseLikeHuman(page, 1000, 2000);
 
-      const prompt    = args.prompt || args.messageGoal || args.query || 'A beautiful futuristic landscape';
-      const refImage  = args.attachmentPath || args.referenceImagePath || null;
-      console.log('[Gemini] Generating image with prompt:', prompt);
+      const prompt = args.prompt || args.messageGoal || args.query || 'A beautiful futuristic landscape';
+      const refImage = args.attachmentPath || args.referenceImagePath || null;
 
-      // Attach reference image first if provided
+      console.log('[Gemini] Step 1: Opened Gemini, prompt:', prompt);
+
+      // Step 2: Try to access Imagen/image generation features
+      try {
+        console.log('[Gemini] Step 2: Checking for Imagen/image generation UI...');
+
+        // Look for image generation buttons or indicators
+        const imageGenButton = page.locator('button:has-text("Image"), button:has-text("Imagen"), [aria-label*="image"]').first();
+        if (await imageGenButton.count() > 0) {
+          console.log('[Gemini] Step 2: Found image generation button, clicking...');
+          await imageGenButton.click();
+          await minimalDelay(1500);
+        } else {
+          console.log('[Gemini] Step 2: No dedicated image button found, will use text prompt');
+        }
+      } catch (error) {
+        console.log('[Gemini] Step 2: Image UI check failed:', error.message);
+      }
+
+      // Step 3: Upload reference image if provided
       if (refImage) {
+        console.log('[Gemini] Step 3: Uploading reference image...');
         const uploaded = await attachFile(page, refImage);
         if (!uploaded) {
-          console.warn('[Gemini] Reference image upload failed, continuing with text-only prompt');
+          console.warn('[Gemini] Step 3: Reference image upload failed, continuing with text-only prompt');
         } else {
+          console.log('[Gemini] Step 3: Reference image uploaded successfully');
           await minimalDelay(1000);
         }
       }
 
+      // Step 4: Send the image generation prompt
+      console.log('[Gemini] Step 4: Sending image generation prompt...');
       const fullPrompt = refImage
         ? `Using the uploaded image as a reference, generate: ${prompt}`
-        : `Generate an image using Imagen: ${prompt}`;
+        : `Create an image of: ${prompt}. Use Imagen if available.`;
 
       await typeIntoInput(page, fullPrompt);
       await clickSend(page);
+      console.log('[Gemini] Step 4: Prompt sent successfully');
 
+      // Step 5: Wait for image generation
+      console.log('[Gemini] Step 5: Waiting for image generation (this may take 1-2 minutes)...');
       await pauseLikeHuman(page, 4000, 6000);
-      await waitForResponse(page, 90000);
+      const generationComplete = await waitForResponse(page, 180000); // 3 minutes timeout
 
+      if (!generationComplete) {
+        console.log('[Gemini] Step 5: Generation timeout reached, checking for partial results...');
+      } else {
+        console.log('[Gemini] Step 5: Generation completed');
+      }
+
+      // Step 6: Extract generated image
+      console.log('[Gemini] Step 6: Extracting generated image...');
+      await minimalDelay(2000); // Extra delay for rendering
       const imgSrc = await getGeneratedImageSrc(page);
-        console.log('[Gemini] Image generated successfully:', imgSrc);
+
       if (imgSrc) {
+        console.log('[Gemini] Step 6: Image extracted successfully:', imgSrc);
         return {
           status: 'completed',
           summary: `Image generated on Gemini: "${prompt.slice(0, 60)}"`,
@@ -273,12 +311,14 @@ export const geminiHandler = {
         };
       }
 
-        console.log('[Gemini] No image URL found, response text:', responseText);
-      // No image detected — return text response
+      // Step 7: Fallback - check for response text
+      console.log('[Gemini] Step 7: No image URL found, checking text response...');
       const responseText = await getLastResponse(page);
+      console.log('[Gemini] Step 7: Response text:', responseText.slice(0, 100));
+
       return {
         status: 'completed',
-        summary: 'Gemini image generation complete — check browser window to save',
+        summary: `Gemini responded: "${responseText.slice(0, 100)}" (check browser for image)`,
         data: { response: responseText },
       };
     }

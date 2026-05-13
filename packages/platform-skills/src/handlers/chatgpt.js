@@ -154,45 +154,95 @@ export const chatgptHandler = {
   async execute({ step, attachedBrowser }) {
     const { action, args } = step;
 
-    // ── generate_image — prompt only ─────────────────────────────────────────
+    // ── generate_image — multi-step process ───────────────────────────────────────
     if (action === 'generate_image') {
-      const page = await openChatGPT(attachedBrowser, CHATGPT_URL);
+      console.log('[ChatGPT] Starting image generation process...');
 
+      // Step 1: Open ChatGPT
+      const page = await openChatGPT(attachedBrowser, CHATGPT_URL);
       const prompt = args.prompt || args.messageGoal || args.query || 'A beautiful futuristic landscape';
       const referenceImagePath = args.attachmentPath || args.referenceImagePath || null;
-      console.log('[ChatGPT] Generating image with prompt:', prompt);
 
-      // If a reference image was supplied, upload it first
-      if (referenceImagePath) {
-        const uploaded = await attachFile(page, referenceImagePath);
-        if (!uploaded) console.warn('[ChatGPT] Could not attach reference image:', referenceImagePath);
-        await minimalDelay(1000);
+      console.log('[ChatGPT] Step 1: Opened ChatGPT, prompt:', prompt);
+
+      // Step 2: Try to switch to DALL-E model if possible
+      try {
+        const modelSwitcher = page.locator('[data-testid="model-switcher-dropdown-button"]').first();
+        if (await modelSwitcher.count() > 0) {
+          console.log('[ChatGPT] Step 2: Found model switcher, attempting to select DALL-E...');
+          await modelSwitcher.click();
+          await minimalDelay(1000);
+
+          // Try to find and click DALL-E option
+          const dalleOption = page.locator('text=DALL-E').or(page.locator('[data-testid*="dalle"]')).first();
+          if (await dalleOption.count() > 0) {
+            await dalleOption.click();
+            console.log('[ChatGPT] Step 2: Successfully selected DALL-E model');
+            await minimalDelay(1500);
+          } else {
+            console.log('[ChatGPT] Step 2: DALL-E option not found, continuing with current model');
+          }
+        } else {
+          console.log('[ChatGPT] Step 2: Model switcher not found, using current model');
+        }
+      } catch (error) {
+        console.log('[ChatGPT] Step 2: Model selection failed, continuing:', error.message);
       }
 
+      // Step 3: Upload reference image if provided
+      if (referenceImagePath) {
+        console.log('[ChatGPT] Step 3: Uploading reference image...');
+        const uploaded = await attachFile(page, referenceImagePath);
+        if (!uploaded) {
+          console.warn('[ChatGPT] Step 3: Reference image upload failed, continuing with text-only prompt');
+        } else {
+          console.log('[ChatGPT] Step 3: Reference image uploaded successfully');
+          await minimalDelay(1000);
+        }
+      }
+
+      // Step 4: Send the image generation prompt
+      console.log('[ChatGPT] Step 4: Sending image generation prompt...');
       const fullPrompt = referenceImagePath
         ? `Using the uploaded image as a reference, generate: ${prompt}`
-        : `Please generate an image of: ${prompt}. Use DALL-E or the image generation feature.`;
+        : `Create an image of: ${prompt}`;
 
       await sendPrompt(page, fullPrompt);
-      await pauseLikeHuman(page, 4000, 6000);
-      await waitForResponse(page, 120000);
+      console.log('[ChatGPT] Step 4: Prompt sent successfully');
 
+      // Step 5: Wait for image generation (extended timeout)
+      console.log('[ChatGPT] Step 5: Waiting for image generation (this may take 1-2 minutes)...');
+      await pauseLikeHuman(page, 4000, 6000);
+      const generationComplete = await waitForResponse(page, 180000); // 3 minutes timeout
+
+      if (!generationComplete) {
+        console.log('[ChatGPT] Step 5: Generation timeout reached, checking for partial results...');
+      } else {
+        console.log('[ChatGPT] Step 5: Generation completed');
+      }
+
+      // Step 6: Extract generated image
+      console.log('[ChatGPT] Step 6: Extracting generated image...');
+      await minimalDelay(2000); // Extra delay for rendering
       const imgSrc = await getGeneratedImageSrc(page);
-        console.log('[ChatGPT] Image generated successfully:', imgSrc);
+
       if (imgSrc) {
+        console.log('[ChatGPT] Step 6: Image extracted successfully:', imgSrc);
         return {
           status: 'completed',
           summary: `Image generated on ChatGPT: "${prompt.slice(0, 60)}"`,
           data: { imageUrl: imgSrc },
         };
       }
-        console.log('[ChatGPT] No image URL found, response text:', responseText);
 
-      // Image might be there but in a different format — return the response text
+      // Step 7: Fallback - check for response text
+      console.log('[ChatGPT] Step 7: No image URL found, checking text response...');
       const responseText = await getLastResponse(page);
+      console.log('[ChatGPT] Step 7: Response text:', responseText.slice(0, 100));
+
       return {
         status: 'completed',
-        summary: 'ChatGPT responded (image may need manual save)',
+        summary: `ChatGPT responded: "${responseText.slice(0, 100)}" (check browser for image)`,
         data: { response: responseText },
       };
     }
