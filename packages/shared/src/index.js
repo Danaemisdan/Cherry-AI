@@ -135,6 +135,9 @@ export const TASK_OPERATIONS = [
   'chat',
   'generate_image',
   'upload_file',
+  'like_post',
+  'comment_post',
+  'engage_post',
 ];
 
 export const CANONICAL_SKILL_ACTIONS = [
