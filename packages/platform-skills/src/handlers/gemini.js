@@ -23,24 +23,29 @@ async function openGemini(attachedBrowser, url = GEMINI_HOME_URL) {
 }
 
 /**
- * Get the main prompt textarea.
- * Confirmed selector from HTML: <textarea class="gds-body-l" placeholder="Ask Gemini">
+ * Get the main prompt input.
+ * Gemini has evolved its UI — it uses a rich-textarea web component or a
+ * contenteditable div. The original <textarea class="gds-body-l"> may be
+ * hidden or absent in newer layouts. We try the most current selectors first.
  */
 async function getPromptInput(page) {
   return waitForVisible(page, [
-    'textarea.gds-body-l',
-    'textarea[placeholder="Ask Gemini"]',
-    'div.initial-input-area textarea',
-    // Fallback for conversation pages (different layout)
+    // Current Gemini (2025): rich-textarea contains a contenteditable div
     'rich-textarea div[contenteditable="true"]',
     'div[contenteditable="true"][role="textbox"]',
+    // Older layout: textarea inside initial-input-area
+    'div.initial-input-area textarea',
+    // Legacy textarea selectors
+    'textarea[placeholder="Ask Gemini"]',
+    'textarea.gds-body-l',
+    // Generic contenteditable fallback
     'div[contenteditable="true"]',
   ], 12000);
 }
 
 /**
- * Type prompt text into Gemini's textarea.
- * Gemini uses a real <textarea> on the home page — fill() works.
+ * Type prompt text into Gemini's input.
+ * Handles both textarea and contenteditable div.
  */
 async function typeIntoInput(page, text) {
   const input = await getPromptInput(page);
@@ -49,13 +54,13 @@ async function typeIntoInput(page, text) {
   await input.click();
   await minimalDelay(300);
 
-  const tag = await input.evaluate(el => el.tagName.toLowerCase());
+  const tag = await input.evaluate(el => el.tagName.toLowerCase()).catch(() => 'div');
   if (tag === 'textarea') {
     await input.fill('');
     await input.type(text, { delay: 20 });
   } else {
     // contenteditable div
-    await page.keyboard.selectAll();
+    await page.keyboard.press('Control+a');
     await page.keyboard.press('Backspace');
     await page.keyboard.type(text, { delay: 20 });
   }
@@ -80,6 +85,9 @@ async function clickSend(page) {
     // Fallback: any button in the icons grid area
     const iconsArea = document.querySelector('[style*="grid-area: icons"], .send-icon');
     if (iconsArea) { iconsArea.click(); return true; }
+    // Fallback: button[aria-label*="Send"]
+    const sendBtn = document.querySelector('button[aria-label*="Send"], button[aria-label*="send"]');
+    if (sendBtn) { sendBtn.click(); return true; }
     return false;
   });
 
@@ -207,6 +215,19 @@ async function getGeneratedImageSrc(page) {
   });
 }
 
+// Detect whether the prompt is an internal "open workspace" instruction
+// rather than a real user query to send to Gemini.
+function isOpenWorkspacePrompt(prompt) {
+  if (!prompt) return true;
+  const lower = prompt.toLowerCase().trim();
+  return (
+    lower.startsWith('open gemini') ||
+    lower.startsWith('open chatgpt') ||
+    lower === 'open gemini in my attached chrome workspace.' ||
+    lower === 'gemini opened'
+  );
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export const geminiHandler = {
@@ -232,14 +253,13 @@ export const geminiHandler = {
       }
 
       const fullPrompt = refImage
-        ? `Using the uploaded image as a visual reference, generate an image: ${prompt}`
-        : `Generate an image: ${prompt}`;
+        ? `Using the uploaded image as a reference, generate: ${prompt}`
+        : `Generate an image using Imagen: ${prompt}`;
 
       await typeIntoInput(page, fullPrompt);
       await clickSend(page);
 
-      console.log('[Gemini] Waiting for image generation...');
-      await pauseLikeHuman(page, 5000, 8000);
+      await pauseLikeHuman(page, 4000, 6000);
       await waitForResponse(page, 90000);
 
       const imgSrc = await getGeneratedImageSrc(page);
@@ -251,7 +271,7 @@ export const geminiHandler = {
         };
       }
 
-      // Return text response if image URL not extractable (e.g. blob)
+      // No image detected — return text response
       const responseText = await getLastResponse(page);
       return {
         status: 'completed',
@@ -265,7 +285,13 @@ export const geminiHandler = {
       const page = await openGemini(attachedBrowser);
       await pauseLikeHuman(page, 800, 1500);
 
-      const prompt = args.prompt || args.messageGoal || args.query;
+      // For open_workspace: only send if it's a real user query, not the
+      // internal "Open Gemini in my workspace" instruction string.
+      const rawPrompt = args.prompt || args.messageGoal || args.query;
+      const prompt = (action === 'open_workspace' && isOpenWorkspacePrompt(rawPrompt))
+        ? null
+        : rawPrompt;
+
       if (!prompt) {
         return { status: 'completed', summary: 'Gemini opened', data: {} };
       }

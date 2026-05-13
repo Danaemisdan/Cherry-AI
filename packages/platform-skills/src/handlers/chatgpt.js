@@ -21,29 +21,46 @@ async function openChatGPT(attachedBrowser, url = CHATGPT_URL) {
   return page;
 }
 
-// Find the main prompt textarea — confirmed from ChatGPT-home.html
+// Find the main prompt input.
+// ChatGPT now renders a hidden <textarea> as a fallback but uses a
+// div[contenteditable] as the actual visible composer. Try the contenteditable
+// first, fall back to any visible textarea.
 async function getPromptInput(page) {
   return waitForVisible(page, [
-    'textarea[name="prompt-textarea"]',
-    'textarea[aria-label="Chat with ChatGPT"]',
-    'textarea#prompt-textarea',
+    // Current ChatGPT composer (div-based rich editor)
     'div[contenteditable="true"][aria-label*="message"]',
+    'div[contenteditable="true"][data-lexical-editor="true"]',
+    '#prompt-textarea[contenteditable="true"]',
+    // Fallback: real visible textarea (some layouts still use one)
+    'textarea[aria-label="Chat with ChatGPT"]:visible',
+    'textarea#prompt-textarea:visible',
+    // Generic contenteditable fallback
     'div[contenteditable="true"]',
   ], 12000);
 }
 
-// Type prompt and send
+// Type prompt into the input and send it.
 async function sendPrompt(page, text) {
   const input = await getPromptInput(page);
   if (!input) throw new Error('ChatGPT prompt input not found — are you logged in?');
 
   await input.click();
   await minimalDelay(300);
-  await input.fill('');
-  await page.keyboard.type(text, { delay: 18 });
+
+  const tag = await input.evaluate(el => el.tagName.toLowerCase()).catch(() => 'div');
+  if (tag === 'textarea') {
+    // True textarea: fill() works fine
+    await input.fill(text);
+  } else {
+    // contenteditable div: clear then type
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type(text, { delay: 18 });
+  }
+
   await minimalDelay(400);
 
-  // Send button confirmed: data-testid="send-button", aria-label="Send prompt"
+  // Send button: data-testid="send-button" or #composer-submit-button
   const sendBtn = page.locator('[data-testid="send-button"], #composer-submit-button').first();
   if (await sendBtn.count() > 0 && await sendBtn.isEnabled().catch(() => false)) {
     await sendBtn.click();
@@ -118,6 +135,19 @@ async function getGeneratedImageSrc(page) {
   });
 }
 
+// Detect whether the given prompt string is just an internal "open workspace"
+// instruction (not a real user query to send to ChatGPT).
+function isOpenWorkspacePrompt(prompt) {
+  if (!prompt) return true;
+  const lower = prompt.toLowerCase().trim();
+  return (
+    lower.startsWith('open chatgpt') ||
+    lower.startsWith('open gemini') ||
+    lower === 'open chatgpt in my attached chrome workspace.' ||
+    lower === 'chatgpt opened'
+  );
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export const chatgptHandler = {
@@ -164,11 +194,17 @@ export const chatgptHandler = {
       };
     }
 
-    // ── chat / ask — plain text prompt ───────────────────────────────────────
+    // ── open_workspace / chat / ask — open ChatGPT and optionally send a prompt
     if (action === 'open_workspace' || action === 'chat' || action === 'ask') {
       const page = await openChatGPT(attachedBrowser);
 
-      const prompt = args.prompt || args.messageGoal || args.query;
+      // For open_workspace: only send the prompt if it's a real user query,
+      // not just the internal "Open ChatGPT in my workspace" instruction.
+      const rawPrompt = args.prompt || args.messageGoal || args.query;
+      const prompt = (action === 'open_workspace' && isOpenWorkspacePrompt(rawPrompt))
+        ? null
+        : rawPrompt;
+
       if (!prompt) {
         return { status: 'completed', summary: 'ChatGPT opened', data: {} };
       }
