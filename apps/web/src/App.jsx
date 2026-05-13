@@ -401,6 +401,14 @@ function Workspace({ refreshTasks, tasks }) {
         prompt: `Leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
         context: { ...baseContext, operation: 'auto_comment' },
       },
+      comment_post: {
+        prompt: `Leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'comment_post' },
+      },
+      engage_post: {
+        prompt: `Like and leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'engage_post' },
+      },
       follow_user: {
         prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
         context: { ...baseContext, operation: 'follow_user' },
@@ -477,6 +485,19 @@ function Workspace({ refreshTasks, tasks }) {
       map_contacts: {
         prompt: `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
         context: { ...baseContext, operation: 'map_contacts', destination: 'artifact' },
+      },
+      // ChatGPT & Gemini specific
+      generate_image: {
+        prompt: `Generate an image on ${selectedPlatformMeta.label} based on: ${query || 'A cinematic landscape'}`,
+        context: { ...baseContext, operation: 'generate_image' },
+      },
+      upload_file: {
+        prompt: `Upload a file to ${selectedPlatformMeta.label}. Path: ${attachmentPath || 'No file specified'}`,
+        context: { ...baseContext, operation: 'upload_file', attachmentPath },
+      },
+      ask: {
+        prompt: `Ask ${selectedPlatformMeta.label} a question: ${query || 'What can you help me with?'}`,
+        context: { ...baseContext, operation: 'ask' },
       },
     };
 
@@ -790,7 +811,7 @@ function Workspace({ refreshTasks, tasks }) {
                       {supports('engage_post') ? (
                         <>
                           <button onClick={() => runPlatformAction('like_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">❤️ Like Post</button>
-                          <button onClick={() => runPlatformAction('auto_comment')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">💬 AI Comment</button>
+                          <button onClick={() => runPlatformAction('engage_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">💬 AI Comment</button>
                         </>
                       ) : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
@@ -805,6 +826,16 @@ function Workspace({ refreshTasks, tasks }) {
                         {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
                         {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
                         {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
+                      </div>
+                    ) : null}
+
+                    {/* ChatGPT & Gemini specific buttons */}
+                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {supports('open_workspace') ? <button onClick={() => runPlatformAction('open_workspace')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Open Workspace</button> : null}
+                        {supports('generate_image') ? <button onClick={() => runPlatformAction('generate_image')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button> : null}
+                        {supports('upload_file') ? <button onClick={() => runPlatformAction('upload_file')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Upload File</button> : null}
+                        {supports('ask') ? <button onClick={() => runPlatformAction('ask')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button> : null}
                       </div>
                     ) : null}
 
