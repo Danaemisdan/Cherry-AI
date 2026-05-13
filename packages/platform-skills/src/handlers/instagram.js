@@ -663,101 +663,6 @@ async function likeInstagramPost(page, postUrl, username) {
 
 
 // Comment on post
-// Scrape followers/following list from a profile
-async function scrapeInstagramFollowers(page, username, listType = 'followers', maxResults = 100) {
-  console.log(`[Instagram] Scraping ${listType} of @${username} (max ${maxResults})...`);
-  
-  // Navigate to profile
-  await navigate(page, `https://www.instagram.com/${username}/`, 'instagram');
-  await waitForAppShell(page, 'instagram');
-  await minimalDelay(2000);
-
-  // Click the followers/following link on the profile header
-  const linkText = listType === 'following' ? ' following' : ' followers';
-  const linkClicked = await page.evaluate((text) => {
-    const allLinks = Array.from(document.querySelectorAll('a'));
-    for (const link of allLinks) {
-      if ((link.textContent || '').toLowerCase().includes(text.trim().toLowerCase())) {
-        link.click();
-        return true;
-      }
-    }
-    // Try spans/buttons as fallback
-    const allSpans = Array.from(document.querySelectorAll('span, button'));
-    for (const el of allSpans) {
-      if ((el.textContent || '').toLowerCase().includes(text.trim().toLowerCase())) {
-        el.click();
-        return true;
-      }
-    }
-    return false;
-  }, linkText);
-
-  if (!linkClicked) {
-    throw new Error(`Could not find ${listType} link on @${username}'s profile`);
-  }
-
-  await minimalDelay(2000);
-
-  // The followers/following dialog is now open — scroll and collect usernames
-  const users = await page.evaluate(async (limit) => {
-    const results = [];
-    const seen = new Set();
-    
-    // Find the scrollable dialog container
-    const dialog = document.querySelector('div[role="dialog"]') || 
-                   document.querySelector('div[style*="overflow"]');
-    
-    const scrollContainer = dialog ? dialog.querySelector('div[style*="overflow"]') || dialog : document.body;
-    
-    let noNewItems = 0;
-    const maxAttempts = 100;
-    
-    for (let attempt = 0; attempt < maxAttempts && results.length < limit; attempt++) {
-      // Extract usernames currently visible
-      const links = document.querySelectorAll('a[href^="/"]');
-      let foundNew = false;
-      
-      for (const link of links) {
-        const href = link.getAttribute('href') || '';
-        const text = (link.textContent || '').trim();
-        // Instagram profile links: /username/
-        const match = href.match(/^\/([a-zA-Z0-9._]+)\/?$/);
-        if (match && match[1] && match[1] !== 'explore' && match[1] !== 'stories' && match[1] !== 'accounts') {
-          const user = match[1];
-          if (!seen.has(user) && results.length < limit) {
-            seen.add(user);
-            results.push({ username: user, displayName: text });
-            foundNew = true;
-          }
-        }
-      }
-      
-      if (foundNew) {
-        noNewItems = 0;
-      } else {
-        noNewItems++;
-        if (noNewItems >= 5) break; // Stop if no new items for 5 scroll attempts
-      }
-      
-      // Scroll within the dialog
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-      window.scrollTo(0, document.body.scrollHeight);
-      
-      // Wait for new items to load
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
-    }
-    
-    return results;
-  }, maxResults);
-
-  console.log(`[Instagram] Scraped ${users.length} ${listType} from @${username}`);
-  
-  return { username, listType, count: users.length, users };
-}
-
 async function commentOnInstagramPost(page, comment, postUrl, username) {
   console.log(`[Instagram] commentOnInstagramPost — postUrl=${postUrl}, username=${username}`);
 
@@ -1335,19 +1240,6 @@ export const instagramHandler = {
         status: 'completed',
         summary: `Bulk followed ${results.filter(r => r.status === 'completed').length}/${users.length} suggested users`,
         data: { results }
-      };
-    }
-    
-    // ACTION: Scrape followers/following
-    if (action === 'scrape_followers') {
-      const { username, listType = 'followers', maxResults = 100 } = args;
-      if (!username) throw new Error('Instagram scrape_followers requires a username');
-      
-      const result = await scrapeInstagramFollowers(page, username, listType, maxResults);
-      return {
-        status: 'completed',
-        summary: `Scraped ${result.count} ${listType} from @${username}`,
-        data: result
       };
     }
     

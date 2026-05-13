@@ -332,7 +332,7 @@ function Workspace({ refreshTasks, tasks }) {
 
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
-    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv', 'scrape_followers']);
+    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
     const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'auto_dm_contact', 'auto_dm_new', 'bulk_dm_csv']);
     const trimmedQuery = query.trim();
     const noisyDefaults = new Set(['customer follow up']);
@@ -422,14 +422,6 @@ function Workspace({ refreshTasks, tasks }) {
       follow_user: {
         prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
         context: { ...baseContext, operation: 'follow_user' },
-      },
-      scrape_followers: {
-        prompt: `Scrape ${maxResults} followers of ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
-        context: { ...baseContext, operation: 'scrape_followers', maxResults: Number(maxResults) || 100 },
-      },
-      scrape_followers: {
-        prompt: `Scrape ${maxResults} followers of ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
-        context: { ...baseContext, operation: 'scrape_followers', maxResults: Number(maxResults) || 100 },
       },
       follow_and_message: {
         prompt: `Follow ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}, then send a contextual message. Goal: ${goal}. Tone: ${tone}.`,
@@ -890,8 +882,6 @@ function Workspace({ refreshTasks, tasks }) {
                         </>
                       ) : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
-                      {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Scrape Followers</button> : null}
-                      {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Scrape Followers</button> : null}
                       {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
                     </div>
 

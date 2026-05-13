@@ -233,89 +233,6 @@ async function openTwitterMessageFromInbox(page, username) {
   return openTwitterDMNew(page, username);
 }
 
-// Scrape followers/following list from a Twitter profile
-async function scrapeTwitterFollowers(page, username, listType = 'followers', maxResults = 100) {
-  console.log(`[Twitter] Scraping ${listType} of @${username} (max ${maxResults})...`);
-  
-  await navigateToTwitterProfile(page, username);
-  await minimalDelay(2000);
-
-  const linkText = listType === 'following' ? 'Following' : 'Followers';
-  const linkClicked = await page.evaluate((text) => {
-    const allLinks = Array.from(document.querySelectorAll('a[href*="/"], span, button'));
-    for (const el of allLinks) {
-      if ((el.textContent || '').includes(text)) {
-        el.click();
-        return true;
-      }
-    }
-    return false;
-  }, linkText);
-
-  if (!linkClicked) {
-    throw new Error(`Could not find ${listType} link on @${username}'s Twitter profile`);
-  }
-
-  await minimalDelay(2500);
-
-  const users = await page.evaluate(async (limit) => {
-    const results = [];
-    const seen = new Set();
-    
-    const dialog = document.querySelector('[role="dialog"]') || 
-                   document.querySelector('[data-testid="UserCell"]')?.parentElement?.parentElement;
-    
-    const scrollContainer = dialog || document.body;
-    
-    let noNewItems = 0;
-    const maxAttempts = 100;
-    
-    for (let attempt = 0; attempt < maxAttempts && results.length < limit; attempt++) {
-      const cells = document.querySelectorAll('[data-testid="UserCell"]');
-      let foundNew = false;
-      
-      for (const cell of cells) {
-        const link = cell.querySelector('a[href^="/"]');
-        if (link) {
-          const href = link.getAttribute('href') || '';
-          const match = href.match(/^\/([a-zA-Z0-9_]+)\/?$/);
-          if (match && match[1] && match[1] !== 'home' && match[1] !== 'explore') {
-            const user = match[1];
-            if (!seen.has(user) && results.length < limit) {
-              const nameEl = cell.querySelector('span[dir="auto"]');
-              const displayName = nameEl ? nameEl.textContent.trim() : '';
-              seen.add(user);
-              results.push({ username: user, displayName });
-              foundNew = true;
-            }
-          }
-        }
-      }
-      
-      if (foundNew) {
-        noNewItems = 0;
-      } else {
-        noNewItems++;
-        if (noNewItems >= 5) break;
-      }
-      
-      if (scrollContainer && scrollContainer !== document.body) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-      window.scrollTo(0, document.body.scrollHeight);
-      
-      await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 300));
-    }
-    
-    return results;
-  }, maxResults);
-
-  console.log(`[Twitter] Scraped ${users.length} ${listType} from @${username}`);
-  
-  return { username, listType, count: users.length, users };
-}
-
-
 
 
 async function openTwitterMessage(page, username) {
@@ -411,16 +328,11 @@ const baseHandler = createSocialHandler('twitter', {
   async openLatestPost(page) {
     const article = page.locator('article[data-testid="tweet"]').first();
     await article.scrollIntoViewIfNeeded().catch(() => {});
-    await minimalDelay(500);
-    await article.click().catch(() => {});
+    await article.locator('button[data-testid="reply"]').click().catch(() => {});
     await waitForAppShell(page, 'twitter');
-    await minimalDelay(1000);
   },
   async likePost(page) {
-    const article = page.locator('article[data-testid="tweet"]').first();
-    await article.scrollIntoViewIfNeeded().catch(() => {});
-    await minimalDelay(300);
-    await article.locator('button[data-testid="like"]').click().catch(() => {});
+    await page.locator('article[data-testid="tweet"]').first().locator('button[data-testid="like"]').click().catch(() => {});
   },
   commentSelectors: ['div[data-testid="tweetTextarea_0"]', 'div[role="textbox"][contenteditable="true"]', 'div[aria-label="Post text"]'],
   commentSubmitSelectors: ['button[data-testid="tweetButtonInline"]', 'button[data-testid="tweetButton"]', 'button[aria-label="Reply"]'],
@@ -641,20 +553,6 @@ export const twitterHandler = {
 
 
 
-    // ACTION: Scrape followers/following
-    if (action === 'scrape_followers') {
-      const { username, listType = 'followers', maxResults = 100 } = args;
-      if (!username) throw new Error('Twitter scrape_followers requires a username');
-      
-      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.twitter, { platform: 'twitter' });
-      const result = await scrapeTwitterFollowers(page, username, listType, maxResults);
-      return {
-        status: 'completed',
-        summary: `Scraped ${result.count} ${listType} from @${username}`,
-        data: result
-      };
-    }
-    
     // Handle actions that should be delegated to base handler
     const baseHandlerActions = ['engage_post', 'engage_batch', 'follow_user', 'follow_batch', 'compose_post', 'publish_post', 'scrape_results', 'like_post', 'comment_post'];
     if (baseHandlerActions.includes(action)) {

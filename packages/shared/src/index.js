@@ -213,7 +213,7 @@ const socialCoreActions = [
 
 export const PLATFORM_SKILL_CAPABILITIES = {
   instagram: [...socialCoreActions, 'scrape_followers', 'map_contacts'],
-  twitter: [...socialCoreActions, 'scrape_followers', 'map_contacts'],
+  twitter: socialCoreActions,
   linkedin: [...socialCoreActions, 'map_contacts'],
   facebook: socialCoreActions,
   gmail: [
