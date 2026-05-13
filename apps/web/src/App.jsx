@@ -496,15 +496,54 @@ function Workspace({ refreshTasks, tasks }) {
         prompt: `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
         context: { ...baseContext, operation: 'map_contacts', destination: 'artifact' },
       },
-      // ChatGPT & Gemini specific
-      generate_image: {
-        prompt: `Generate an image on ${selectedPlatformMeta.label}. Description: ${query || 'A cinematic landscape'}`,
-        context: { ...baseContext, operation: 'generate_image', messageGoal: query || 'A cinematic landscape', query: query || 'A cinematic landscape' },
-      },
-      ask: {
-        prompt: query || 'What can you help me with?',
-        context: { ...baseContext, operation: 'ask', messageGoal: query || 'What can you help me with?', query: query || 'What can you help me with?' },
-      },
+      // ChatGPT & Gemini specific — combine ALL panel inputs into a rich prompt
+      generate_image: (() => {
+        const subject = query.trim() || 'A cinematic landscape';
+        const parts = [`Create an image of: ${subject}.`];
+        if (targetUsername.trim()) parts.push(`Subject/Target: ${targetUsername.trim()}.`);
+        if (goal && goal.trim()) parts.push(`Goal/Purpose: ${goal.trim()}.`);
+        if (tone && tone.trim()) parts.push(`Style/Tone: ${tone.trim()}.`);
+        if (maxResults) parts.push(`Variations: ${maxResults}.`);
+        if (attachmentPath.trim()) parts.push(`Reference asset: ${attachmentPath.trim()}.`);
+        const composedPrompt = parts.join(' ');
+        return {
+          prompt: composedPrompt,
+          context: {
+            ...baseContext,
+            operation: 'generate_image',
+            messageGoal: subject,
+            query: subject,
+            imageSubject: subject,
+            imageTarget: targetUsername.trim() || undefined,
+            imageGoal: goal && goal.trim() ? goal.trim() : undefined,
+            imageTone: tone && tone.trim() ? tone.trim() : undefined,
+            imageVariations: Number(maxResults) || 1,
+            attachmentPath: attachmentPath.trim() || undefined,
+          },
+        };
+      })(),
+      ask: (() => {
+        const question = query.trim() || 'What can you help me with?';
+        const parts = [question];
+        if (targetUsername.trim()) parts.push(`Context — about: ${targetUsername.trim()}.`);
+        if (goal && goal.trim()) parts.push(`Goal: ${goal.trim()}.`);
+        if (tone && tone.trim()) parts.push(`Tone: ${tone.trim()}.`);
+        if (attachmentPath.trim()) parts.push(`Attached file: ${attachmentPath.trim()}.`);
+        const composedPrompt = parts.join(' ');
+        return {
+          prompt: composedPrompt,
+          context: {
+            ...baseContext,
+            operation: 'ask',
+            messageGoal: question,
+            query: question,
+            askTarget: targetUsername.trim() || undefined,
+            askGoal: goal && goal.trim() ? goal.trim() : undefined,
+            askTone: tone && tone.trim() ? tone.trim() : undefined,
+            attachmentPath: attachmentPath.trim() || undefined,
+          },
+        };
+      })(),
     };
 
     const operationPayload = payloads[operation];
