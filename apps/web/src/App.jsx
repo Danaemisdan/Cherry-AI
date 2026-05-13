@@ -781,17 +781,23 @@ function Workspace({ refreshTasks, tasks }) {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* LEFT COLUMN: SCRAPER ENGINE */}
+                {/* LEFT COLUMN: SCRAPER ENGINE / PROMPT STUDIO */}
                 <div className="space-y-12">
                   <div className="space-y-8">
-                    <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">{selectedPlatformMeta.label} - LEAD SCRAPER ENGINE</h4>
+                    <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">
+                      {selectedPlatformMeta.label} - {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'PROMPT STUDIO' : 'LEAD SCRAPER ENGINE'}
+                    </h4>
                     <div className="space-y-6">
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Target Keyword/Niche</label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="e.g. tech founders" value={query} onChange={(event) => setQuery(event.target.value)} />
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Prompt / Subject' : 'Target Keyword/Niche'}
+                        </label>
+                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. A cinematic landscape' : 'e.g. tech founders'} value={query} onChange={(event) => setQuery(event.target.value)} />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Max Profiles to Scrape</label>
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Image Variations / Response Length' : 'Max Profiles to Scrape'}
+                        </label>
                         <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" type="number" value={maxResults} onChange={(event) => setMaxResults(event.target.value)} />
                       </div>
                       {(supports('scrape_results') || supports('search')) ? (
@@ -812,43 +818,55 @@ function Workspace({ refreshTasks, tasks }) {
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: ENGAGEMENT SUITE */}
+                {/* RIGHT COLUMN: ENGAGEMENT SUITE / AI OPTIONS */}
                 <div className="space-y-12">
-                  <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">{selectedPlatformMeta.label} - AUTO-ENGAGEMENT SUITE</h4>
-                  
+                  <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">
+                    {selectedPlatformMeta.label} - {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'AI OPTIONS' : 'AUTO-ENGAGEMENT SUITE'}
+                  </h4>
+
                   <div className="space-y-8">
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Target Username</label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="username" value={targetUsername} onChange={(event) => setTargetUsername(event.target.value)} />
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Subject / Focus' : 'Target Username'}
+                        </label>
+                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. Hospital, sunset, cat' : 'username'} value={targetUsername} onChange={(event) => setTargetUsername(event.target.value)} />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">LLM Goal</label>
-                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" value={goal} onChange={(event) => setGoal(event.target.value)} />
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Goal / Purpose' : 'LLM Goal'}
+                        </label>
+                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. marketing poster' : ''} value={goal} onChange={(event) => setGoal(event.target.value)} />
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">LLM Tone</label>
-                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" value={tone} onChange={(event) => setTone(event.target.value)} />
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Style / Mood' : 'LLM Tone'}
+                        </label>
+                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. photorealistic, anime, watercolor' : ''} value={tone} onChange={(event) => setTone(event.target.value)} />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Attachment Path (Optional)</label>
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Reference Image / File (Optional)' : 'Attachment Path (Optional)'}
+                        </label>
                         <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="/path/to/image.png" value={attachmentPath} onChange={(event) => setAttachmentPath(event.target.value)} />
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Feed Usernames From CSV</label>
-                      <div className="w-full h-32 bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-[2rem] flex items-center justify-center cursor-pointer hover:bg-zinc-800/50 transition-all group">
-                        <div className="flex flex-col items-center gap-2">
-                          <Plus className="w-6 h-6 text-zinc-600 group-hover:text-white transition-colors" />
-                          <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Upload Username CSV</span>
+                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? null : (
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Feed Usernames From CSV</label>
+                        <div className="w-full h-32 bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-[2rem] flex items-center justify-center cursor-pointer hover:bg-zinc-800/50 transition-all group">
+                          <div className="flex flex-col items-center gap-2">
+                            <Plus className="w-6 h-6 text-zinc-600 group-hover:text-white transition-colors" />
+                            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Upload Username CSV</span>
+                          </div>
                         </div>
+                        <p className="text-[10px] text-zinc-600 font-bold ml-2">Use a CSV where the first column contains usernames.</p>
                       </div>
-                      <p className="text-[10px] text-zinc-600 font-bold ml-2">Use a CSV where the first column contains usernames.</p>
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                       {supports('send_message') ? (
@@ -875,14 +893,6 @@ function Workspace({ refreshTasks, tasks }) {
                         {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
                         {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
                         {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
-                      </div>
-                    ) : null}
-
-                    {/* ChatGPT & Gemini specific prompt input */}
-                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Your Question or Image Description</label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="Type your question or describe the image you want to generate..." value={query} onChange={(event) => setQuery(event.target.value)} />
                       </div>
                     ) : null}
 
