@@ -103,7 +103,7 @@ async function attachFile(page, filePath) {
 }
 
 // Wait for ChatGPT to finish responding (stop button disappears)
-async function waitForResponse(page, timeoutMs = 90000) {
+async function waitForResponse(page, timeoutMs = 120000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     // Stop button disappears when generation is done
@@ -156,10 +156,11 @@ export const chatgptHandler = {
 
     // ── generate_image — prompt only ─────────────────────────────────────────
     if (action === 'generate_image') {
-      const page = await openChatGPT(attachedBrowser, CHATGPT_IMAGES_URL);
+      const page = await openChatGPT(attachedBrowser, CHATGPT_URL);
 
-      const prompt = args.prompt || args.messageGoal || 'A beautiful futuristic landscape';
+      const prompt = args.prompt || args.messageGoal || args.query || 'A beautiful futuristic landscape';
       const referenceImagePath = args.attachmentPath || args.referenceImagePath || null;
+      console.log('[ChatGPT] Generating image with prompt:', prompt);
 
       // If a reference image was supplied, upload it first
       if (referenceImagePath) {
@@ -170,13 +171,14 @@ export const chatgptHandler = {
 
       const fullPrompt = referenceImagePath
         ? `Using the uploaded image as a reference, generate: ${prompt}`
-        : `Generate an image: ${prompt}`;
+        : `Please generate an image of: ${prompt}. Use DALL-E or the image generation feature.`;
 
       await sendPrompt(page, fullPrompt);
       await pauseLikeHuman(page, 4000, 6000);
-      await waitForResponse(page, 90000);
+      await waitForResponse(page, 120000);
 
       const imgSrc = await getGeneratedImageSrc(page);
+        console.log('[ChatGPT] Image generated successfully:', imgSrc);
       if (imgSrc) {
         return {
           status: 'completed',
@@ -184,6 +186,7 @@ export const chatgptHandler = {
           data: { imageUrl: imgSrc },
         };
       }
+        console.log('[ChatGPT] No image URL found, response text:', responseText);
 
       // Image might be there but in a different format — return the response text
       const responseText = await getLastResponse(page);

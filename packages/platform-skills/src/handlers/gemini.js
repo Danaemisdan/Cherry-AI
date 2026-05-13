@@ -239,8 +239,9 @@ export const geminiHandler = {
       const page = await openGemini(attachedBrowser, GEMINI_IMAGES_URL);
       await pauseLikeHuman(page, 1000, 2000);
 
-      const prompt    = args.prompt || args.messageGoal || 'A beautiful futuristic landscape';
+      const prompt    = args.prompt || args.messageGoal || args.query || 'A beautiful futuristic landscape';
       const refImage  = args.attachmentPath || args.referenceImagePath || null;
+      console.log('[Gemini] Generating image with prompt:', prompt);
 
       // Attach reference image first if provided
       if (refImage) {
@@ -263,6 +264,7 @@ export const geminiHandler = {
       await waitForResponse(page, 90000);
 
       const imgSrc = await getGeneratedImageSrc(page);
+        console.log('[Gemini] Image generated successfully:', imgSrc);
       if (imgSrc) {
         return {
           status: 'completed',
@@ -271,6 +273,7 @@ export const geminiHandler = {
         };
       }
 
+        console.log('[Gemini] No image URL found, response text:', responseText);
       // No image detected — return text response
       const responseText = await getLastResponse(page);
       return {

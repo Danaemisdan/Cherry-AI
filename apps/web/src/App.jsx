@@ -488,8 +488,8 @@ function Workspace({ refreshTasks, tasks }) {
       },
       // ChatGPT & Gemini specific
       generate_image: {
-        prompt: `Generate an image on ${selectedPlatformMeta.label} based on: ${query || 'A cinematic landscape'}`,
-        context: { ...baseContext, operation: 'generate_image' },
+        prompt: `Generate an image on ${selectedPlatformMeta.label}. Description: ${query || 'A cinematic landscape'}`,
+        context: { ...baseContext, operation: 'generate_image', messageGoal: query || 'A cinematic landscape' },
       },
       upload_file: {
         prompt: `Upload a file to ${selectedPlatformMeta.label}. Path: ${attachmentPath || 'No file specified'}`,
@@ -826,6 +826,14 @@ function Workspace({ refreshTasks, tasks }) {
                         {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
                         {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
                         {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
+                      </div>
+                    ) : null}
+
+                    {/* ChatGPT & Gemini specific prompt input */}
+                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Image Generation Prompt / Question</label>
+                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="Describe the image you want to generate..." value={query} onChange={(event) => setQuery(event.target.value)} />
                       </div>
                     ) : null}
 
