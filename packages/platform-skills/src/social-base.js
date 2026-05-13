@@ -26,9 +26,9 @@ import { mapAllContacts, exportForDashboard, extractWhatsAppContacts, extractLin
 
 export function createSocialHandler(platform, config) {
   async function draftOrSendMessage(attachedBrowser, step, usernameOverride, providedChatContext = null) {
-    // Check login state first
+    // Check login state first (skip for Gmail - let handlers handle auth errors)
     const page = attachedBrowser?.page;
-    if (page) {
+    if (page && platform !== 'gmail') {
       const state = await checkLoginState(page, platform);
       if (!state.ready) {
         return {

@@ -14,7 +14,6 @@ import {
   tryClick,
   waitForAppShell,
 } from '../common.js';
-import { checkLoginState } from '../state-checker.js';
 import * as path from 'path';
 
 // ─── Core Gmail helpers ────────────────────────────────────────────────────────

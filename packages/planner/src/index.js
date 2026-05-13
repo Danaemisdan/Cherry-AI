@@ -100,6 +100,8 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'like_ai_comment') return ['open_workspace', 'open_target', 'engage_post'];
   if (operation === 'like_post')       return ['open_workspace', 'open_target', 'like_post'];
   if (operation === 'auto_comment')    return ['open_workspace', 'open_target', 'comment_post'];
+  if (operation === 'comment_post')    return ['open_workspace', 'open_target', 'comment_post'];
+  if (operation === 'engage_post')       return ['open_workspace', 'open_target', 'engage_post'];
 
   // Gmail-specific operations
   if (operation === 'gmail_search')       return ['open_workspace', 'search'];
