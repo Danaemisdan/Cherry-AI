@@ -131,6 +131,10 @@ export const TASK_OPERATIONS = [
   'block_user',
   'report_user',
   'map_contacts',
+  'ask',
+  'chat',
+  'generate_image',
+  'upload_file',
 ];
 
 export const CANONICAL_SKILL_ACTIONS = [
