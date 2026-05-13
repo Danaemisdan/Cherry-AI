@@ -497,7 +497,6 @@ export function createSocialHandler(platform, config) {
         const result = await commentPost(attachedBrowser, step);
         return { status: 'completed', summary: summarizeAction(platform, step, result), data: { page: await pageSnapshot(result.page), comment: result.comment, sent: result.sent } };
       }
-      }
 
       if (step.action === 'engage_batch' || step.action === 'follow_batch') {
         const outputs = await runBatchAction(step, async (username) => (
