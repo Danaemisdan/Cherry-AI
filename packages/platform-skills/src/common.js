@@ -31,6 +31,8 @@ const SEARCH_SELECTORS = {
   facebook: ['input[aria-label="Search Facebook"]', 'input[placeholder="Search Facebook"]', 'input[type="search"]'],
   gmail: ['input[placeholder*="Search mail"]', 'input[aria-label*="Search mail"]'],
   whatsapp: ['div[contenteditable="true"][data-tab="3"]', 'div[role="textbox"][contenteditable="true"]'],
+  chatgpt: ['div[contenteditable="true"][aria-label*="message"]', 'div[contenteditable="true"][data-lexical-editor="true"]', 'textarea#prompt-textarea'],
+  gemini: ['rich-textarea div[contenteditable="true"]', 'div[contenteditable="true"][role="textbox"]', 'textarea[placeholder="Ask Gemini"]'],
 };
 
 const READY_SELECTORS = {
@@ -39,6 +41,8 @@ const READY_SELECTORS = {
   linkedin: ['input.search-global-typeahead__input', '.global-nav', '.scaffold-layout'],
   facebook: ['div[role="feed"]', 'input[aria-label="Search Facebook"]', '[aria-label="Facebook"]'],
   gmail: ['div[role="main"]', 'input[placeholder*="Search mail"]', 'div[gh="cm"]'],
+  chatgpt: ['div[contenteditable="true"][aria-label*="message"]', '[data-testid="send-button"]', 'main'],
+  gemini: ['rich-textarea div[contenteditable="true"]', 'mat-icon.send-icon', 'model-response'],
   whatsapp: ['div[data-testid="chat-list"]', 'div[role="grid"]', 'footer div[contenteditable="true"]'],
 };
 
@@ -49,6 +53,8 @@ const LOGIN_SELECTORS = {
   facebook: ['input[name="email"]', 'input[name="pass"]'],
   gmail: ['input[type="email"]', 'input[type="password"]', '#identifierId'],
   whatsapp: ['canvas[aria-label*="Scan"]', 'div[data-ref] canvas'],
+  chatgpt: ['input[type="email"]', 'input[type="password"]', 'button[type="submit"]'],
+  gemini: ['input[type="email"]', 'input[type="password"]', 'button[type="submit"]'],
 };
 
 const LOGGED_OUT_TEXT = {
@@ -58,6 +64,8 @@ const LOGGED_OUT_TEXT = {
   facebook: ['log in', 'password'],
   gmail: ['sign in', 'to continue to gmail'],
   whatsapp: ['scan to log in', 'log in with phone number'],
+  chatgpt: ['log in', 'sign up', 'welcome back'],
+  gemini: ['log in', 'sign in', 'welcome'],
 };
 
 export function normalizeUsername(username = '') {
@@ -1119,9 +1127,13 @@ async function detectPlatformLoginState(page, platform) {
 
 export async function ensurePlatformReady(page, platform) {
   await waitForAppShell(page);
-  const loginState = await detectPlatformLoginState(page, platform);
-  if (!loginState.loggedIn) {
-    throw new Error(`${loginState.reason}. Sign in once inside the Cherry debug profile, then retry.`);
+  
+  // Skip login checking for Gmail - let the specific handlers handle auth errors
+  if (platform !== 'gmail') {
+    const loginState = await detectPlatformLoginState(page, platform);
+    if (!loginState.loggedIn) {
+      throw new Error(`${loginState.reason}. Sign in once inside the Cherry debug profile, then retry.`);
+    }
   }
 
   const readySelectors = READY_SELECTORS[platform] || [];
