@@ -90,6 +90,13 @@ async function executeGenericSkill({ step, attachedBrowser, managedBrowser }) {
 
   if (step.action === 'search') {
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS[platform], { platform });
+
+    if (platform === 'facebook' && args.query) {
+      const searchUrl = buildPlatformSearchUrl(platform, args.query || args.prompt);
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded' });
+      await pauseLikeHuman(page, 500, 1000);
+      return { status: 'completed', summary: `Searched Facebook People for "${args.query}"`, data: await pageSnapshot(page) };
+    }
     
     // Attempt human-like search if selectors exist
     const searchSelectors = SEARCH_SELECTORS[platform];

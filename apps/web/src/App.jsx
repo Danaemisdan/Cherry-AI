@@ -354,7 +354,7 @@ function Workspace({ refreshTasks, tasks }) {
 
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
-    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
+    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'follow_search', 'connect', 'connect_swn', 'connect_sn', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
     const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'auto_dm_contact', 'auto_dm_new', 'bulk_dm_csv']);
     const trimmedQuery = query.trim();
     const noisyDefaults = new Set(['customer follow up']);
@@ -444,6 +444,22 @@ function Workspace({ refreshTasks, tasks }) {
       follow_user: {
         prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
         context: { ...baseContext, operation: 'follow_user' },
+      },
+      follow_search: {
+        prompt: `Search people on ${selectedPlatformMeta.label} for "${query}" and follow or add each result one by one. Limit: ${maxResults}.`,
+        context: { ...baseContext, operation: 'follow_search' },
+      },
+      connect: {
+        prompt: `LinkedIn connect-SWN: send connection request without a note to ${targetHandle || 'the user'}.`,
+        context: { ...baseContext, operation: 'connect_swn' },
+      },
+      connect_swn: {
+        prompt: `LinkedIn connect-SWN: send connection request without a note to ${targetHandle || 'the user'}.`,
+        context: { ...baseContext, operation: 'connect_swn' },
+      },
+      connect_sn: {
+        prompt: `LinkedIn connect-SN: send connection request with a personal note to ${targetHandle || 'the user'}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'connect_sn' },
       },
       follow_and_message: {
         prompt: `Follow ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}, then send a contextual message. Goal: ${goal}. Tone: ${tone}.`,
@@ -838,6 +854,43 @@ function Workspace({ refreshTasks, tasks }) {
                       <Plus className="w-6 h-6 text-zinc-700 group-hover:text-white transition-colors" />
                     </button> : null}
                   </div>
+
+                  {selectedPlatform === 'facebook' && supports('follow_search') ? (
+                    <div className="space-y-6 border-t border-zinc-800 pt-8">
+                      <h5 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">
+                        Facebook - People Follow
+                      </h5>
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          Name / Keyword
+                        </label>
+                        <input
+                          className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium"
+                          placeholder="e.g. Gali Nandini or saas founders"
+                          value={query}
+                          onChange={(event) => setQuery(event.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
+                          Count
+                        </label>
+                        <input
+                          className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium"
+                          type="number"
+                          min="1"
+                          value={maxResults}
+                          onChange={(event) => setMaxResults(event.target.value)}
+                        />
+                      </div>
+                      <button
+                        onClick={() => runPlatformAction('follow_search')}
+                        className="w-full p-8 rounded-[2rem] bg-red-600 hover:bg-red-700 text-white font-black text-lg transition-all active:scale-95 shadow-2xl"
+                      >
+                        Follow People Search
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* RIGHT COLUMN: ENGAGEMENT SUITE / AI OPTIONS */}
@@ -904,6 +957,12 @@ function Workspace({ refreshTasks, tasks }) {
                         </>
                       ) : null}
                       {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
+                      {selectedPlatform === 'linkedin' && supports('connect_swn') ? (
+                        <>
+                          <button type="button" onClick={() => runPlatformAction('connect_swn')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Connect-SWN</button>
+                          <button type="button" onClick={() => runPlatformAction('connect_sn')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Connect-SN</button>
+                        </>
+                      ) : null}
                       {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
                     </div>
 

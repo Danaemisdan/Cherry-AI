@@ -33,6 +33,14 @@ function detectOperation(prompt, context = {}) {
   if (context.operation) return context.operation;
 
   const lower = prompt.toLowerCase();
+
+  // LinkedIn: explicit invite modes (More → Connect → modal; avoids /preload/custom-invite spinner)
+  if (/connect[-_\s]?swn\b/i.test(lower)) return 'connect_swn';
+  if (/connect[-_\s]?sn\b/i.test(lower)) return 'connect_sn';
+  if (/\bconnect\b/.test(lower) && /\blinkedin\b/.test(lower) && /\b(with a note|personal note|connection note)\b/i.test(lower)) {
+    return 'connect_sn';
+  }
+  if (/\bconnect\b/.test(lower) && /\blinkedin\b/.test(lower)) return 'connect_swn';
   
   // Specific DM methods injected by UI
   if (lower.includes('automated dm to contact')) return 'auto_dm_contact';
@@ -47,12 +55,14 @@ function detectOperation(prompt, context = {}) {
   const wantsChat = /ask|chat|prompt|generate text|write|summarize|translate/i.test(lower);
   const wantsUpload = /upload|reference image|reference asset|use this file|attach/i.test(lower);
   const wantsExport = /export|save to sheet|put in sheet|add to spreadsheet/i.test(lower);
+  const wantsFollowSearch = /\b(follow|add friends?|friend requests?)\b/i.test(lower) && /\b(search|people|users|results|related|bulk|many)\b/i.test(lower);
 
   if (wantsSheet && wantsExport) return 'export_to_sheet';
   if (wantsSheet) return 'create_sheet';
   if (wantsUpload && wantsImage) return 'generate_image'; // reference image generation
   if (wantsUpload) return 'upload_file';
   if (wantsImage) return 'generate_image';
+  if (wantsFollowSearch) return 'follow_search';
   if (wantsCampaign) return 'run_campaign';
   if (wantsLeads && wantsMessaging) return 'lead_and_message';
   if (wantsMessaging) return context.usernames?.length > 1 ? 'message_batch' : 'send_message';
@@ -71,6 +81,9 @@ function actionsFor(platform, prompt, context = {}) {
   const operation = detectOperation(prompt, context);
   if (platform === 'research' && operation === 'open_workspace') {
     return ['search', 'open_result'];
+  }
+  if (operation === 'follow_user' && platform === 'facebook') {
+    return ['open_workspace', 'follow_user'];
   }
 
   const template = WORKFLOW_TEMPLATES[operation];
@@ -109,7 +122,14 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'gmail_get_profile')  return ['open_workspace', 'get_profile_context'];
   if (operation === 'gmail_reply')        return ['open_workspace', 'reply_to_email'];
 
-  if (operation === 'follow_user') return ['open_workspace', 'open_target', 'follow_user'];
+  if (operation === 'follow_search') return ['open_workspace', 'follow_search'];
+  if (operation === 'follow_user') {
+    return platform === 'facebook'
+      ? ['open_workspace', 'follow_user']
+      : ['open_workspace', 'open_target', 'follow_user'];
+  }
+  if (operation === 'connect_swn') return ['open_workspace', 'open_target', 'connect_swn'];
+  if (operation === 'connect_sn') return ['open_workspace', 'open_target', 'connect_sn'];
   if (operation === 'auto_post') return ['open_workspace', 'compose_post', 'publish_post'];
   if (operation === 'bulk_engage_csv') return ['open_workspace', 'engage_batch'];
   if (operation === 'bulk_follow_csv') return ['open_workspace', 'follow_batch'];

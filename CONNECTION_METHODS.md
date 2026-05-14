@@ -87,11 +87,15 @@
 ## Facebook
 | Action | Status | Description |
 |--------|--------|-------------|
+| **follow_search** | ✅ | Search Facebook People results and follow/add each profile |
 | **add_friend** | ✅ | Add friend by username/profile |
 | **bulk_add_friends** | ✅ | Bulk add from "People You May Know" |
 
 ### Usage Examples:
 ```javascript
+// Follow/add people from search results
+{ action: 'follow_search', platform: 'facebook', args: { searchQuery: 'founders bangalore', maxResults: 10 }}
+
 // Add friend
 { action: 'add_friend', platform: 'facebook', args: { username: 'john.doe.123' }}
 

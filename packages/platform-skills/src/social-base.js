@@ -125,6 +125,10 @@ export function createSocialHandler(platform, config) {
     }
 
     console.log(`[${platform}] Filling comment...`);
+    if (config.prepareComment) {
+      console.log(`[${platform}] Preparing comment composer...`);
+      await config.prepareComment(page);
+    }
     const filled = await fillEditable(page, config.commentSelectors || [], comment);
     if (!filled.ok) {
       throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
@@ -189,6 +193,9 @@ export function createSocialHandler(platform, config) {
       }
     }
     
+    if (config.prepareComment) {
+      await config.prepareComment(page);
+    }
     const filled = await fillEditable(page, config.commentSelectors || [], comment);
     if (!filled.ok) {
       throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
@@ -249,6 +256,9 @@ export function createSocialHandler(platform, config) {
       }
     }
     
+    if (config.prepareComment) {
+      await config.prepareComment(page);
+    }
     const filled = await fillEditable(page, config.commentSelectors || [], comment);
     if (!filled.ok) {
       throw new Error(`Could not prepare a ${platform} comment for "${username}"`);
@@ -307,6 +317,9 @@ export function createSocialHandler(platform, config) {
       }
     }
     
+    if (config.prepareComment) {
+      await config.prepareComment(page);
+    }
     const filled = await fillEditable(page, config.commentSelectors || [], comment);
     if (!filled.ok) {
       throw new Error(`Could not prepare a ${platform} comment for "${username}"`);

@@ -38,7 +38,7 @@ const SEARCH_SELECTORS = {
 const READY_SELECTORS = {
   instagram: ['nav', 'svg[aria-label="Home"]', 'a[href="/direct/inbox/"]'],
   twitter: ['a[data-testid="SideNav_NewTweet_Button"]', 'div[data-testid="primaryColumn"]', 'article[data-testid="tweet"]'],
-  linkedin: ['input.search-global-typeahead__input', '.global-nav', '.scaffold-layout'],
+  linkedin: ['main', '.scaffold-layout', '.global-nav', '.pv-top-card', 'section.artdeco-card', 'input.search-global-typeahead__input'],
   facebook: ['div[role="feed"]', 'input[aria-label="Search Facebook"]', '[aria-label="Facebook"]'],
   gmail: ['div[role="main"]', 'input[placeholder*="Search mail"]', 'div[gh="cm"]'],
   chatgpt: ['div[contenteditable="true"][aria-label*="message"]', '[data-testid="send-button"]', 'main'],
@@ -109,7 +109,7 @@ export function buildPlatformSearchUrl(platform, query) {
   if (platform === 'instagram') return `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(query)}`;
   if (platform === 'twitter') return `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query`;
   if (platform === 'linkedin') return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
-  if (platform === 'facebook') return `https://www.facebook.com/search/top?q=${encodeURIComponent(query)}`;
+  if (platform === 'facebook') return `https://www.facebook.com/search/people/?q=${encodeURIComponent(query)}`;
   if (platform === 'gmail') return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(query)}`;
   if (platform === 'whatsapp') return PLATFORM_URLS.whatsapp;
   return PLATFORM_URLS[platform];
@@ -1150,15 +1150,52 @@ export async function ensurePlatformReady(page, platform) {
 }
 
 export async function navigate(page, url, platform) {
-  // Fast navigation - use domcontentloaded for speed
+  const isLinkedin = platform === 'linkedin';
+
+  if (isLinkedin) {
+    // LinkedIn SPAs often delay DOMContentLoaded; waiting on it alone causes flaky 15s timeouts over CDP.
+    let lastErr;
+    try {
+      await page.goto(url, { waitUntil: 'commit', timeout: 45000 });
+    } catch (e) {
+      lastErr = e;
+      try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+      } catch (e2) {
+        lastErr = e2;
+        await page.goto(url, { waitUntil: 'load', timeout: 90000 }).catch(() => {
+          throw lastErr;
+        });
+      }
+    }
+    await waitForAppShell(page, 'linkedin');
+    await page
+      .waitForFunction(
+        () =>
+          document.querySelector(
+            'main .pv-top-card, main .artdeco-card, .scaffold-layout, .global-nav, [data-view-name*="profile"]',
+          ) !== null || document.querySelector('main') !== null,
+        { timeout: 60000 },
+      )
+      .catch(() => {});
+
+    const readySelectors = READY_SELECTORS[platform] || [];
+    const hasShell = await page.evaluate((selectors) => {
+      return selectors.some((s) => document.querySelector(s) !== null);
+    }, readySelectors);
+    if (!hasShell) {
+      await ensurePlatformReady(page, platform);
+    }
+    return;
+  }
+
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-  
+
   if (platform) {
-    // Quick check if already ready before full ensurePlatformReady
     const isReady = await page.evaluate((selectors) => {
-      return selectors.some(s => document.querySelector(s) !== null);
+      return selectors.some((s) => document.querySelector(s) !== null);
     }, platform && READY_SELECTORS[platform] ? READY_SELECTORS[platform] : ['body']);
-    
+
     if (!isReady) {
       await ensurePlatformReady(page, platform);
     }
@@ -1499,6 +1536,7 @@ export function summarizeAction(platform, step, detail = {}) {
   if (step.action === 'message_batch') return `${detail.sent ? 'Processed' : 'Prepared'} ${count} ${platform} message targets one by one`;
   if (step.action === 'engage_post') return detail.sent ? `Engaged with latest post${username} on ${platform}` : `Drafted engagement${username} on ${platform}`;
   if (step.action === 'follow_user') return detail.clicked ? `Triggered follow/connect${username} on ${platform}` : `Could not find follow control${username} on ${platform}`;
+  if (step.action === 'follow_search') return `Processed ${platform} people search follow results for "${query}"`;
   if (step.action === 'engage_batch') return `Processed ${count} ${platform} engagement targets`;
   if (step.action === 'follow_batch') return `Processed ${count} ${platform} follow targets`;
   if (step.action === 'compose_post') return `Opened ${platform} composer`;
