@@ -153,40 +153,51 @@ function usePlatformData() {
 
 function Shell({ agentOnline, agentState, children }) {
   const browserAttached = Boolean(agentState?.browserAttached);
-
+  const sc = !agentOnline ? '' : browserAttached ? 'attached' : 'online';
+  const sl = !agentOnline ? 'Offline' : browserAttached ? 'Browser Attached' : 'Agent Online';
+  const ss = agentState?.profileDirectory
+    ? `${agentState.tabs||0} tabs · ${agentState.profileDirectory.split(/[\\/]/).pop()}`
+    : 'Waiting for local agent…';
   return (
     <div className="layout">
       <aside className="sidebar">
-        <div className="brand flex items-center justify-start px-4">
-          <Logo />
+        <div className="sidebar-top">
+          <div className="brand">
+            <div className="brand-dot"/>
+            <span className="brand-name">Cherry</span>
+            <span className="brand-tag">AI</span>
+          </div>
+          <div className="status-pill">
+            <div className={`status-dot ${sc}`}/>
+            <div><div className="status-text">{sl}</div><div className="status-sub">{ss}</div></div>
+          </div>
+          <nav className="sidebar-nav">
+            <NavLink to="/" end className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z"/></svg>Workspace
+            </NavLink>
+            <NavLink to="/dashboard" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard
+            </NavLink>
+            <NavLink to="/campaigns" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v2H2zm0 3h12v2H2zm0 3h8v2H2z"/></svg>Campaigns
+            </NavLink>
+            <NavLink to="/history" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM7 4h2v4.414l2.293 2.293-1.414 1.414L7 9.414V4z"/></svg>History
+            </NavLink>
+            <NavLink to="/pairing" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v1h1a3 3 0 0 1 0 6h-1v1a1 1 0 0 1-2 0v-1H6v1a1 1 0 0 1-2 0v-1H3a3 3 0 0 1 0-6h1V4a1 1 0 0 1 1-1h5z"/></svg>Pairing
+            </NavLink>
+          </nav>
         </div>
-
-        <div className="sidebar-card mt-6">
-          <span className="sidebar-label">Agent bridge</span>
-          <strong>
-            {!agentOnline ? 'Awaiting local runtime' : browserAttached ? 'Attached runtime online' : 'Runtime online, browser unattached'}
-          </strong>
-          <p>
-            {agentState?.profileDirectory
-              ? `Profile ${agentState.profileDirectory}${agentState?.browserAttached ? ` • ${agentState.tabs || 0} tabs visible` : ' • browser not attached'}`
-              : 'Chrome CDP / extension bridge status will appear here.'}
-          </p>
-          {agentState?.connectionError ? <p>{agentState.connectionError}</p> : null}
+        <div className="sidebar-bottom">
+          <span style={{fontSize:10,color:'var(--text-3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.1em'}}>v1.0 · Cherry AI</span>
         </div>
-
-        <nav className="mt-8">
-          <NavLink to="/">Workspace</NavLink>
-          <NavLink to="/dashboard">Dashboard</NavLink>
-          <NavLink to="/campaigns">Campaigns</NavLink>
-          <NavLink to="/pairing">Pairing</NavLink>
-          <NavLink to="/history">History</NavLink>
-        </nav>
       </aside>
-
       <main className="content">{children}</main>
     </div>
   );
 }
+
 
 function DialogueBox({ dialogue, onSelect, selectedPlatforms }) {
   if (!dialogue) return null;
@@ -600,512 +611,233 @@ function Workspace({ refreshTasks, tasks }) {
     console.log('[runPlatformAction] Task dispatched successfully');
   }
 
-  return (
-    <section className="workspace-container relative w-full flex flex-col">
-      {/* 1. Full-Height AI Chat Section (The "Home Screen") */}
-      <div className="w-full h-screen flex flex-col bg-[#050505] relative overflow-hidden">
-        {/* Scrollable Conversation Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-24">
-          <div className="max-w-[1000px] mx-auto flex flex-col gap-12 pb-32">
-            {displayedTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-40 animate-in fade-in zoom-in-95 duration-1000">
-                <div className="w-24 h-24 rounded-full bg-zinc-900/50 flex items-center justify-center mb-10 border border-zinc-800 shadow-2xl">
-                  <selectedPlatformMeta.icon className="w-10 h-10 text-white" />
-                </div>
-                <h2 className="text-6xl font-black text-white tracking-tighter mb-4">What's on your mind?</h2>
-                <p className="text-zinc-500 max-w-sm mt-2 text-xl font-medium leading-relaxed">
-                  Start an agentic workflow by typing a command below.
-                </p>
-              </div>
-            ) : (
-              displayedTasks.map((task) => (
-                <div key={task.id} className="flex flex-col gap-8 animate-in fade-in duration-500">
-                  {/* User Message (Standard) */}
-                  <div className="flex flex-col items-end gap-3 self-end max-w-[80%]">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">You</span>
-                      <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-white">U</div>
-                    </div>
-                    <div className="bg-zinc-900 text-zinc-100 px-6 py-4 rounded-2xl rounded-tr-none text-lg font-medium shadow-xl">
-                      {task.prompt}
-                    </div>
-                  </div>
 
-                  {/* Agent Response (aliimam style) */}
-                  <div className="flex flex-col items-start gap-4 self-start w-full">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white">
-                        <selectedPlatformMeta.icon className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest invisible">Cherry AI</span>
-                    </div>
-                    <div className="w-full pl-8 flex flex-col gap-4">
-                      <div className="bg-[#0c0c0e] border border-zinc-800/50 p-8 rounded-2xl shadow-inner text-zinc-300 leading-relaxed">
-                        <TaskCard task={task} compact />
-                      </div>
-                      
-                      {/* Actions row */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-red-500 transition-all"><RefreshCw className="w-4 h-4" /></button>
-                        <button className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-red-500 transition-all"><ThumbsUp className="w-4 h-4" /></button>
-                        <button className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-red-500 transition-all"><ThumbsDown className="w-4 h-4" /></button>
-                        <button className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-red-500 transition-all"><Copy className="w-4 h-4" /></button>
-                        <button className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-red-500 transition-all"><Share className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+  const isAI = selectedPlatform==='chatgpt'||selectedPlatform==='gemini';
+  const isGmail = selectedPlatform==='gmail';
+  const isWA = selectedPlatform==='whatsapp';
+  const isLI = selectedPlatform==='linkedin';
+
+  return (
+    <div className="workspace">
+      {/* LEFT: Chat feed */}
+      <div className="chat-pane">
+        <div className="chat-header">
+          <div style={{width:26,height:26,borderRadius:8,background:'var(--red-dim)',border:'1px solid rgba(229,57,53,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <selectedPlatformMeta.icon style={{width:13,height:13}}/>
           </div>
+          <div>
+            <div className="chat-header-title">Cherry AI — {selectedPlatformMeta.label}</div>
+            <div className="chat-header-sub">Agentic task feed</div>
+          </div>
+          <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
         </div>
 
-        {/* 2. Dialogue Box - Video Game Style Choices */}
-        {dialogue && (
-          <div className="w-full px-8 pb-4">
-            <div className="max-w-[700px] mx-auto">
-              <DialogueBox
-                dialogue={dialogue}
-                onSelect={handleDialogueSelect}
-                selectedPlatforms={selectedPlatforms}
-              />
+        <div className="chat-messages custom-scroll">
+          {displayedTasks.length===0 ? (
+            <div className="chat-empty">
+              <div className="chat-empty-icon"><selectedPlatformMeta.icon style={{width:26,height:26}}/></div>
+              <h2>What's on your mind?</h2>
+              <p>Type a command or use the panel →</p>
             </div>
+          ) : displayedTasks.map(task=>(
+            <div key={task.id} className="task-bubble">
+              <div className="task-bubble-user">{task.prompt}</div>
+              <div className="task-bubble-agent">
+                <div className="task-card">
+                  <div className="task-card-header">
+                    <div className="task-card-icon"><selectedPlatformMeta.icon style={{width:12,height:12}}/></div>
+                    <span className="task-card-prompt">{task.context?.platform||'auto'} · {task.context?.operation||'task'}</span>
+                    <span className="task-card-time">{new Date(task.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                    <span className={`task-badge ${task.status}`}>{task.status}</span>
+                  </div>
+                  {task.events?.find(e=>e.type==='plan.generated')?.plan?.steps?.length ? (
+                    <div className="task-steps">
+                      {task.events.find(e=>e.type==='plan.generated').plan.steps.map(step=>{
+                        const ev=[...(task.events||[])].reverse();
+                        const fail=ev.find(e=>e.stepId===step.id&&e.type==='step.failed');
+                        const done=ev.find(e=>e.stepId===step.id&&e.type==='step.progress');
+                        const run=ev.find(e=>e.stepId===step.id&&e.type==='step.started');
+                        const kind=fail?'failed':done?'done':run?'running':'';
+                        return (
+                          <div key={step.id} className="task-step">
+                            <div className={`task-step-dot ${kind}`}/>
+                            <span className="task-step-name">{step.platform}:{step.action} </span>
+                            <span className="task-step-result">{fail?.error||done?.message||run?.label||'Queued'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ):null}
+                  {(()=>{
+                    const fail=[...(task.events||[])].reverse().find(e=>e.type==='task.failed'||e.type==='step.failed');
+                    const hitl=[...(task.events||[])].reverse().find(e=>e.type==='hitl.required');
+                    const done=[...(task.events||[])].reverse().find(e=>e.type==='task.completed');
+                    if(hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--amber)',borderTop:'1px solid var(--panel-border)'}}>⚠️ {hitl.message}</div>;
+                    if(fail&&!hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--red)',borderTop:'1px solid var(--panel-border)'}}>{fail.error||fail.detail}</div>;
+                    if(done)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--green)',borderTop:'1px solid var(--panel-border)'}}>✓ {done.summary}</div>;
+                    return null;
+                  })()}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {dialogue && (
+          <div className="dialogue-box">
+            <div className="dialogue-msg">{dialogue.message}</div>
+            <div className="dialogue-opts">
+              {dialogue.options?.map(opt=>(
+                <button key={opt.id} className={`dialogue-opt ${dialogue.type==='platform_selection'&&selectedPlatforms.includes(opt.id)?'selected':''}`}
+                  onClick={()=>handleDialogueSelect(opt,dialogue.type==='platform_selection')}>{opt.label}</button>
+              ))}
+            </div>
+            {dialogue.type==='platform_selection'&&dialogue.continueAction&&selectedPlatforms.length>0&&(
+              <button className="dialogue-confirm" onClick={()=>handleDialogueSelect({action:'confirm_platforms',data:{platforms:selectedPlatforms}},false)}>{dialogue.continueAction.label}</button>
+            )}
           </div>
         )}
 
-        {/* 3. AI Chat Input Block (hextaui style) */}
-        <div className="w-full px-8 pb-12">
-          <div className="max-w-[700px] mx-auto">
-            <div className="flex items-center justify-end mb-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-xs font-medium cursor-pointer hover:bg-zinc-800 transition-all">
-                <span>Cherry v1.0</span>
-                <ChevronDown className="w-3 h-3" />
-              </div>
-            </div>
-
-            <div className="bg-zinc-900/50 backdrop-blur-xl border border-zinc-800 rounded-[2rem] p-6 shadow-2xl">
-              <textarea
-                className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-zinc-500 text-lg resize-none min-h-[100px] outline-none font-medium custom-scrollbar"
-                placeholder="Talk to Cherry..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    submitConversation();
-                  }
-                }}
-              />
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-800/50">
-                <div className="flex items-center gap-2">
-                  <button className="p-2.5 rounded-xl hover:bg-zinc-800 text-zinc-500 hover:text-white transition-all"><Paperclip className="w-5 h-5" /></button>
-                  <button className="p-2.5 rounded-xl hover:bg-zinc-800 text-zinc-500 hover:text-white transition-all"><Lightbulb className="w-5 h-5" /></button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-zinc-800 text-zinc-500 hover:text-white transition-all text-xs font-bold uppercase tracking-widest">
-                    <Globe className="w-4 h-4" />
-                    <span>Search</span>
-                  </button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button className="p-2.5 rounded-full border border-zinc-800 text-zinc-500 hover:text-white transition-all"><Mic className="w-5 h-5" /></button>
-                  <button 
-                    onClick={submitConversation}
-                    disabled={!prompt.trim() || submitting}
-                    className="p-3.5 rounded-2xl bg-white text-black hover:bg-zinc-200 transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    <ArrowUp className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Quick Starter Prompts */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-              <button
-                onClick={() => submitConversationText('I want more sales and customers')}
-                className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
-              >
-                💰 I want more sales
-              </button>
-              <button
-                onClick={() => submitConversationText('Help me grow my brand and followers')}
-                className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
-              >
-                📢 Grow my brand
-              </button>
-              <button
-                onClick={() => submitConversationText('Monitor my messages and auto-respond')}
-                className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
-              >
-                👁️ Monitor & respond
-              </button>
-              <button
-                onClick={() => submitConversationText('Research my competitors')}
-                className="px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs font-medium transition-all"
-              >
-                🔍 Research competitors
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center gap-6 mt-4">
-              <button className="text-[9px] text-zinc-700 font-black uppercase tracking-[0.4em] hover:text-zinc-500 transition-colors">
-                Scroll for dashboard ↓
-              </button>
-            </div>
+        <div className="chat-input-wrap">
+          <div className="chat-input-box">
+            <textarea rows={1} placeholder="Talk to Cherry…" value={prompt}
+              onChange={e=>{setPrompt(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'}}
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitConversation()}}}/>
+            <button className="chat-send-btn" onClick={submitConversation} disabled={!prompt.trim()||submitting}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1 14L8 2l7 12H9.5L8 9.5 6.5 14H1z"/></svg>
+            </button>
+          </div>
+          <div className="chat-quick-prompts">
+            {[['💰','More sales'],['📢','Grow brand'],['🔍','Research'],['👁️','Monitor']].map(([ic,lb])=>(
+              <button key={lb} className="quick-prompt-btn" onClick={()=>submitConversationText(`${lb} on ${selectedPlatformMeta.label}`)}>{ic} {lb}</button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* 2. Integration & Tools Section (Below the chat section) */}
-      <div className="w-full max-w-[1200px] mx-auto flex flex-col gap-12 py-12 px-8">
-        <IntegrationShowcase
-          title="Command ~Center~"
-          subtitle="Configure autonomous platform agents."
-          integrations={platformMeta}
-          selectedIntegration={selectedPlatform}
-          onIntegrationClick={setSelectedPlatform}
-          className="py-0"
-        />
+      {/* RIGHT: Command Panel */}
+      <div className="command-panel">
+        <div className="command-panel-header">
+          <span className="command-panel-title">Command Center</span>
+          <div className="auto-toggle" style={{width:150}}>
+            <button className={`auto-toggle-btn ${automationMode==='manual'?'active':''}`} onClick={()=>setAutomationMode('manual')}>Manual</button>
+            <button className={`auto-toggle-btn ${automationMode==='auto'?'active':''}`} onClick={()=>setAutomationMode('auto')}>Auto</button>
+          </div>
+        </div>
 
-        {selectedPlatform && (
-          <div className="action-center animate-in fade-in zoom-in-95 duration-1000">
-            <section className="action-card relative overflow-hidden bg-[#09090b] border border-zinc-800 p-12 rounded-[3rem] shadow-3xl">
-              <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-white/[0.01] blur-[200px] rounded-full -mr-64 -mt-64 pointer-events-none" />
-              
-              <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-12 border-b border-zinc-800 pb-10">
-                <div className="flex items-center gap-12">
-                  <div className="w-20 h-20 rounded-[1.5rem] bg-zinc-900 border border-red-500/20 flex items-center justify-center shadow-2xl">
-                    <selectedPlatformMeta.icon className="w-10 h-10 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-4xl font-black text-white tracking-tighter">{selectedPlatformMeta.label}</h3>
-                    <div className="flex items-center gap-6 mt-6">
-                      <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/20 text-[11px] font-black text-green-500 uppercase tracking-widest">
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                        Live
-                      </div>
-                      <p className="text-sm text-zinc-500 font-bold uppercase tracking-[0.3em]">Neural Bridge Active</p>
-                    </div>
-                  </div>
-                </div>
+        <div className="platform-tabs">
+          {platformMeta.map(p=>(
+            <button key={p.id} className={`platform-tab ${selectedPlatform===p.id?'active':''}`} onClick={()=>setSelectedPlatform(p.id)}>
+              <div className="platform-tab-dot"/>{p.label}
+            </button>
+          ))}
+        </div>
 
-                <div className="flex bg-zinc-900/40 p-1.5 rounded-[1.5rem] border border-zinc-800 shadow-2xl backdrop-blur-xl">
-                  <button onClick={() => setAutomationMode('manual')} className={cn("px-8 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all", automationMode === 'manual' ? "bg-red-500 text-white shadow-2xl scale-105" : "text-zinc-500 hover:text-zinc-300")}>Manual Control</button>
-                  <button onClick={() => setAutomationMode('auto')} className={cn("px-8 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-all", automationMode === 'auto' ? "bg-red-500 text-white shadow-2xl scale-105" : "text-zinc-500 hover:text-zinc-300")}>Auto Pilot</button>
-                </div>
+        <div className="command-scroll custom-scroll">
+          <div className="cmd-section">
+            <div className="cmd-section-title">{isAI?'Prompt Studio':'Lead Scraper'}</div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Subject / Prompt':'Keyword / Niche'}</label>
+              <input className="cmd-input" placeholder={isAI?'A cinematic landscape…':'e.g. fintech founders'} value={query} onChange={e=>setQuery(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Variations':'Max Results'}</label>
+              <input className="cmd-input small" type="number" value={maxResults} onChange={e=>setMaxResults(e.target.value)}/>
+            </div>
+            {(supports('scrape_results')||supports('search'))&&<button className="cmd-btn primary" onClick={()=>runPlatformAction('execute_deep_scrape')}>🔍 Deep Scrape</button>}
+            {supports('scrape_results')&&<button className="cmd-btn" onClick={()=>runPlatformAction('scrape_profiles')}>Search Results Scrape →</button>}
+            {supports('scrape_followers')&&<button className="cmd-btn" onClick={()=>runPlatformAction('scrape_followers')}>Extract Competitor Audience →</button>}
+          </div>
+
+          <div className="divider"/>
+
+          <div className="cmd-section">
+            <div className="cmd-section-title">{isAI?'AI Options':'Outreach'}</div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Subject / Focus':'Target Username / Email'}</label>
+              <input className="cmd-input" placeholder={isAI?'e.g. hospital at sunset':'username or email'} value={targetUsername} onChange={e=>setTargetUsername(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">Goal</label>
+              <input className="cmd-input" placeholder="e.g. Get a meeting" value={goal} onChange={e=>setGoal(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">Tone</label>
+              <input className="cmd-input" placeholder="e.g. Casual and brief" value={tone} onChange={e=>setTone(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Reference File':'Attachment'}</label>
+              <input className="cmd-input" placeholder="/path/to/file" value={attachmentPath} onChange={e=>setAttachmentPath(e.target.value)}/>
+            </div>
+
+            {isGmail&&<>
+              <div className="cmd-field"><label className="cmd-label">Subject</label><input className="cmd-input" placeholder="AI picks if empty" value={emailSubject} onChange={e=>setEmailSubject(e.target.value)}/></div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5,marginBottom:8}}>
+                <div><label className="cmd-label">CC</label><input className="cmd-input small" placeholder="cc@…" value={emailCc} onChange={e=>setEmailCc(e.target.value)}/></div>
+                <div><label className="cmd-label">BCC</label><input className="cmd-input small" placeholder="bcc@…" value={emailBcc} onChange={e=>setEmailBcc(e.target.value)}/></div>
               </div>
+              <div className="cmd-field"><label className="cmd-label">Signature</label><textarea className="cmd-input" rows={2} style={{resize:'none'}} placeholder={"Best,\nYour Name"} value={emailSignature} onChange={e=>setEmailSignature(e.target.value)}/></div>
+              <div style={{display:'flex',gap:5,marginBottom:5}}>
+                <input className="cmd-input" style={{flex:1}} placeholder="Search Gmail…" value={gmailSearchQuery} onChange={e=>setGmailSearchQuery(e.target.value)}/>
+                <button className="cmd-btn" style={{width:'auto',padding:'0 10px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_search')}>🔍</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:4,marginBottom:8}}>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_get_context')}>📬 Inbox</button>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_get_profile')}>👤 Profile</button>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_reply')}>↩️ Reply</button>
+              </div>
+            </>}
 
-              <div className="relative mb-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {WORKFLOW_PRESETS.filter((preset) => {
-                  const workflowSupport = {
-                    find_leads: supports('scrape_results'),
-                    scrape_profiles: supports('scrape_results'),
-                    follow_user: supports('follow_user'),
-                    send_message: supports('send_message'),
-                    follow_and_message: supports('follow_user') && supports('send_message'),
-                    lead_and_message: supports('scrape_results') && supports('message_batch'),
-                    map_contacts: supports('map_contacts'),
-                  };
-                  return workflowSupport[preset.id];
-                }).map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => runPlatformAction(preset.id)}
-                    className="text-left p-5 rounded-2xl bg-black/60 border border-zinc-800 hover:border-red-500/50 hover:bg-zinc-950 transition-all"
-                  >
-                    <span className="block text-sm font-black text-white uppercase tracking-widest">{preset.label}</span>
-                    <span className="block mt-2 text-xs leading-relaxed text-zinc-500">{preset.description}</span>
+            {supports('send_message')&&<>
+              <button className="cmd-btn primary" onClick={()=>runPlatformAction(isGmail?'auto_dm':'auto_dm_contact')}>{isGmail?'✉️ Auto-Email':'💬 DM Contact'}</button>
+              {!isGmail&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('auto_dm_new')}>💬 DM New Person</button>}
+            </>}
+            {isAI&&supports('ask')&&<button className="cmd-btn primary" onClick={()=>runPlatformAction('ask')}>💬 Ask Question</button>}
+            {isAI&&supports('generate_image')&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('generate_image')}>🎨 Generate Image</button>}
+            {supports('like_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('like_post')}>❤️ Like Post</button>}
+            {supports('engage_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('engage_post')}>💬 AI Comment</button>}
+            {supports('follow_user')&&<button className="cmd-btn" onClick={()=>runPlatformAction('follow_user')}>➕ Follow User</button>}
+            {isLI&&supports('connect_swn')&&<>
+              <button className="cmd-btn" onClick={()=>runPlatformAction('connect_swn')}>🤝 Connect (No Note)</button>
+              <button className="cmd-btn" onClick={()=>runPlatformAction('connect_sn')}>🤝 Connect (With Note)</button>
+            </>}
+            {supports('publish_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('auto_post')}>📝 Auto-Post</button>}
+            {isWA&&<>
+              {supports('open_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('open_status')}>👁️ View Status</button>}
+              {supports('post_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('post_status')}>📸 Post Status</button>}
+            </>}
+          </div>
+
+          {WORKFLOW_PRESETS.filter(p=>({find_leads:supports('scrape_results'),scrape_profiles:supports('scrape_results'),follow_user:supports('follow_user'),send_message:supports('send_message'),follow_and_message:supports('follow_user')&&supports('send_message'),lead_and_message:supports('scrape_results')&&supports('message_batch'),map_contacts:supports('map_contacts')})[p.id]).length>0&&<>
+            <div className="divider"/>
+            <div className="cmd-section">
+              <div className="cmd-section-title">Workflow Presets</div>
+              <div className="preset-grid">
+                {WORKFLOW_PRESETS.filter(p=>({find_leads:supports('scrape_results'),scrape_profiles:supports('scrape_results'),follow_user:supports('follow_user'),send_message:supports('send_message'),follow_and_message:supports('follow_user')&&supports('send_message'),lead_and_message:supports('scrape_results')&&supports('message_batch'),map_contacts:supports('map_contacts')})[p.id]).map(p=>(
+                  <button key={p.id} className="preset-btn" onClick={()=>runPlatformAction(p.id)}>
+                    <span className="preset-btn-label">{p.label}</span>
+                    <span className="preset-btn-desc">{p.description}</span>
                   </button>
                 ))}
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* LEFT COLUMN: SCRAPER ENGINE / PROMPT STUDIO */}
-                <div className="space-y-12">
-                  <div className="space-y-8">
-                    <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">
-                      {selectedPlatformMeta.label} - {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'PROMPT STUDIO' : 'LEAD SCRAPER ENGINE'}
-                    </h4>
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Prompt / Subject' : 'Target Keyword/Niche'}
-                        </label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. A cinematic landscape' : 'e.g. tech founders'} value={query} onChange={(event) => setQuery(event.target.value)} />
-                      </div>
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Image Variations / Response Length' : 'Max Profiles to Scrape'}
-                        </label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" type="number" value={maxResults} onChange={(event) => setMaxResults(event.target.value)} />
-                      </div>
-                      {(supports('scrape_results') || supports('search')) ? (
-                        <button onClick={() => runPlatformAction('execute_deep_scrape')} className="w-full p-8 rounded-[2rem] bg-red-600 hover:bg-red-700 text-white font-black text-lg transition-all active:scale-95 shadow-2xl">Execute Deep Scrape</button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {supports('scrape_results') ? <button onClick={() => runPlatformAction('scrape_profiles')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
-                      <span className="text-lg">Search Results Scrape</span>
-                      <Search className="w-6 h-6 text-zinc-700 group-hover:text-white transition-colors" />
-                    </button> : null}
-                    {supports('scrape_followers') ? <button onClick={() => runPlatformAction('scrape_followers')} className="flex items-center justify-between p-6 rounded-[2rem] bg-zinc-900/30 hover:bg-zinc-800/50 border border-zinc-800 text-white font-black transition-all group shadow-2xl">
-                      <span className="text-lg">Extract Competitor Audience</span>
-                      <Plus className="w-6 h-6 text-zinc-700 group-hover:text-white transition-colors" />
-                    </button> : null}
-                  </div>
-
-                  {selectedPlatform === 'facebook' && supports('follow_search') ? (
-                    <div className="space-y-6 border-t border-zinc-800 pt-8">
-                      <h5 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">
-                        Facebook - People Follow
-                      </h5>
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          Name / Keyword
-                        </label>
-                        <input
-                          className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium"
-                          placeholder="e.g. Gali Nandini or saas founders"
-                          value={query}
-                          onChange={(event) => setQuery(event.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          Count
-                        </label>
-                        <input
-                          className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium"
-                          type="number"
-                          min="1"
-                          value={maxResults}
-                          onChange={(event) => setMaxResults(event.target.value)}
-                        />
-                      </div>
-                      <button
-                        onClick={() => runPlatformAction('follow_search')}
-                        className="w-full p-8 rounded-[2rem] bg-red-600 hover:bg-red-700 text-white font-black text-lg transition-all active:scale-95 shadow-2xl"
-                      >
-                        Follow People Search
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* RIGHT COLUMN: ENGAGEMENT SUITE / AI OPTIONS */}
-                <div className="space-y-12">
-                  <h4 className="text-[14px] font-black text-white uppercase tracking-[0.3em] border-b border-zinc-800 pb-4">
-                    {selectedPlatformMeta.label} - {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'AI OPTIONS' : 'AUTO-ENGAGEMENT SUITE'}
-                  </h4>
-
-                  <div className="space-y-8">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Subject / Focus' : 'Target Username'}
-                        </label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. Hospital, sunset, cat' : 'username'} value={targetUsername} onChange={(event) => setTargetUsername(event.target.value)} />
-                      </div>
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Goal / Purpose' : 'LLM Goal'}
-                        </label>
-                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. marketing poster' : ''} value={goal} onChange={(event) => setGoal(event.target.value)} />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Style / Mood' : 'LLM Tone'}
-                        </label>
-                        <input className="relative z-10 w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder={(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'e.g. photorealistic, anime, watercolor' : ''} value={tone} onChange={(event) => setTone(event.target.value)} />
-                      </div>
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">
-                          {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? 'Reference Image / File (Optional)' : 'Attachment Path (Optional)'}
-                        </label>
-                        <input className="w-full bg-black border border-zinc-800 rounded-2xl py-6 px-8 text-lg text-white focus:border-zinc-500 outline-none shadow-2xl font-medium" placeholder="/path/to/image.png" value={attachmentPath} onChange={(event) => setAttachmentPath(event.target.value)} />
-                      </div>
-                    </div>
-
-                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? null : (
-                      <div className="space-y-3">
-                        <label className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em] ml-2">Feed Usernames From CSV</label>
-                        <div className="w-full h-32 bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-[2rem] flex items-center justify-center cursor-pointer hover:bg-zinc-800/50 transition-all group">
-                          <div className="flex flex-col items-center gap-2">
-                            <Plus className="w-6 h-6 text-zinc-600 group-hover:text-white transition-colors" />
-                            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Upload Username CSV</span>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-zinc-600 font-bold ml-2">Use a CSV where the first column contains usernames.</p>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      {supports('send_message') ? (
-                        <>
-                          <button onClick={() => runPlatformAction(selectedPlatform === 'gmail' ? 'auto_dm' : 'auto_dm_contact')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">{selectedPlatform === 'gmail' ? 'Auto-Email' : 'DM a contact'}</button>
-                          {selectedPlatform !== 'gmail' && <button onClick={() => runPlatformAction('auto_dm_new')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">DM a new person</button>}
-                        </>
-                      ) : null}
-                      {supports('engage_post') ? (
-                        <>
-                          <button onClick={() => runPlatformAction('like_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">❤️ Like Post</button>
-                          <button onClick={() => runPlatformAction('engage_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">💬 AI Comment</button>
-                        </>
-                      ) : null}
-                      {supports('follow_user') ? <button onClick={() => runPlatformAction('follow_user')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Follow User</button> : null}
-                      {selectedPlatform === 'linkedin' && supports('connect_swn') ? (
-                        <>
-                          <button type="button" onClick={() => runPlatformAction('connect_swn')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Connect-SWN</button>
-                          <button type="button" onClick={() => runPlatformAction('connect_sn')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Connect-SN</button>
-                        </>
-                      ) : null}
-                      {supports('publish_post') ? <button onClick={() => runPlatformAction('auto_post')} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Auto-Post</button> : null}
-                    </div>
-
-                    {selectedPlatform === 'whatsapp' ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        {supports('open_status') ? <button onClick={() => runPlatformAction('open_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">View Status</button> : null}
-                        {supports('post_status') ? <button onClick={() => runPlatformAction('post_status')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Post Status</button> : null}
-                        {supports('change_profile_photo') ? <button onClick={() => runPlatformAction('change_profile_photo')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Change Profile Pic</button> : null}
-                        {supports('delete_chat') ? <button onClick={() => runPlatformAction('delete_chat')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Delete Chat</button> : null}
-                        {supports('block_user') ? <button onClick={() => runPlatformAction('block_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Block Contact</button> : null}
-                        {supports('report_user') ? <button onClick={() => runPlatformAction('report_user')} className="p-5 rounded-[1.5rem] bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800 text-white font-black transition-all active:scale-95 shadow-2xl">Report Contact</button> : null}
-                      </div>
-                    ) : null}
-
-                    {/* ChatGPT & Gemini specific buttons - only 2 options */}
-                    {(selectedPlatform === 'chatgpt' || selectedPlatform === 'gemini') ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        {supports('ask') ? (
-                          <button onClick={() => { console.log('Ask Question clicked'); runPlatformAction('ask'); }} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Ask Question</button>
-                        ) : (
-                          <div className="p-6 rounded-[1.5rem] bg-zinc-900/40 text-zinc-500 text-center">Ask not supported</div>
-                        )}
-                        {supports('generate_image') ? (
-                          <button onClick={() => { console.log('Generate Image clicked'); runPlatformAction('generate_image'); }} className="p-6 rounded-[1.5rem] bg-red-600 hover:bg-red-700 text-white font-black transition-all active:scale-95 shadow-2xl">Generate Image</button>
-                        ) : (
-                          <div className="p-6 rounded-[1.5rem] bg-zinc-900/40 text-zinc-500 text-center">Generate not supported</div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-zinc-600 text-sm">Select ChatGPT or Gemini to see options</div>
-                    )}
-
-                    {/* Gmail-specific expanded panel */}
-                    {selectedPlatform === 'gmail' ? (
-                      <div className="space-y-6 p-6 rounded-[2rem] bg-zinc-900/40 border border-zinc-800">
-                        <p className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.4em]">Gmail — Email Options</p>
-
-                        {/* Row 1: Subject + CC */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Subject</label>
-                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="Email subject (optional, AI picks one)" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">CC</label>
-                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="cc@example.com" value={emailCc} onChange={e => setEmailCc(e.target.value)} />
-                          </div>
-                        </div>
-
-                        {/* Row 2: BCC + Attachment */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">BCC</label>
-                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="bcc@example.com" value={emailBcc} onChange={e => setEmailBcc(e.target.value)} />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Attachment (HTML / Image / Video)</label>
-                            <input className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none" placeholder="/path/to/file.html" value={attachmentPath} onChange={e => setAttachmentPath(e.target.value)} />
-                          </div>
-                        </div>
-
-                        {/* Signature */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Email Signature (optional)</label>
-                          <textarea rows={3} className="w-full bg-black border border-zinc-800 rounded-xl py-4 px-5 text-sm text-white focus:border-zinc-500 outline-none resize-none" placeholder={"Best,\nYour Name\nyoursite.com"} value={emailSignature} onChange={e => setEmailSignature(e.target.value)} />
-                        </div>
-
-                        {/* Gmail utility buttons */}
-                        <div className="space-y-3 pt-2 border-t border-zinc-800">
-                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Gmail Tools</p>
-                          <div className="flex gap-3 flex-wrap">
-                            <div className="flex gap-2 flex-1">
-                              <input className="flex-1 bg-black border border-zinc-800 rounded-xl py-3 px-4 text-sm text-white focus:border-zinc-500 outline-none" placeholder="Search query..." value={gmailSearchQuery} onChange={e => setGmailSearchQuery(e.target.value)} />
-                              <button onClick={() => runPlatformAction('gmail_search')} className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-black text-xs transition-all whitespace-nowrap">🔍 Search</button>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <button onClick={() => runPlatformAction('gmail_get_context')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">📬 Get Inbox Context</button>
-                            <button onClick={() => runPlatformAction('gmail_get_profile')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">👤 Get Sender Profile</button>
-                            <button onClick={() => runPlatformAction('gmail_reply')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all font-black text-xs uppercase tracking-widest">↩️ Reply to Email</button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="grid grid-cols-1 gap-3">
-                      {supports('message_batch') ? <button onClick={() => runPlatformAction('bulk_dm_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk {selectedPlatform === 'gmail' ? 'Email' : 'DM'} From CSV</button> : null}
-                      {supports('engage_batch') ? <button onClick={() => runPlatformAction('bulk_engage_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Engage From CSV</button> : null}
-                      {supports('follow_batch') ? <button onClick={() => runPlatformAction('bulk_follow_csv')} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all font-black uppercase text-xs tracking-widest">Bulk Follow From CSV</button> : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-16 pt-10 border-t border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-12">
-                <div className="flex items-center gap-8 text-zinc-600">
-                  <Zap className="w-12 h-12 text-red-500 shadow-2xl" />
-                  <div className="flex flex-col">
-                    <span className="text-3xl font-black text-white tracking-tight">Agent Synchronized</span>
-                    <span className="text-sm font-bold uppercase tracking-[0.3em]">Bridge Ready for {selectedPlatformMeta.label}</span>
-                  </div>
-                </div>
-                <button onClick={() => runPlatformAction(supports('send_message') ? 'send_message' : 'open_workspace')} className="w-full md:w-auto px-24 py-12 bg-white text-black rounded-[4rem] font-black text-3xl shadow-3xl hover:scale-105 transition-all active:scale-95">Initiate Protocol</button>
-              </div>
-            </section>
-          </div>
-        )}
-
-        <div className="panel bg-black/40 rounded-[5rem] border border-zinc-800 p-20 shadow-3xl">
-          <div className="flex items-center justify-between mb-20 border-b border-zinc-800 pb-12">
-            <div>
-              <h3 className="text-5xl font-black text-white tracking-tighter">Archive</h3>
-              <p className="text-[12px] text-zinc-600 font-black uppercase tracking-[0.4em] mt-4">Agentic Log History</p>
             </div>
-            <button className="px-10 py-4 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-white transition-colors">Wipe Records</button>
-          </div>
-          <div className="grid grid-cols-1 gap-6">
-            {tasks.length ? tasks.map((task) => (
-              <div key={task.id} className="p-10 bg-zinc-900/10 rounded-[2.5rem] border border-zinc-800/30 flex items-center justify-between group hover:border-zinc-700 transition-all">
-                <div className="flex items-center gap-10">
-                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-800 group-hover:bg-red-500 transition-colors shadow-2xl" />
-                  <span className="text-2xl text-zinc-400 font-bold truncate max-w-2xl">{task.prompt}</span>
-                </div>
-                <div className="flex items-center gap-12">
-                  <span className="text-xs text-zinc-700 font-black uppercase tracking-[0.2em]">{new Date(task.createdAt).toLocaleTimeString()}</span>
-                  <span className={cn(
-                    "px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.3em]",
-                    task.status === 'completed' ? "bg-green-900/30 border-green-800/50 text-green-500" :
-                    task.status === 'failed' ? "bg-red-900/30 border-red-800/50 text-red-500" :
-                    task.status === 'running' ? "bg-blue-900/30 border-blue-800/50 text-blue-500" :
-                    task.status === 'retrying' ? "bg-yellow-900/30 border-yellow-800/50 text-yellow-500" :
-                    "bg-zinc-900 border-zinc-800 text-zinc-500"
-                  )}>{task.status}</span>
-                </div>
-              </div>
-            )) : <p className="text-center text-zinc-600 py-20 text-2xl font-medium">No recorded operations.</p>}
+          </>}
+
+          <div className="divider"/>
+          <div className="cmd-section">
+            <div className="cmd-section-title">Bulk Actions</div>
+            {supports('message_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_dm_csv')}>📋 Bulk {isGmail?'Email':'DM'} from CSV</button>}
+            {supports('engage_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_engage_csv')}>📋 Bulk Engage from CSV</button>}
+            {supports('follow_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_follow_csv')}>📋 Bulk Follow from CSV</button>}
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
+
+      {/* 1. Full-Height AI Chat Section (The "Home Screen") */}
 function Campaigns({ campaigns, refreshCampaigns }) {
   const [name, setName] = useState('Always-on social outreach');
   const [objective, setObjective] = useState('Monitor inboxes, continue outreach follow-ups, refresh lead pools, and push approved messages one by one.');
