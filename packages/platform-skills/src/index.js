@@ -10,6 +10,7 @@ import { linkedinHandler } from './handlers/linkedin.js';
 import { researchHandler } from './handlers/research.js';
 import { twitterHandler } from './handlers/twitter.js';
 import { whatsappHandler } from './handlers/whatsapp.js';
+import { youtubeHandler } from './handlers/youtube.js';
 import { chatgptHandler } from './handlers/chatgpt.js';
 import { geminiHandler } from './handlers/gemini.js';
 import { gsheetsHandler } from './handlers/gsheets.js';
@@ -30,6 +31,7 @@ import {
   waitForVisible,
   pauseLikeHuman,
 } from './common.js';
+import { mapAllContacts, exportForDashboard } from './contact-mapper.js';
 
 export const skillRegistry = new Map([
   ['instagram', instagramHandler],
@@ -38,6 +40,7 @@ export const skillRegistry = new Map([
   ['facebook', facebookHandler],
   ['gmail', gmailHandler],
   ['whatsapp', whatsappHandler],
+  ['youtube', youtubeHandler],
   ['research', researchHandler],
   ['chatgpt', chatgptHandler],
   ['gemini', geminiHandler],
@@ -146,9 +149,49 @@ async function executeGenericSkill({ step, attachedBrowser, managedBrowser }) {
     return { status: 'completed', summary: `Scrolled and collected visible ${platform} context`, data: { page: await pageSnapshot(page), scrolls: snapshots.length } };
   }
 
+  if (step.action === 'open_result' && platform !== 'research') {
+    const page = attachedBrowser.activePage || await openAttachedPage(
+      attachedBrowser,
+      buildPlatformSearchUrl(platform, args.query || args.prompt),
+      { platform },
+    );
+    const results = await scrapePlatformProfiles(page, platform, args.maxResults || 5);
+    const firstResult = results[0];
+    if (firstResult?.url) {
+      await page.goto(firstResult.url, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await pauseLikeHuman(page, 500, 1000);
+    }
+    return {
+      status: firstResult?.url ? 'completed' : 'ready',
+      summary: firstResult?.url ? `Opened first ${platform} result` : `No visible ${platform} result found to open`,
+      data: { page: await pageSnapshot(page), result: firstResult || null, results },
+    };
+  }
+
   if (step.action === 'scrape_profile') {
     const page = await openTargetPage(attachedBrowser, { platform, username: args.username });
     return { status: 'completed', summary: `Scraped visible ${platform} profile context`, data: await pageSnapshot(page) };
+  }
+
+  if (step.action === 'map_contacts') {
+    const contactMap = await mapAllContacts(attachedBrowser, {
+      ...args,
+      platforms: [platform],
+      includeConversations: args.includeConversations !== false,
+      analyzeIntelligence: args.analyzeIntelligence !== false,
+    });
+    const dashboardData = exportForDashboard(contactMap);
+    const platformData = contactMap.platforms[platform] || {};
+    const total = platformData.count || platformData.totalCount || dashboardData.summary.totalContacts || 0;
+    return {
+      status: 'completed',
+      summary: `Mapped ${total} contacts from ${platform}`,
+      data: {
+        platform,
+        contactMap,
+        dashboardData,
+      },
+    };
   }
 
   return null;

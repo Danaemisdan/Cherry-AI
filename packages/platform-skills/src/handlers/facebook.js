@@ -179,6 +179,138 @@ async function collectFacebookPeopleResults(page, query, maxResults = 10) {
   return results.slice(0, limit);
 }
 
+function normalizeFacebookGroupUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  try {
+    const url = new URL(raw.startsWith('http') ? raw : `https://www.facebook.com/${raw.replace(/^\/+/, '')}`);
+    if (!url.hostname.includes('facebook.com')) return '';
+
+    const parts = url.pathname.split('/').filter(Boolean);
+    const groupIndex = parts.findIndex((part) => part.toLowerCase() === 'groups');
+    if (groupIndex === -1 || !parts[groupIndex + 1]) return '';
+
+    return `https://www.facebook.com/groups/${parts[groupIndex + 1]}`;
+  } catch {
+    return '';
+  }
+}
+
+async function collectFacebookGroupResults(page, query, maxResults = 10) {
+  const limit = Math.max(1, Math.min(Number(maxResults) || 10, 50));
+  await navigate(page, `https://www.facebook.com/search/groups/?q=${encodeURIComponent(query || '')}`, 'facebook');
+  await waitForAppShell(page, 'facebook');
+  await minimalDelay(1500);
+
+  const results = [];
+  const seen = new Set();
+
+  for (let pass = 0; pass < 6 && results.length < limit; pass += 1) {
+    const batch = await page.evaluate((remaining) => {
+      const clean = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+      const normalize = (href) => {
+        try {
+          const url = new URL(href, window.location.origin);
+          if (!url.hostname.includes('facebook.com')) return null;
+          const parts = url.pathname.split('/').filter(Boolean);
+          const groupIndex = parts.findIndex((part) => part.toLowerCase() === 'groups');
+          if (groupIndex === -1 || !parts[groupIndex + 1]) return null;
+          return `https://www.facebook.com/groups/${parts[groupIndex + 1]}`;
+        } catch {
+          return null;
+        }
+      };
+
+      const candidates = [];
+      for (const anchor of Array.from(document.querySelectorAll('a[href*="/groups/"]'))) {
+        const groupUrl = normalize(anchor.href);
+        if (!groupUrl) continue;
+
+        const card = anchor.closest('[role="article"], [role="listitem"], div');
+        const snippet = clean(card?.innerText || anchor.textContent).slice(0, 400);
+        const rawName = clean(anchor.textContent) || snippet.split('\n')[0];
+        const name = rawName.split('\n')[0].slice(0, 100);
+
+        if (!name || /^(groups|join|join group|see more|facebook)$/i.test(name)) continue;
+        candidates.push({ name, groupUrl, snippet });
+        if (candidates.length >= remaining) break;
+      }
+      return candidates;
+    }, Math.max(limit * 2, 20)).catch(() => []);
+
+    for (const item of batch) {
+      const groupUrl = normalizeFacebookGroupUrl(item.groupUrl);
+      if (!groupUrl || seen.has(groupUrl)) continue;
+      seen.add(groupUrl);
+      results.push({ ...item, groupUrl });
+      if (results.length >= limit) break;
+    }
+
+    if (results.length >= limit) break;
+    await page.mouse.wheel(0, 900).catch(() => {});
+    await minimalDelay(900);
+  }
+
+  return results.slice(0, limit);
+}
+
+async function joinFacebookGroup(page, target) {
+  const groupUrl = normalizeFacebookGroupUrl(target);
+  if (!groupUrl) {
+    throw new Error('Facebook group join requires a group URL');
+  }
+
+  await navigate(page, groupUrl, 'facebook');
+  await waitForAppShell(page, 'facebook');
+  await minimalDelay(1200);
+
+  const unavailable = await page.locator('text="This content isn\'t available", text="This group is unavailable"').first().isVisible().catch(() => false);
+  if (unavailable) {
+    return { status: 'skipped', action: 'unavailable', groupUrl, reason: 'Group unavailable' };
+  }
+
+  const alreadyJoined = await page.locator(
+    'button:has-text("Joined"), div[role="button"]:has-text("Joined"), button:has-text("Member"), div[role="button"]:has-text("Member")',
+  ).first().isVisible().catch(() => false);
+  if (alreadyJoined) {
+    return { status: 'completed', action: 'already_joined', groupUrl };
+  }
+
+  const requestPending = await page.locator(
+    'button:has-text("Pending"), div[role="button"]:has-text("Pending"), button:has-text("Cancel request"), div[role="button"]:has-text("Cancel request")',
+  ).first().isVisible().catch(() => false);
+  if (requestPending) {
+    return { status: 'completed', action: 'request_pending', groupUrl };
+  }
+
+  const joinSelectors = [
+    'button:has-text("Join group")',
+    'div[role="button"]:has-text("Join group")',
+    'button:has-text("Join Group")',
+    'div[role="button"]:has-text("Join Group")',
+    'button[aria-label*="Join"]',
+    'div[role="button"][aria-label*="Join"]',
+    '[role="main"] button:has-text("Join")',
+    '[role="main"] div[role="button"]:has-text("Join")',
+  ];
+
+  const joined = await tryClick(page, joinSelectors) ||
+    await clickByText(page, ['button', 'div[role="button"]'], ['Join group', 'Join Group', 'Join']);
+
+  if (!joined) {
+    return { status: 'failed', action: 'no_join_available', groupUrl, reason: 'No Join button found' };
+  }
+
+  await minimalDelay(1200);
+  const questionsDialog = await page.locator('[role="dialog"]:has-text("Answer"), [role="dialog"]:has-text("question"), [role="dialog"]:has-text("Submit")').first().isVisible().catch(() => false);
+  if (questionsDialog) {
+    return { status: 'completed', action: 'join_questions_opened', groupUrl, reason: 'Membership questions require manual review' };
+  }
+
+  return { status: 'completed', action: 'join_requested', groupUrl };
+}
+
 async function followOrAddFacebookProfile(page, target, options = {}) {
   const { prefer = 'follow' } = options;
   const profileUrl = normalizeFacebookProfileUrl(target);
@@ -926,7 +1058,7 @@ export const facebookHandler = {
     const { action, args } = step;
 
     // Check login state for actions that require auth
-    if (['send_message', 'draft_message', 'open_target', 'message_batch', 'follow_user', 'follow_search', 'add_friend', 'bulk_add_friends', 'engage_post', 'like_post', 'comment_post'].includes(action)) {
+    if (['send_message', 'draft_message', 'open_target', 'message_batch', 'follow_user', 'follow_search', 'join_groups_search', 'add_friend', 'bulk_add_friends', 'engage_post', 'like_post', 'comment_post'].includes(action)) {
       const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.facebook, { platform: 'facebook' });
       const state = await checkLoginState(page, 'facebook');
       if (!state.ready) {
@@ -1208,6 +1340,38 @@ export const facebookHandler = {
       return {
         status: 'completed',
         summary: `Followed or added ${completed}/${profiles.length} Facebook people from "${searchQuery}"`,
+        data: { query: searchQuery, results },
+      };
+    }
+
+    // ACTION: Search Facebook Groups and click Join on each visible group result
+    if (action === 'join_groups_search') {
+      const { query, prompt, searchQuery: explicitSearchQuery, maxResults = 10 } = args;
+      const searchQuery = String(explicitSearchQuery || query || prompt || '').trim();
+      if (!searchQuery) {
+        throw new Error('Facebook join_groups_search requires a search query');
+      }
+
+      const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.facebook, { platform: 'facebook' });
+      console.log(`[Facebook] Searching groups for "${searchQuery}" and joining up to ${maxResults} results...`);
+
+      const groups = await collectFacebookGroupResults(page, searchQuery, maxResults);
+      const results = [];
+
+      for (const group of groups) {
+        try {
+          const actionResult = await joinFacebookGroup(page, group.groupUrl);
+          results.push({ ...group, ...actionResult });
+          await minimalDelay(2600 + Math.random() * 1600);
+        } catch (error) {
+          results.push({ ...group, status: 'failed', error: error.message });
+        }
+      }
+
+      const completed = results.filter((item) => item.status === 'completed').length;
+      return {
+        status: 'completed',
+        summary: `Joined or requested ${completed}/${groups.length} Facebook groups from "${searchQuery}"`,
         data: { query: searchQuery, results },
       };
     }

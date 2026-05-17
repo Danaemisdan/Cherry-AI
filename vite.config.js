@@ -1,20 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { crx } from '@crxjs/vite-plugin';
-import manifest from './manifest.json';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [
-    react(),
-    crx({ manifest }),
-  ],
-  build: {
-    minify: true,
-    cssMinify: true
-  },
+  plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
     strictPort: true,
+    host: '127.0.0.1',
     hmr: {
       port: 5173,
     },
