@@ -64,8 +64,26 @@ if (existsSync(llmScript)) {
 procs.push(launch('backend', 'npm', ['run', 'dev', '-w', '@cherry/backend']));
 await delay(400);
 
-// ── 3. Agent ───────────────────────────────────────────────────────────────
-procs.push(launch('agent', 'npm', ['run', 'dev', '-w', '@cherry/agent']));
+// ── 3. Agent (with auto-launch Chrome env vars) ────────────────────────────
+const agentEnv = {
+  ...process.env,
+  FORCE_COLOR: '1',
+  CHERRY_ATTACHED_AUTO_LAUNCH: process.env.CHERRY_ATTACHED_AUTO_LAUNCH || 'true',
+  CHERRY_ATTACHED_TAKEOVER_RUNNING: process.env.CHERRY_ATTACHED_TAKEOVER_RUNNING || 'false',
+  CHERRY_RESTORE_LAST_SESSION: process.env.CHERRY_RESTORE_LAST_SESSION || 'true',
+  CHERRY_CHROME_USER_DATA_DIR: process.env.CHERRY_CHROME_USER_DATA_DIR || `${process.env.HOME}/.cherry-agent/chrome-debug`,
+};
+
+process.stdout.write(`${pre('agent')}▶ npm run dev -w @cherry/agent [auto-launch Chrome]\n`);
+const agentProc = spawn('npm', ['run', 'dev', '-w', '@cherry/agent'], {
+  cwd: ROOT,
+  env: agentEnv,
+  stdio: ['ignore', 'pipe', 'pipe'],
+});
+agentProc.stdout.on('data', d => String(d).trimEnd().split('\n').forEach(l => process.stdout.write(pre('agent') + l + '\n')));
+agentProc.stderr.on('data', d => String(d).trimEnd().split('\n').forEach(l => process.stderr.write(pre('agent') + l + '\n')));
+agentProc.on('exit', code => { if (code !== 0 && code !== null) process.stderr.write(`${pre('agent')}exited with code ${code}\n`); });
+procs.push(agentProc);
 await delay(400);
 
 // ── 4. Web frontend ─────────────────────────────────────────────────────────
