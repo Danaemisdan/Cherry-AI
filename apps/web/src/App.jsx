@@ -303,10 +303,17 @@ function Workspace({ refreshTasks, tasks }) {
 
   async function sendAiMessage(text) {
     const msg = (text || prompt).trim();
-    if (!msg) return;
+    if (!msg || isTyping) return;
     setPrompt('');
     setIsTyping(true);
-    setAiMessages(prev => [...prev, { role: 'user', content: msg, id: Date.now() + 'u' }]);
+
+    // Add user message + a blank assistant message that we'll stream into
+    const assistantId = Date.now() + 'a';
+    setAiMessages(prev => [
+      ...prev,
+      { role: 'user', content: msg, id: Date.now() + 'u' },
+      { role: 'assistant', content: '', suggestions: null, streaming: true, id: assistantId },
+    ]);
 
     try {
       const res = await fetch(`${backendUrl}/ai/chat`, {
@@ -314,23 +321,57 @@ function Workspace({ refreshTasks, tasks }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 'default', message: msg }),
       });
-      if (!res.ok) throw new Error('LLM offline');
+
+      if (!res.ok) throw new Error('offline');
       setLlmOnline(true);
-      const data = await res.json();
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.reply || '',
-        suggestions: data.suggestions || null,
-        id: Date.now() + 'a',
-      }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          try {
+            const evt = JSON.parse(raw);
+
+            if (evt.token) {
+              // Append token to the streaming bubble
+              setAiMessages(prev => prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: m.content + evt.token }
+                  : m
+              ));
+            }
+
+            if (evt.done) {
+              // Stream finished — attach suggestions and remove streaming flag
+              setAiMessages(prev => prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, streaming: false, suggestions: evt.suggestions || null }
+                  : m
+              ));
+            }
+          } catch {}
+        }
+      }
     } catch {
       setLlmOnline(false);
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Local LLM is offline. Run: python3 llm_server.py',
-        id: Date.now() + 'err',
-        error: true,
-      }]);
+      setAiMessages(prev => prev.map(m =>
+        m.id === assistantId
+          ? { ...m, content: 'LLM is offline. Run: python3 llm_server.py', streaming: false, error: true }
+          : m
+      ));
     } finally {
       setIsTyping(false);
     }
@@ -674,9 +715,10 @@ function Workspace({ refreshTasks, tasks }) {
                   {msg.role === 'assistant' && <span className="ai-cherry-dot"/>}
                   {msg.role === 'assistant' ? 'Cherry' : 'You'}
                 </div>
-                {msg.content && (
+                {msg.content !== undefined && (
                   <div className="ai-bubble" style={msg.error?{borderColor:'rgba(229,57,53,.3)',color:'var(--red)'}:{}}>
-                    {msg.content}
+                    {msg.content || (msg.streaming ? '\u00a0' : '')}
+                    {msg.streaming && <span className="stream-cursor"/>}
                   </div>
                 )}
                 {/* Suggestion cards — multi-tool action options from LLM */}
@@ -713,12 +755,6 @@ function Workspace({ refreshTasks, tasks }) {
               </div>
 
             ))}
-            {isTyping && (
-              <div className="ai-msg ai-msg-assistant">
-                <div className="ai-role-label"><span className="ai-cherry-dot"/>Cherry</div>
-                <div className="ai-typing"><span/><span/><span/></div>
-              </div>
-            )}
             <div ref={chatBottomRef}/>
           </div>
         </div>

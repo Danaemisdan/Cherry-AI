@@ -1,189 +1,216 @@
 /**
- * Cherry AI Chat — bridges /ai/chat to local LLM (port 11434)
- * Supports: multi-tool suggestions, image pipeline, continuous background tasks
+ * Cherry AI Chat — streaming + intent-based tool suggestions
+ * LLM handles only the conversational reply (streamed token-by-token).
+ * Tool suggestions come from a fast rule-based intent engine (reliable, no hallucination).
  */
 
 const LLM_URL = process.env.CHERRY_LLM_URL || 'http://localhost:11434';
 
 // Per-user conversation sessions
 const chatSessions = new Map();
-
 function getSession(userId) {
   if (!chatSessions.has(userId)) {
-    chatSessions.set(userId, { history: [], createdAt: Date.now() });
+    chatSessions.set(userId, { history: [] });
   }
   return chatSessions.get(userId);
+}
+
+// ── Intent engine ────────────────────────────────────────────────────────────
+// Rule-based: much more reliable than asking a 1B model to decide
+const PLATFORM_HINTS = {
+  instagram: /instagram|ig\b/i,
+  twitter: /twitter|x\b|tweet/i,
+  linkedin: /linkedin|li\b/i,
+  facebook: /facebook|fb\b/i,
+  gmail: /gmail|email|inbox/i,
+  whatsapp: /whatsapp|wa\b/i,
+  chatgpt: /chatgpt|gpt|openai/i,
+  gemini: /gemini|google ai/i,
+};
+
+function detectPlatforms(text) {
+  const found = Object.entries(PLATFORM_HINTS)
+    .filter(([, re]) => re.test(text))
+    .map(([p]) => p);
+  return found.length ? found : ['instagram']; // sensible default
+}
+
+const INTENTS = [
+  {
+    re: /monitor|watch|auto.?reply|respond|auto.*inbox|always.*reply/i,
+    build: (platforms) => [{
+      label: `Monitor ${platforms[0]} & auto-reply to messages`,
+      tools: [
+        { tool: 'get_inbox', params: { platform: platforms[0] } },
+        { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply', cadenceMinutes: 30 } },
+      ],
+      mode: 'continuous',
+      cadenceMinutes: 30,
+    }],
+  },
+  {
+    re: /send.*dm|dm\b|direct.*message|message.*people|outreach|reach out/i,
+    build: (platforms) => [
+      {
+        label: `Send DMs on ${platforms[0]}`,
+        tools: [{ tool: 'send_dm', params: { platform: platforms[0], goal: 'Connect and introduce', tone: 'Casual and brief' } }],
+        mode: 'burst',
+      },
+      {
+        label: `Send DMs on ${platforms[0]} continuously`,
+        tools: [{ tool: 'bulk_dm', params: { platform: platforms[0], goal: 'Connect and introduce', tone: 'Casual and brief' } }],
+        mode: 'continuous',
+        cadenceMinutes: 60,
+      },
+    ],
+  },
+  {
+    re: /find.*lead|scrape.*lead|get.*lead|prospect|lead gen/i,
+    build: (platforms) => [
+      {
+        label: `Find leads on ${platforms[0]}`,
+        tools: [{ tool: 'find_leads', params: { platform: platforms[0], query: 'founders', maxResults: 25 } }],
+        mode: 'burst',
+      },
+      {
+        label: `Find leads + DM them on ${platforms[0]}`,
+        tools: [
+          { tool: 'find_leads', params: { platform: platforms[0], query: 'founders', maxResults: 25 } },
+          { tool: 'bulk_dm', params: { platform: platforms[0], goal: 'Introduce and connect', tone: 'Casual and brief' } },
+        ],
+        mode: 'burst',
+      },
+    ],
+  },
+  {
+    re: /like|comment|engage/i,
+    build: (platforms) => [{
+      label: `Like & comment on ${platforms[0]} posts`,
+      tools: [
+        { tool: 'like_post', params: { platform: platforms[0] } },
+        { tool: 'comment_post', params: { platform: platforms[0], tone: 'Friendly and genuine' } },
+      ],
+      mode: 'burst',
+    }],
+  },
+  {
+    re: /follow/i,
+    build: (platforms) => [{
+      label: `Follow users on ${platforms[0]}`,
+      tools: [{ tool: 'follow_user', params: { platform: platforms[0] } }],
+      mode: 'burst',
+    }],
+  },
+  {
+    re: /post|publish|content|auto.?post/i,
+    build: (platforms) => [{
+      label: `Auto-post content on ${platforms[0]}`,
+      tools: [{ tool: 'auto_post', params: { platform: platforms[0], goal: 'Share valuable content', tone: 'Professional' } }],
+      mode: 'burst',
+    }],
+  },
+  {
+    re: /generate.*image|create.*image|make.*image|ai.*image/i,
+    build: () => [
+      {
+        label: 'Generate an image with ChatGPT',
+        tools: [{ tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject', style: 'professional' } }],
+        mode: 'burst',
+      },
+      {
+        label: 'Generate image → Post to Instagram',
+        tools: [
+          { tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject' } },
+          { tool: 'auto_post', params: { platform: 'instagram', goal: 'Share the generated image' } },
+        ],
+        mode: 'burst',
+      },
+    ],
+  },
+  {
+    re: /download.*image|save.*image|get.*image.*from/i,
+    build: (platforms) => [{
+      label: `Download images from ${platforms[0]}`,
+      tools: [{ tool: 'download_image', params: { platform: platforms[0] } }],
+      mode: 'burst',
+    }],
+  },
+  {
+    re: /scrape|extract|competitor.*audience|audience/i,
+    build: (platforms) => [{
+      label: `Scrape audience from ${platforms[0]}`,
+      tools: [{ tool: 'scrape_followers', params: { platform: platforms[0], maxResults: 50 } }],
+      mode: 'burst',
+    }],
+  },
+  {
+    re: /read.*inbox|check.*inbox|check.*email|read.*email|email.*context/i,
+    build: (platforms) => [{
+      label: `Read ${platforms[0]} inbox`,
+      tools: [{ tool: 'get_inbox', params: { platform: platforms[0] } }],
+      mode: 'burst',
+    }],
+  },
+];
+
+function detectIntent(text) {
+  const platforms = detectPlatforms(text);
+  for (const intent of INTENTS) {
+    if (intent.re.test(text)) {
+      return intent.build(platforms);
+    }
+  }
+  return null; // pure conversation, no action needed
 }
 
 // ── Tool → Task payload mapper ────────────────────────────────────────────────
 function toolToTaskPayload(toolDef) {
   const { tool, params = {} } = toolDef;
-
-  const platform   = params.platform || params.aiPlatform || params.socialPlatform || 'instagram';
+  const platform   = params.platform || params.aiPlatform || 'instagram';
   const target     = params.target || params.username || '';
   const goal       = params.goal || 'Get a meeting';
   const tone       = params.tone || 'Casual and brief';
-  const query      = params.query || params.subject || '';
+  const query      = params.query || '';
   const maxResults = Number(params.maxResults) || 15;
   const imagePath  = params.imagePath || params.attachmentPath || '';
-  const instruction= params.instruction || goal;
   const aiPlatform = params.aiPlatform || 'chatgpt';
-  const socialPlatform = params.socialPlatform || 'instagram';
-  const cadence    = params.cadenceMinutes || null;
 
   const MAP = {
-    // Outreach
-    send_dm: {
-      operation: platform === 'gmail' ? 'auto_dm' : 'auto_dm_contact',
-      prompt: `Send a DM to ${target || 'the user'} on ${platform}. Goal: ${goal}. Tone: ${tone}.${imagePath ? ` Attach: ${imagePath}` : ''}`,
-      extra: { username: target, attachmentPath: imagePath || undefined },
-    },
-    send_image_dm: {
-      operation: 'send_image_dm',
-      prompt: `Send a DM with image to ${target || 'the user'} on ${platform}. Image: ${imagePath}. Goal: ${goal}.`,
-      extra: { username: target, attachmentPath: imagePath },
-    },
-    bulk_dm: {
-      operation: 'bulk_dm_csv',
-      prompt: `Bulk DM campaign on ${platform}. Goal: ${goal}. Tone: ${tone}.${imagePath ? ` Image: ${imagePath}` : ''}`,
-      extra: { attachmentPath: imagePath || undefined },
-    },
-
-    // Leads
-    find_leads: {
-      operation: 'find_leads',
-      prompt: `Find ${maxResults} leads on ${platform} for "${query || goal}" and export.`,
-      extra: { query, maxResults },
-    },
-    scrape_followers: {
-      operation: 'scrape_followers',
-      prompt: `Scrape ${maxResults} followers from ${target || query} on ${platform}.`,
-      extra: { query: target || query, maxResults },
-    },
-    deep_scrape: {
-      operation: 'execute_deep_scrape',
-      prompt: `Deep scrape ${platform} for "${query}". Open each profile. Limit: ${maxResults}.`,
-      extra: { query, maxResults },
-    },
-
-    // Engagement
-    like_post: {
-      operation: 'like_post',
-      prompt: `Like ${target || 'the user'}'s most recent post on ${platform}.`,
-      extra: { username: target },
-    },
-    comment_post: {
-      operation: 'engage_post',
-      prompt: `Leave an AI comment on ${target || 'the user'}'s post on ${platform}. Tone: ${tone}.`,
-      extra: { username: target },
-    },
-    follow_user: {
-      operation: 'follow_user',
-      prompt: `Follow ${target || 'the user'} on ${platform}.`,
-      extra: { username: target },
-    },
-    follow_and_dm: {
-      operation: 'follow_and_message',
-      prompt: `Follow ${target} on ${platform} then send a DM. Goal: ${goal}. Tone: ${tone}.`,
-      extra: { username: target },
-    },
-
-    // Content
-    auto_post: {
-      operation: 'auto_post',
-      prompt: `Create and publish a post on ${platform}. Goal: ${goal}. Tone: ${tone}.${imagePath ? ` Asset: ${imagePath}` : ''}`,
-      extra: { attachmentPath: imagePath || undefined },
-    },
-    generate_image: {
-      operation: 'generate_image',
-      prompt: `Generate an image via ${aiPlatform}: "${query || goal}". Style: ${params.style || tone}.`,
-      platform: aiPlatform,
-      extra: { query: query || goal, imageSubject: query || goal },
-    },
-    upload_image_to_ai: {
-      operation: 'upload_to_ai',
-      prompt: `Upload image to ${aiPlatform} and ${instruction}. File: ${imagePath}.`,
-      platform: aiPlatform,
-      extra: { attachmentPath: imagePath, query: instruction },
-    },
-    generate_and_post: {
-      operation: 'generate_and_post',
-      prompt: `Generate an image via ${aiPlatform} of "${query || goal}", then post it on ${socialPlatform}. Goal: ${goal}.`,
-      platform: aiPlatform,
-      extra: { query: query || goal, attachmentPath: imagePath || undefined, destination: socialPlatform },
-    },
-    generate_and_dm: {
-      operation: 'generate_and_dm',
-      prompt: `Generate an image via ${aiPlatform} of "${query || goal}", then DM it to ${target} on ${socialPlatform}.`,
-      platform: aiPlatform,
-      extra: { query: query || goal, username: target, destination: socialPlatform },
-    },
-
-    // Image ops
-    download_image: {
-      operation: 'download_image',
-      prompt: `Download image/media from ${target || 'the post'} on ${platform}.`,
-      extra: { username: target },
-    },
-    attach_image: {
-      operation: 'upload_file',
-      prompt: `Attach image: ${imagePath}`,
-      extra: { attachmentPath: imagePath },
-    },
-
-    // Inbox
-    get_inbox: {
-      operation: platform === 'gmail' ? 'gmail_get_context' : 'get_context',
-      prompt: `Read and summarize ${platform} inbox.`,
-      extra: { maxResults: 20 },
-    },
-    search_inbox: {
-      operation: platform === 'gmail' ? 'gmail_search' : 'search',
-      prompt: `Search ${platform} for: ${query}.`,
-      extra: { query },
-    },
-    get_profile_context: {
-      operation: 'gmail_get_profile',
-      prompt: `Get full profile context for ${target} on ${platform}.`,
-      extra: { username: target },
-    },
-
-    // Continuous passthrough
-    run_continuous: null, // handled at workflow level
+    send_dm:          { op: platform === 'gmail' ? 'auto_dm' : 'auto_dm_contact', prompt: `Send a DM to ${target || 'the user'} on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
+    send_image_dm:    { op: 'send_image_dm', prompt: `Send a DM with image to ${target || 'the user'} on ${platform}. Image: ${imagePath}. Goal: ${goal}.` },
+    bulk_dm:          { op: 'bulk_dm_csv', prompt: `Bulk DM campaign on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
+    find_leads:       { op: 'find_leads', prompt: `Find ${maxResults} leads on ${platform} for "${query || goal}" and export.` },
+    scrape_followers: { op: 'scrape_followers', prompt: `Scrape ${maxResults} followers from ${target || query} on ${platform}.` },
+    like_post:        { op: 'like_post', prompt: `Like ${target || 'the user'}'s most recent post on ${platform}.` },
+    comment_post:     { op: 'engage_post', prompt: `AI comment on ${target || 'the user'}'s post on ${platform}. Tone: ${tone}.` },
+    follow_user:      { op: 'follow_user', prompt: `Follow ${target || 'the user'} on ${platform}.` },
+    auto_post:        { op: 'auto_post', prompt: `Post on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
+    generate_image:   { op: 'generate_image', prompt: `Generate image via ${aiPlatform}: "${query || goal}". Style: ${params.style || 'professional'}.`, platform: aiPlatform },
+    generate_and_post:{ op: 'generate_and_post', prompt: `Generate image via ${aiPlatform} of "${query}", then post to ${params.socialPlatform || 'instagram'}.`, platform: aiPlatform },
+    generate_and_dm:  { op: 'generate_and_dm', prompt: `Generate image via ${aiPlatform} of "${query}", then DM to ${target}.`, platform: aiPlatform },
+    download_image:   { op: 'download_image', prompt: `Download image from ${target || 'the post'} on ${platform}.` },
+    upload_image_to_ai: { op: 'upload_to_ai', prompt: `Upload ${imagePath} to ${aiPlatform} and ${params.instruction || goal}.`, platform: aiPlatform },
+    get_inbox:        { op: platform === 'gmail' ? 'gmail_get_context' : 'get_context', prompt: `Read and summarize ${platform} inbox.` },
+    run_continuous:   { op: 'run_campaign', prompt: `Run always-on campaign on ${platform}. Objective: ${params.objective || goal}.` },
+    deep_scrape:      { op: 'execute_deep_scrape', prompt: `Deep scrape ${platform} for "${query}". Limit: ${maxResults}.` },
   };
 
-  const mapped = MAP[tool];
-  if (!mapped) return null;
-
-  const finalPlatform = mapped.platform || platform;
-
+  const m = MAP[tool];
+  if (!m) return null;
   return {
-    prompt: mapped.prompt,
-    context: {
-      operation: mapped.operation,
-      platform: finalPlatform,
-      messageGoal: goal,
-      tone,
-      query: mapped.extra?.query ?? query,
-      maxResults,
-      attachmentPath: mapped.extra?.attachmentPath,
-      username: mapped.extra?.username,
-      emailSubject: params.subject || undefined,
-      destination: mapped.extra?.destination || undefined,
-      ...(mapped.extra || {}),
-    },
-    preferredBrowserMode: finalPlatform === 'research' ? 'managed' : 'attached',
+    prompt: m.prompt,
+    context: { operation: m.op, platform: m.platform || platform, messageGoal: goal, tone, query, maxResults, attachmentPath: imagePath || undefined, username: target || undefined },
+    preferredBrowserMode: (m.platform || platform) === 'research' ? 'managed' : 'attached',
   };
 }
 
-// ── Dispatch a single task to backend queue ───────────────────────────────────
-function dispatchTask(payload, { tasks, upsertTask, broadcast, createId }) {
+function dispatchTask(payload, { upsertTask, broadcast, createId }) {
   const task = upsertTask({
     id: createId('task'),
     status: 'queued',
     prompt: payload.prompt,
     context: payload.context,
-    preferredBrowserMode: payload.preferredBrowserMode || 'attached',
+    preferredBrowserMode: payload.preferredBrowserMode,
     events: [{ type: 'task.created', taskId: createId('event'), prompt: payload.prompt }],
     createdAt: new Date().toISOString(),
   });
@@ -191,58 +218,34 @@ function dispatchTask(payload, { tasks, upsertTask, broadcast, createId }) {
   return task;
 }
 
-// ── Create a campaign for continuous actions ──────────────────────────────────
-function createCampaign(suggestion, deps) {
-  const { campaigns, broadcast, createId, CampaignSchema } = deps;
-  const platform = suggestion.tools[0]?.params?.platform || 'instagram';
-  const objective = suggestion.label || 'Cherry automated campaign';
-
-  try {
-    const campaign = CampaignSchema.parse({
-      id: createId('campaign'),
-      name: `🍒 ${objective.slice(0, 60)}`,
-      objective,
-      platforms: [platform],
-      browserStrategy: { defaultMode: 'attached', perPlatform: {} },
-      schedules: [{
-        id: 'primary',
-        label: `Every ${suggestion.cadenceMinutes || 60} min`,
-        cadenceMinutes: suggestion.cadenceMinutes || 60,
-      }],
-      caps: {
-        perPlatformDailyActions: {},
-        perPlatformDailyMessages: {},
-        maxConcurrentTabs: 2,
-        maxConcurrentConversations: 1,
-      },
-      quietHours: { timezone: 'Asia/Kolkata', windows: [{ start: '23:00', end: '07:00' }] },
-      targets: { usernames: [], emails: [], keywords: [], notes: '' },
-      leadSources: [],
-      stopRules: [
-        { type: 'daily_cap_reached' },
-        { type: 'consecutive_failures', count: 5 },
-      ],
-      contentPolicy: {
-        tone: suggestion.tools[0]?.params?.tone || 'Casual and brief',
-        outreachGoal: suggestion.tools[0]?.params?.goal || objective,
-        allowAutonomousReplies: false,
-      },
-      status: 'draft',
-    });
-    campaigns.set(campaign.id, campaign);
-    broadcast({ type: 'campaign.updated', campaignId: campaign.id, status: campaign.status });
-    return campaign;
-  } catch (e) {
-    throw new Error(`Campaign creation failed: ${e.message}`);
-  }
+function createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSchema }) {
+  const platform = suggestion.tools?.[0]?.params?.platform || 'instagram';
+  const campaign = CampaignSchema.parse({
+    id: createId('campaign'),
+    name: `🍒 ${suggestion.label.slice(0, 60)}`,
+    objective: suggestion.label,
+    platforms: [platform],
+    browserStrategy: { defaultMode: 'attached', perPlatform: {} },
+    schedules: [{ id: 'primary', label: `Every ${suggestion.cadenceMinutes || 60}m`, cadenceMinutes: suggestion.cadenceMinutes || 60 }],
+    caps: { perPlatformDailyActions: {}, perPlatformDailyMessages: {}, maxConcurrentTabs: 2, maxConcurrentConversations: 1 },
+    quietHours: { timezone: 'Asia/Kolkata', windows: [{ start: '23:00', end: '07:00' }] },
+    targets: { usernames: [], emails: [], keywords: [], notes: '' },
+    leadSources: [],
+    stopRules: [{ type: 'daily_cap_reached' }, { type: 'consecutive_failures', count: 5 }],
+    contentPolicy: { tone: 'Casual and brief', outreachGoal: suggestion.label, allowAutonomousReplies: false },
+    status: 'draft',
+  });
+  campaigns.set(campaign.id, campaign);
+  broadcast({ type: 'campaign.updated', campaignId: campaign.id, status: campaign.status });
+  return campaign;
 }
 
 // ── Route setup ───────────────────────────────────────────────────────────────
 export function setupAiRoutes(app, deps) {
-  const { tasks, upsertTask, broadcast, campaigns, createId, CampaignSchema } = deps;
-  const dispatchDeps = { tasks, upsertTask, broadcast, createId };
+  const { upsertTask, broadcast, campaigns, createId, CampaignSchema } = deps;
+  const dispatchDeps = { upsertTask, broadcast, createId };
 
-  // Health check — is local LLM running?
+  // Health
   app.get('/ai/health', async (_req, res) => {
     try {
       const r = await fetch(`${LLM_URL}/health`, { signal: AbortSignal.timeout(3000) });
@@ -253,7 +256,8 @@ export function setupAiRoutes(app, deps) {
     }
   });
 
-  // Main AI chat endpoint
+  // ── Streaming chat ────────────────────────────────────────────────────────
+  // Returns SSE: tokens stream first, then a final JSON event with suggestions
   app.post('/ai/chat', async (req, res) => {
     const { userId = 'default', message, reset } = req.body || {};
     if (!message?.trim()) return res.status(400).json({ error: 'message required' });
@@ -261,57 +265,76 @@ export function setupAiRoutes(app, deps) {
     const session = getSession(userId);
     if (reset) session.history = [];
 
-    let llmResult;
+    // Detect intent immediately (synchronous, rule-based)
+    const suggestions = detectIntent(message);
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    let fullReply = '';
+
+    // Stream LLM tokens
     try {
-      const r = await fetch(`${LLM_URL}/chat`, {
+      const llmRes = await fetch(`${LLM_URL}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          history: session.history,
-          max_tokens: 800,
-          temperature: 0.7,
-        }),
-        signal: AbortSignal.timeout(60000),
+        body: JSON.stringify({ message, history: session.history }),
+        signal: AbortSignal.timeout(45000),
       });
-      if (!r.ok) throw new Error(`LLM ${r.status}`);
-      llmResult = await r.json();
-    } catch (err) {
-      return res.status(503).json({
-        error: 'Local LLM offline',
-        hint: 'Run: python3 llm_server.py',
-        fallback: true,
-      });
-    }
 
-    const { reply, actions, elapsed, tokens } = llmResult;
+      if (!llmRes.ok) throw new Error('LLM offline');
+
+      const reader = llmRes.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') continue;
+          try {
+            const { token } = JSON.parse(raw);
+            if (token) {
+              fullReply += token;
+              res.write(`data: ${JSON.stringify({ token })}\n\n`);
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      // LLM offline — send a fallback message
+      const fallback = 'LLM is offline. Run: python3 llm_server.py';
+      fullReply = fallback;
+      res.write(`data: ${JSON.stringify({ token: fallback })}\n\n`);
+    }
 
     // Save to history
     session.history.push({ role: 'user', content: message });
-    session.history.push({ role: 'assistant', content: reply || '' });
+    session.history.push({ role: 'assistant', content: fullReply });
 
-    // Validate actions structure
-    const suggestions = Array.isArray(actions) ? actions.filter(a => a.label && Array.isArray(a.tools)) : null;
-
-    res.json({
-      reply: reply || '',
-      suggestions,
-      elapsed,
-      tokens,
-      historyLength: session.history.length,
-    });
+    // Send final event with suggestions
+    res.write(`data: ${JSON.stringify({ done: true, suggestions: suggestions || null })}\n\n`);
+    res.end();
   });
 
-  // Execute a suggestion (burst: dispatch tasks, continuous: create campaign)
+  // ── Execute a suggestion ──────────────────────────────────────────────────
   app.post('/ai/execute', async (req, res) => {
     const { suggestion } = req.body || {};
-    if (!suggestion || !Array.isArray(suggestion.tools)) {
-      return res.status(400).json({ error: 'suggestion with tools array required' });
-    }
+    if (!suggestion?.tools?.length) return res.status(400).json({ error: 'suggestion.tools required' });
 
-    const mode = suggestion.mode || 'burst';
-
-    if (mode === 'continuous') {
+    if (suggestion.mode === 'continuous') {
       try {
         const campaign = createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSchema });
         return res.json({ mode: 'continuous', campaign: { id: campaign.id, name: campaign.name, status: campaign.status } });
@@ -320,27 +343,19 @@ export function setupAiRoutes(app, deps) {
       }
     }
 
-    // Burst — dispatch each tool as a sequential task
     const dispatched = [];
     for (const toolDef of suggestion.tools) {
       const payload = toolToTaskPayload(toolDef);
       if (!payload) continue;
-      const task = dispatchTask(payload, dispatchDeps);
-      dispatched.push({ id: task.id, status: task.status, prompt: task.prompt, tool: toolDef.tool });
+      dispatched.push(dispatchTask(payload, dispatchDeps));
     }
 
-    res.json({ mode: 'burst', tasks: dispatched, count: dispatched.length });
+    res.json({ mode: 'burst', tasks: dispatched.map(t => ({ id: t.id, prompt: t.prompt })), count: dispatched.length });
   });
 
   // Clear history
   app.delete('/ai/chat/:userId', (req, res) => {
     chatSessions.delete(req.params.userId);
     res.json({ cleared: true });
-  });
-
-  // Get history
-  app.get('/ai/chat/:userId', (req, res) => {
-    const session = getSession(req.params.userId);
-    res.json({ history: session.history.slice(-20) });
   });
 }
