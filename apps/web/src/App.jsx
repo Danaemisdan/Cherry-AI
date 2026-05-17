@@ -265,7 +265,6 @@ function Workspace({ refreshTasks, tasks }) {
   }]);
   const [llmOnline, setLlmOnline] = useState(null); // null=checking, true=ok, false=err
   const [isTyping, setIsTyping] = useState(false);
-  const [pendingToolCall, setPendingToolCall] = useState(null);
   const messagesEndRef = useRef(null);
 
   const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
@@ -396,9 +395,6 @@ function Workspace({ refreshTasks, tasks }) {
   }
 
   async function runPlatformAction(operation) {
-    console.log('[runPlatformAction] Starting operation:', operation);
-    console.log('[runPlatformAction] Selected platform:', selectedPlatform);
-    console.log('[runPlatformAction] Query value:', query);
 
     const usernames = normalizeList(batchUsernames);
     const targetHandle = targetUsername.trim() || username.trim() || undefined;
@@ -425,8 +421,6 @@ function Workspace({ refreshTasks, tasks }) {
       username: targetHandle,
       usernames,
     };
-
-    console.log('[runPlatformAction] Base context:', baseContext);
 
     const payloads = {
       open_workspace: {
@@ -633,11 +627,8 @@ function Workspace({ refreshTasks, tasks }) {
 
 
     const operationPayload = payloads[operation];
-    console.log('[runPlatformAction] Operation payload:', operationPayload);
-
     if (!operationPayload) {
-      console.error(`[runPlatformAction] Missing payload for operation: ${operation}`);
-      console.error('[runPlatformAction] Available operations:', Object.keys(payloads));
+      console.warn(`[Cherry] No payload for operation: ${operation}`);
       return;
     }
 
@@ -645,7 +636,6 @@ function Workspace({ refreshTasks, tasks }) {
       ...operationPayload,
       preferredBrowserMode: selectedPlatform === 'research' ? 'managed' : 'attached',
     });
-    console.log('[runPlatformAction] Task dispatched successfully');
   }
 
 
@@ -826,9 +816,13 @@ function Workspace({ refreshTasks, tasks }) {
             {supports('send_message')&&<>
               <button className="cmd-btn primary" onClick={()=>runPlatformAction(isGmail?'auto_dm':'auto_dm_contact')}>{isGmail?'✉️ Auto-Email':'💬 DM Contact'}</button>
               {!isGmail&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('auto_dm_new')}>💬 DM New Person</button>}
+              {supports('send_image_dm')&&<button className="cmd-btn" onClick={()=>runPlatformAction('send_image_dm')}>🖼️ DM with Image</button>}
             </>}
             {isAI&&supports('ask')&&<button className="cmd-btn primary" onClick={()=>runPlatformAction('ask')}>💬 Ask Question</button>}
             {isAI&&supports('generate_image')&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('generate_image')}>🎨 Generate Image</button>}
+            {isAI&&supports('upload_to_ai')&&<button className="cmd-btn" onClick={()=>runPlatformAction('upload_to_ai')}>📤 Upload Image to AI</button>}
+            {isAI&&supports('generate_and_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('generate_and_post')}>🎨→📲 Generate &amp; Post</button>}
+            {isAI&&supports('generate_and_dm')&&<button className="cmd-btn" onClick={()=>runPlatformAction('generate_and_dm')}>🎨→💬 Generate &amp; DM</button>}
             {supports('like_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('like_post')}>❤️ Like Post</button>}
             {supports('engage_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('engage_post')}>💬 AI Comment</button>}
             {supports('follow_user')&&<button className="cmd-btn" onClick={()=>runPlatformAction('follow_user')}>➕ Follow User</button>}
@@ -837,6 +831,7 @@ function Workspace({ refreshTasks, tasks }) {
               <button className="cmd-btn" onClick={()=>runPlatformAction('connect_sn')}>🤝 Connect (With Note)</button>
             </>}
             {supports('publish_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('auto_post')}>📝 Auto-Post</button>}
+            {supports('download_image')&&<button className="cmd-btn" onClick={()=>runPlatformAction('download_image')}>⬇️ Download Image</button>}
             {isWA&&<>
               {supports('open_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('open_status')}>👁️ View Status</button>}
               {supports('post_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('post_status')}>📸 Post Status</button>}

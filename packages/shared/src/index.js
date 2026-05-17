@@ -190,13 +190,20 @@ export const CANONICAL_SKILL_ACTIONS = [
   'report_user',
   'map_contacts',
   'generate_image',
-  // Engagement actions
+  // Engagement
   'like_post',
   'comment_post',
-  // Gmail actions
+  // Gmail
   'get_context',
   'get_profile_context',
   'reply_to_email',
+  // Image pipeline
+  'download_image',
+  'send_image_dm',
+  'generate_and_post',
+  'generate_and_dm',
+  'upload_to_ai',
+  'upload_file',
 ];
 
 const socialCoreActions = [
@@ -224,6 +231,10 @@ const socialCoreActions = [
   'export_artifact',
   'like_post',
   'comment_post',
+  // Image pipeline — available on all social platforms
+  'download_image',
+  'send_image_dm',
+  'auto_post',
 ];
 
 export const PLATFORM_SKILL_CAPABILITIES = {
@@ -266,8 +277,8 @@ export const PLATFORM_SKILL_CAPABILITIES = {
     'map_contacts',
   ],
   research: ['search', 'open_result', 'scroll_collect', 'scrape_results', 'extract_context', 'export_artifact'],
-  chatgpt: ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file'],
-  gemini:  ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file'],
+  chatgpt: ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file', 'upload_to_ai', 'generate_and_post', 'generate_and_dm'],
+  gemini:  ['open_workspace', 'chat', 'ask', 'generate_image', 'upload_file', 'upload_to_ai', 'generate_and_post', 'generate_and_dm'],
   sheets:  ['open_workspace', 'create_sheet', 'write_data', 'export_to_sheet', 'read_sheet'],
 };
 
@@ -371,8 +382,15 @@ export const TaskContextSchema = z.object({
   tone: z.string().optional(),
   attachmentPath: z.string().optional(),
   maxResults: z.number().int().positive().max(500).optional(),
-  destination: z.enum(['sheet', 'artifact', 'inbox']).optional(),
+  // destination accepts enum values + any platform name (for image pipelines like generate_and_post)
+  destination: z.string().optional(),
   requireManualReview: z.boolean().optional(),
+  // Image pipeline extras
+  imageSubject: z.string().optional(),
+  emailSubject: z.string().optional(),
+  emailCc: z.string().optional(),
+  emailBcc: z.string().optional(),
+  emailSignature: z.string().optional(),
 }).default({});
 
 export const TaskRequestSchema = z.object({
