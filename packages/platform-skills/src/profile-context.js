@@ -126,7 +126,7 @@ export async function extractProfileContext(page, platform, username) {
           });
 
           // Private account check
-          info.isPrivate = !!document.querySelector('text="This Account is Private", .x1n2onr6:contains("Private")');
+          info.isPrivate = document.body?.innerText?.includes('This Account is Private') || false;
 
           // Business account
           const catEl = document.querySelector('[data-testid="business-category"], ._aa_c div:last-child');

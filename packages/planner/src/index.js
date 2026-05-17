@@ -12,6 +12,7 @@ const PLATFORM_HINTS = {
   facebook: ['facebook', 'fb', 'page', 'group'],
   gmail: ['gmail', 'email', 'inbox', 'thread', 'reply'],
   whatsapp: ['whatsapp', 'wa', 'chat'],
+  youtube: ['youtube', 'yt', 'shorts', 'short', 'video upload', 'youtube studio', 'community post'],
   chatgpt: ['chatgpt', 'gpt', 'openai', 'dalle', 'ask chatgpt', 'generate with chatgpt'],
   gemini: ['gemini', 'google ai', 'imagen', 'ask gemini', 'generate with gemini'],
   sheets: ['google sheets', 'spreadsheet', 'excel', 'google sheet', 'make a sheet', 'create a sheet', 'export to sheet'],
@@ -54,14 +55,30 @@ function detectOperation(prompt, context = {}) {
   const wantsSheet = /spreadsheet|excel|google sheet|make a sheet|create a sheet|export to sheet/i.test(lower);
   const wantsChat = /ask|chat|prompt|generate text|write|summarize|translate/i.test(lower);
   const wantsUpload = /upload|reference image|reference asset|use this file|attach/i.test(lower);
+  const wantsYoutube = /\b(youtube|yt|shorts?|youtube studio)\b/i.test(lower);
   const wantsExport = /export|save to sheet|put in sheet|add to spreadsheet/i.test(lower);
+  const wantsContactMap = /map_contacts|map contacts|contact intelligence|sync contacts|sync dashboard|analy[sz]e profiles?|profile analysis|chat context|conversation context/i.test(lower);
+  const wantsJoinGroups = /\b(join|request to join)\b/i.test(lower) && /\bgroups?\b/i.test(lower);
   const wantsFollowSearch = /\b(follow|add friends?|friend requests?)\b/i.test(lower) && /\b(search|people|users|results|related|bulk|many)\b/i.test(lower);
+
+  if (wantsYoutube && /\b(studio|dashboard)\b/i.test(lower)) return 'open_youtube_studio';
+  if (wantsYoutube && /\b(content|videos?)\b/i.test(lower) && /\b(open|view|show)\b/i.test(lower)) return 'open_youtube_content';
+  if (wantsYoutube && /\banalytics?\b/i.test(lower)) return 'open_youtube_analytics';
+  if (wantsYoutube && /\bcommunity\b/i.test(lower) && /\b(open|view|show)\b/i.test(lower)) return 'open_youtube_community';
+  if (wantsYoutube && /\bcustomi[sz]ation|customi[sz]e\b/i.test(lower)) return 'open_youtube_customization';
+  if (wantsYoutube && /\bsettings?\b/i.test(lower)) return 'open_youtube_settings';
+  if (wantsYoutube && /\b(description|descriptions|metadata)\b/i.test(lower)) return 'write_youtube_description';
+  if (wantsYoutube && /\bcommunity\b/i.test(lower) && /\b(post|publish|create|write)\b/i.test(lower)) return 'create_youtube_post';
+  if (wantsYoutube && /\b(short|shorts)\b/i.test(lower) && /\b(upload|publish|post|create)\b/i.test(lower)) return 'upload_youtube_short';
+  if (wantsYoutube && /\b(video|upload|publish)\b/i.test(lower)) return 'upload_youtube_video';
 
   if (wantsSheet && wantsExport) return 'export_to_sheet';
   if (wantsSheet) return 'create_sheet';
   if (wantsUpload && wantsImage) return 'generate_image'; // reference image generation
   if (wantsUpload) return 'upload_file';
   if (wantsImage) return 'generate_image';
+  if (wantsContactMap) return 'map_contacts';
+  if (wantsJoinGroups) return 'join_groups_search';
   if (wantsFollowSearch) return 'follow_search';
   if (wantsCampaign) return 'run_campaign';
   if (wantsLeads && wantsMessaging) return 'lead_and_message';
@@ -122,7 +139,14 @@ function actionsFor(platform, prompt, context = {}) {
   if (operation === 'gmail_get_profile')  return ['open_workspace', 'get_profile_context'];
   if (operation === 'gmail_reply')        return ['open_workspace', 'reply_to_email'];
 
+  if (operation.startsWith('open_youtube_')) return ['open_workspace', operation];
+  if (operation === 'upload_youtube_video') return ['open_workspace', 'upload_youtube_video'];
+  if (operation === 'upload_youtube_short') return ['open_workspace', 'upload_youtube_short'];
+  if (operation === 'create_youtube_post') return ['open_workspace', 'create_youtube_post'];
+  if (operation === 'write_youtube_description') return ['open_workspace', 'write_youtube_description'];
+
   if (operation === 'follow_search') return ['open_workspace', 'follow_search'];
+  if (operation === 'join_groups_search') return ['open_workspace', 'join_groups_search'];
   if (operation === 'follow_user') {
     return platform === 'facebook'
       ? ['open_workspace', 'follow_user']
@@ -173,12 +197,19 @@ function buildArgs({ prompt, platform, action, context = {} }) {
     maxResults: context.maxResults,
     destination: context.destination,
     requireManualReview: context.requireManualReview ?? false,
+    analysisScope: context.analysisScope,
+    includeConversations: context.includeConversations,
+    analyzeIntelligence: context.analyzeIntelligence,
     oneByOne: action === 'message_batch',
     // Gmail-specific fields
     emailSubject: context.emailSubject,
     emailCc: context.emailCc,
     emailBcc: context.emailBcc,
     emailSignature: context.emailSignature,
+    youtubeTitle: context.youtubeTitle,
+    youtubeDescription: context.youtubeDescription,
+    youtubeTags: context.youtubeTags,
+    youtubeVisibility: context.youtubeVisibility,
   };
 }
 

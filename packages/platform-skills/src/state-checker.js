@@ -96,6 +96,26 @@ export async function checkLoginState(page, platform) {
         return { loggedIn: false, ready: false, needsLogin: hasQr, needsQR: hasQr, message: hasQr ? 'Scan QR code with your phone' : 'Please open WhatsApp Web' };
       }
     },
+    youtube: async () => {
+      try {
+        const checks = await Promise.allSettled([
+          page.waitForSelector('button#avatar-btn, ytd-topbar-menu-button-renderer button[aria-label*="Account"], yt-img-shadow img', { timeout: 4000 }),
+          page.waitForSelector('ytcp-app, ytcp-header, ytcp-uploads-dialog', { timeout: 4000 }),
+          page.waitForSelector('a[href*="/studio"], a[href*="studio.youtube.com"], button[aria-label*="Create"]', { timeout: 4000 }),
+        ]);
+        if (checks.some((check) => check.status === 'fulfilled')) return { loggedIn: true, ready: true };
+
+        const url = page.url();
+        if ((url.includes('youtube.com') || url.includes('studio.youtube.com')) && !url.includes('accounts.google.com')) {
+          return { loggedIn: true, ready: true };
+        }
+
+        throw new Error('Not logged in');
+      } catch {
+        const hasLoginBtn = await page.locator('a[href*="ServiceLogin"], a:has-text("Sign in"), input[type="email"], #identifierId').count() > 0;
+        return { loggedIn: false, ready: false, needsLogin: hasLoginBtn, message: 'Please log in to YouTube in this Cherry browser profile' };
+      }
+    },
   };
 
   const checker = checks[platform];

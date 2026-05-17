@@ -2,6 +2,82 @@
 // Maps conversations, categorizes contacts, and builds intelligence for dashboard
 
 import { extractChatContext } from './chat-context.js';
+import { extractProfileContext } from './profile-context.js';
+
+const DEFAULT_CATEGORIES = {
+  leads: [],
+  partners: [],
+  candidates: [],
+  customers: [],
+  network: [],
+  audience: [],
+  unknown: [],
+};
+
+const PLATFORM_HOME_URLS = {
+  whatsapp: 'https://web.whatsapp.com',
+  linkedin: 'https://www.linkedin.com',
+  instagram: 'https://www.instagram.com',
+  twitter: 'https://x.com',
+  facebook: 'https://www.facebook.com',
+  gmail: 'https://mail.google.com',
+};
+
+function categorizeContacts(contacts = []) {
+  const categorized = Object.fromEntries(Object.entries(DEFAULT_CATEGORIES).map(([key]) => [key, []]));
+  for (const contact of contacts) {
+    const category = contact.potentialUse || 'unknown';
+    if (categorized[category]) {
+      categorized[category].push(contact);
+    } else {
+      categorized.unknown.push(contact);
+    }
+  }
+  return categorized;
+}
+
+function collectContacts(contactResult = {}) {
+  const contacts = [
+    ...(contactResult.contacts || []),
+    ...(contactResult.connections || []),
+    ...(contactResult.followers || []),
+    ...(contactResult.following || []),
+    ...(contactResult.pendingRequests || []),
+    ...(contactResult.conversations || []),
+    ...(contactResult.profiles || []),
+  ];
+  const seen = new Set();
+  return contacts.filter((contact) => {
+    const key = `${contact.platform || ''}:${contact.username || contact.displayName || contact.id || ''}`.toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeCategorized(target, source) {
+  for (const [key, contacts] of Object.entries(source || {})) {
+    if (!target[key]) target[key] = [];
+    target[key].push(...(contacts || []));
+  }
+}
+
+async function attachCurrentConversation(page, platform, contacts, fallbackUsername = '') {
+  const chatContext = await extractChatContext(page, platform, 12).catch(() => []);
+  if (!chatContext.length) return contacts;
+
+  const username = fallbackUsername || contacts[0]?.username || contacts[0]?.displayName || 'current_chat';
+  const intelligence = await analyzeContactIntelligence(page, platform, username, chatContext);
+  const existing = contacts.find((contact) => contact.username === username || contact.displayName === username);
+  const target = existing || intelligence;
+  target.addConversation?.(chatContext);
+  target.messageCount = Math.max(target.messageCount || 0, chatContext.length);
+  target.lastMessageAt = target.lastMessageAt || Date.now();
+  target.sentiment = intelligence.sentiment || target.sentiment || 'neutral';
+  target.potentialUse = intelligence.potentialUse || target.potentialUse || 'unknown';
+  if (!existing) contacts.push(target);
+  return contacts;
+}
 
 /**
  * Contact profile with conversation history and categorization
@@ -295,6 +371,295 @@ export async function extractInstagramContacts(page, options = {}) {
 }
 
 /**
+ * Extract X/Twitter contacts from visible messages, profile, followers/following, or search results.
+ */
+export async function extractTwitterContacts(page, options = {}) {
+  const { limit = 80, includeConversations = true, username = '' } = options;
+  const results = {
+    platform: 'twitter',
+    contacts: [],
+    profiles: [],
+    conversations: [],
+    totalCount: 0,
+  };
+
+  try {
+    const visibleContacts = await page.evaluate((maxContacts) => {
+      const contacts = [];
+      const seen = new Set();
+      const add = (data) => {
+        const username = String(data.username || '').replace(/^@/, '').trim();
+        const displayName = String(data.displayName || username || '').trim();
+        const key = username || displayName;
+        if (!key || seen.has(key.toLowerCase())) return;
+        seen.add(key.toLowerCase());
+        contacts.push({ ...data, username, displayName });
+      };
+
+      document.querySelectorAll('[data-testid="conversation"], [data-testid="cellInnerDiv"], article[data-testid="tweet"]').forEach((el) => {
+        if (contacts.length >= maxContacts) return;
+        const link = Array.from(el.querySelectorAll('a[href^="/"]')).find((anchor) => /^\/[^/]+$/.test(anchor.getAttribute('href') || ''));
+        const username = link?.getAttribute('href')?.replace('/', '') || '';
+        const name = el.querySelector('[data-testid="User-Name"] span, [data-testid="UserName"] span, span[dir="ltr"]')?.textContent?.trim() || username;
+        const bio = el.querySelector('[data-testid="tweetText"], div[dir="auto"]')?.textContent?.trim() || '';
+        if (username || name) {
+          add({
+            username,
+            displayName: name,
+            bio: bio.slice(0, 280),
+            profileUrl: link ? new URL(link.getAttribute('href'), location.origin).href : '',
+          });
+        }
+      });
+
+      const profileName = document.querySelector('[data-testid="UserName"] span, h1')?.textContent?.trim() || '';
+      const profileHandle = location.pathname.split('/').filter(Boolean)[0] || '';
+      if (profileName || profileHandle) {
+        add({
+          username: profileHandle,
+          displayName: profileName || profileHandle,
+          bio: document.querySelector('[data-testid="UserDescription"]')?.textContent?.trim() || '',
+          profileUrl: location.href,
+        });
+      }
+
+      return contacts.slice(0, maxContacts);
+    }, limit);
+
+    const contacts = visibleContacts.map((contact) => new ContactProfile({
+      platform: 'twitter',
+      username: contact.username,
+      displayName: contact.displayName,
+      bio: contact.bio,
+      profileUrl: contact.profileUrl,
+      category: 'profile',
+      relationship: 'visible',
+      potentialUse: contact.bio ? 'lead' : 'unknown',
+    }));
+
+    if (includeConversations) {
+      await attachCurrentConversation(page, 'twitter', contacts, username);
+    }
+
+    results.contacts = contacts;
+    results.profiles = contacts;
+    results.conversations = contacts.filter((contact) => contact.messageCount > 0);
+    results.totalCount = contacts.length;
+    return results;
+  } catch (error) {
+    return { ...results, error: error.message };
+  }
+}
+
+/**
+ * Extract Facebook contacts from visible messages, profile surfaces, groups, or people search.
+ */
+export async function extractFacebookContacts(page, options = {}) {
+  const { limit = 80, includeConversations = true, username = '' } = options;
+  const results = {
+    platform: 'facebook',
+    contacts: [],
+    profiles: [],
+    conversations: [],
+    totalCount: 0,
+  };
+
+  try {
+    const visibleContacts = await page.evaluate((maxContacts) => {
+      const contacts = [];
+      const seen = new Set();
+      const add = (data) => {
+        const displayName = String(data.displayName || '').trim();
+        const username = String(data.username || displayName).trim();
+        const key = username || displayName;
+        if (!key || seen.has(key.toLowerCase())) return;
+        seen.add(key.toLowerCase());
+        contacts.push({ ...data, username, displayName });
+      };
+
+      document.querySelectorAll('[role="main"] a[href*="/profile.php"], [role="main"] a[href*="facebook.com/"], [aria-label="Chats"] a, [role="gridcell"] a').forEach((link) => {
+        if (contacts.length >= maxContacts) return;
+        const text = link.textContent?.trim() || link.getAttribute('aria-label') || '';
+        const href = link.href || '';
+        if (!text || text.length < 2 || /^(home|watch|marketplace|groups|menu)$/i.test(text)) return;
+        add({
+          username: href.split('facebook.com/')[1]?.split(/[/?#]/)[0] || text,
+          displayName: text,
+          profileUrl: href,
+        });
+      });
+
+      const profileName = document.querySelector('h1, [data-testid="profile_name"]')?.textContent?.trim() || '';
+      if (profileName) {
+        add({
+          username: location.pathname.split('/').filter(Boolean)[0] || profileName,
+          displayName: profileName,
+          bio: Array.from(document.querySelectorAll('[role="main"] span')).map((el) => el.textContent?.trim()).find((text) => text && text.length > 30) || '',
+          profileUrl: location.href,
+        });
+      }
+
+      return contacts.slice(0, maxContacts);
+    }, limit);
+
+    const contacts = visibleContacts.map((contact) => new ContactProfile({
+      platform: 'facebook',
+      username: contact.username,
+      displayName: contact.displayName,
+      bio: contact.bio || '',
+      profileUrl: contact.profileUrl,
+      category: 'profile',
+      relationship: 'visible',
+      potentialUse: contact.bio ? 'lead' : 'network',
+    }));
+
+    if (includeConversations) {
+      await attachCurrentConversation(page, 'facebook', contacts, username);
+    }
+
+    results.contacts = contacts;
+    results.profiles = contacts;
+    results.conversations = contacts.filter((contact) => contact.messageCount > 0);
+    results.totalCount = contacts.length;
+    return results;
+  } catch (error) {
+    return { ...results, error: error.message };
+  }
+}
+
+/**
+ * Extract Gmail contacts from visible inbox/thread rows and current conversation.
+ */
+export async function extractGmailContacts(page, options = {}) {
+  const { limit = 80, includeConversations = true, username = '' } = options;
+  const results = {
+    platform: 'gmail',
+    contacts: [],
+    conversations: [],
+    totalCount: 0,
+  };
+
+  try {
+    const visibleContacts = await page.evaluate((maxContacts) => {
+      const contacts = [];
+      const seen = new Set();
+      const add = (data) => {
+        const email = String(data.email || '').trim();
+        const displayName = String(data.displayName || email || '').trim();
+        const key = email || displayName;
+        if (!key || seen.has(key.toLowerCase())) return;
+        seen.add(key.toLowerCase());
+        contacts.push({ ...data, email, displayName });
+      };
+
+      document.querySelectorAll('tr[role="row"], .h7, .adn').forEach((row) => {
+        if (contacts.length >= maxContacts) return;
+        const emailEl = row.querySelector('[email], [data-hovercard-id]');
+        const email = emailEl?.getAttribute('email') || emailEl?.getAttribute('data-hovercard-id') || '';
+        const name = emailEl?.getAttribute('name') || emailEl?.textContent?.trim() || row.querySelector('.yW span, .gD')?.textContent?.trim() || '';
+        const subject = row.querySelector('.bog, .ha h2')?.textContent?.trim() || '';
+        if (email || name) add({ email, displayName: name || email, bio: subject });
+      });
+
+      return contacts.slice(0, maxContacts);
+    }, limit);
+
+    const contacts = visibleContacts.map((contact) => new ContactProfile({
+      platform: 'gmail',
+      username: contact.email || contact.displayName,
+      displayName: contact.displayName,
+      bio: contact.bio || '',
+      category: 'email_contact',
+      relationship: 'contact',
+      potentialUse: contact.bio ? 'customer' : 'unknown',
+    }));
+
+    if (includeConversations) {
+      await attachCurrentConversation(page, 'gmail', contacts, username);
+    }
+
+    results.contacts = contacts;
+    results.conversations = contacts.filter((contact) => contact.messageCount > 0);
+    results.totalCount = contacts.length;
+    return results;
+  } catch (error) {
+    return { ...results, error: error.message };
+  }
+}
+
+/**
+ * Generic visible-profile fallback for platforms that expose profile-like pages.
+ */
+export async function extractGenericSocialContacts(page, platform, options = {}) {
+  const { limit = 50, includeConversations = true, username = '' } = options;
+  const results = { platform, contacts: [], profiles: [], conversations: [], totalCount: 0 };
+
+  try {
+    const profileInfo = await extractProfileContext(page, platform, username).catch(() => null);
+    const visibleContacts = await page.evaluate((maxContacts) => {
+      const contacts = [];
+      const seen = new Set();
+      const add = (data) => {
+        const displayName = String(data.displayName || '').trim();
+        const username = String(data.username || displayName).replace(/^@/, '').trim();
+        const key = username || displayName;
+        if (!key || seen.has(key.toLowerCase())) return;
+        seen.add(key.toLowerCase());
+        contacts.push({ ...data, username, displayName });
+      };
+
+      document.querySelectorAll('a[href], [role="article"], [role="listitem"]').forEach((el) => {
+        if (contacts.length >= maxContacts) return;
+        const link = el.matches?.('a[href]') ? el : el.querySelector?.('a[href]');
+        const href = link?.href || '';
+        const text = (link?.textContent || el.textContent || '').trim().replace(/\s+/g, ' ');
+        if (text && text.length > 2 && text.length < 90) {
+          add({ displayName: text, username: href.split('/').filter(Boolean).pop() || text, profileUrl: href });
+        }
+      });
+      return contacts.slice(0, maxContacts);
+    }, limit);
+
+    const contacts = visibleContacts.map((contact) => new ContactProfile({
+      platform,
+      username: contact.username,
+      displayName: contact.displayName,
+      profileUrl: contact.profileUrl,
+      category: 'visible_profile',
+      relationship: 'visible',
+      potentialUse: 'unknown',
+    }));
+
+    if (profileInfo && !profileInfo.error && Object.values(profileInfo).some(Boolean)) {
+      contacts.unshift(new ContactProfile({
+        platform,
+        username: profileInfo.username || username || 'current_profile',
+        displayName: profileInfo.name || profileInfo.username || username || 'Current profile',
+        bio: profileInfo.bio || profileInfo.headline || '',
+        company: profileInfo.company || '',
+        title: profileInfo.jobTitle || '',
+        location: profileInfo.location || '',
+        category: 'profile',
+        relationship: 'visible',
+        potentialUse: profileInfo.bio || profileInfo.headline ? 'lead' : 'unknown',
+      }));
+    }
+
+    if (includeConversations) {
+      await attachCurrentConversation(page, platform, contacts, username);
+    }
+
+    results.contacts = contacts;
+    results.profiles = contacts;
+    results.conversations = contacts.filter((contact) => contact.messageCount > 0);
+    results.totalCount = contacts.length;
+    return results;
+  } catch (error) {
+    return { ...results, error: error.message };
+  }
+}
+
+/**
  * Analyze conversation context to understand relationship and intent
  */
 export async function analyzeContactIntelligence(page, platform, username, chatContext = []) {
@@ -344,7 +709,7 @@ export async function analyzeContactIntelligence(page, platform, username, chatC
  */
 export async function mapAllContacts(attachedBrowser, options = {}) {
   const {
-    platforms = ['whatsapp', 'linkedin', 'instagram'],
+    platforms = ['whatsapp', 'linkedin', 'instagram', 'twitter', 'facebook', 'gmail'],
     includeConversations = true,
     analyzeIntelligence = true,
   } = options;
@@ -366,12 +731,16 @@ export async function mapAllContacts(attachedBrowser, options = {}) {
   
   for (const platform of platforms) {
     try {
-      let page = await attachedBrowser.findPage(p => p.url().includes(platform));
+      const platformUrl = PLATFORM_HOME_URLS[platform] || PLATFORM_HOME_URLS.instagram;
+      let page = await attachedBrowser.findPage(p => {
+        const url = p.url();
+        if (platform === 'twitter') return url.includes('twitter.com') || url.includes('x.com');
+        if (platform === 'gmail') return url.includes('mail.google.com');
+        return url.includes(platform);
+      });
       if (!page) {
         page = await attachedBrowser.getOrCreatePage({
-          url: platform === 'whatsapp' ? 'https://web.whatsapp.com' :
-               platform === 'linkedin' ? 'https://linkedin.com' :
-               'https://instagram.com',
+          url: platformUrl,
         });
       }
       
@@ -387,22 +756,39 @@ export async function mapAllContacts(attachedBrowser, options = {}) {
         case 'instagram':
           contacts = await extractInstagramContacts(page, options);
           break;
+        case 'twitter':
+          contacts = await extractTwitterContacts(page, { ...options, includeConversations });
+          break;
+        case 'facebook':
+          contacts = await extractFacebookContacts(page, { ...options, includeConversations });
+          break;
+        case 'gmail':
+          contacts = await extractGmailContacts(page, { ...options, includeConversations });
+          break;
+        default:
+          contacts = await extractGenericSocialContacts(page, platform, { ...options, includeConversations });
+          break;
       }
       
       results.platforms[platform] = contacts;
       
       // Categorize all contacts
-      const allContacts = contacts.contacts || 
-                         [...(contacts.connections || []), ...(contacts.followers || [])];
-      
-      allContacts.forEach(contact => {
-        const category = contact.potentialUse || 'unknown';
-        if (results.categorized[category]) {
-          results.categorized[category].push(contact);
-        } else {
-          results.categorized.unknown.push(contact);
+      const allContacts = collectContacts(contacts);
+
+      if (analyzeIntelligence && includeConversations) {
+        for (const contact of allContacts) {
+          if (contact.conversations?.length) continue;
+          const chatContext = await extractChatContext(page, platform, 8).catch(() => []);
+          if (chatContext.length) {
+            const intelligence = await analyzeContactIntelligence(page, platform, contact.username, chatContext);
+            contact.sentiment = intelligence.sentiment || contact.sentiment;
+            contact.potentialUse = intelligence.potentialUse || contact.potentialUse;
+            contact.addConversation?.(chatContext);
+          }
         }
-      });
+      }
+      
+      mergeCategorized(results.categorized, categorizeContacts(allContacts));
       
       results.totalContacts += allContacts.length;
     } catch (error) {
@@ -417,13 +803,20 @@ export async function mapAllContacts(attachedBrowser, options = {}) {
  * Export contact data for dashboard
  */
 export function exportForDashboard(contactMap) {
+  const categorized = contactMap.categorized || {};
+  const categoryCounts = Object.fromEntries(
+    Object.keys(DEFAULT_CATEGORIES).map((name) => [name, categorized[name]?.length || 0])
+  );
+  const allContacts = Object.values(categorized).flat();
+
   return {
     summary: {
-      totalContacts: contactMap.totalContacts,
-      totalPlatforms: Object.keys(contactMap.platforms).length,
-      lastUpdated: contactMap.timestamp,
+      totalContacts: contactMap.totalContacts || allContacts.length,
+      totalPlatforms: Object.keys(contactMap.platforms || {}).length,
+      lastUpdated: contactMap.timestamp || Date.now(),
     },
-    categories: Object.entries(contactMap.categorized).map(([name, contacts]) => ({
+    categories: categoryCounts,
+    categoryDetails: Object.entries(categorized).map(([name, contacts]) => ({
       name,
       count: contacts.length,
       contacts: contacts.map(c => ({
@@ -439,6 +832,31 @@ export function exportForDashboard(contactMap) {
         profileUrl: c.profileUrl,
       })),
     })),
+    platforms: Object.entries(contactMap.platforms || {}).map(([platform, data]) => ({
+      name: platform,
+      total: data.count || data.totalCount || collectContacts(data).length || 0,
+      connections: data.connections?.length || data.followers?.length || data.contacts?.length || data.profiles?.length || 0,
+      pending: data.pendingRequests?.length || 0,
+      error: data.error || null,
+    })),
+    recentActivity: allContacts
+      .filter((contact) => contact.lastMessageAt)
+      .sort((left, right) => right.lastMessageAt - left.lastMessageAt)
+      .slice(0, 20)
+      .map((contact) => ({
+        id: contact.id,
+        name: contact.displayName || contact.username,
+        platform: contact.platform,
+        category: contact.category,
+        potentialUse: contact.potentialUse,
+        lastMessage: contact.conversations?.[0]?.summary || '',
+        lastMessageAt: contact.lastMessageAt,
+      })),
+    sentiment: {
+      positive: allContacts.filter((contact) => contact.sentiment === 'positive').length,
+      neutral: allContacts.filter((contact) => contact.sentiment === 'neutral').length,
+      negative: allContacts.filter((contact) => contact.sentiment === 'negative').length,
+    },
     raw: contactMap,
   };
 }
@@ -448,6 +866,10 @@ export default {
   extractWhatsAppContacts,
   extractLinkedInContacts,
   extractInstagramContacts,
+  extractTwitterContacts,
+  extractFacebookContacts,
+  extractGmailContacts,
+  extractGenericSocialContacts,
   analyzeContactIntelligence,
   mapAllContacts,
   exportForDashboard,

@@ -9,6 +9,7 @@ const PLATFORM_URLS = {
   facebook: 'https://www.facebook.com/',
   gmail: 'https://mail.google.com/mail/u/0/#inbox',
   whatsapp: 'https://web.whatsapp.com/',
+  youtube: 'https://www.youtube.com/',
   chatgpt: 'https://chat.openai.com/',
   gemini: 'https://gemini.google.com/',
 };
@@ -20,6 +21,7 @@ const PLATFORM_DOMAINS = {
   facebook: ['facebook.com'],
   gmail: ['mail.google.com'],
   whatsapp: ['web.whatsapp.com'],
+  youtube: ['youtube.com', 'studio.youtube.com'],
   chatgpt: ['chat.openai.com', 'chatgpt.com'],
   gemini: ['gemini.google.com'],
 };
@@ -31,6 +33,7 @@ const SEARCH_SELECTORS = {
   facebook: ['input[aria-label="Search Facebook"]', 'input[placeholder="Search Facebook"]', 'input[type="search"]'],
   gmail: ['input[placeholder*="Search mail"]', 'input[aria-label*="Search mail"]'],
   whatsapp: ['div[contenteditable="true"][data-tab="3"]', 'div[role="textbox"][contenteditable="true"]'],
+  youtube: ['input#search', 'input[name="search_query"]', 'input[placeholder*="Search"]'],
   chatgpt: ['div[contenteditable="true"][aria-label*="message"]', 'div[contenteditable="true"][data-lexical-editor="true"]', 'textarea#prompt-textarea'],
   gemini: ['rich-textarea div[contenteditable="true"]', 'div[contenteditable="true"][role="textbox"]', 'textarea[placeholder="Ask Gemini"]'],
 };
@@ -41,6 +44,7 @@ const READY_SELECTORS = {
   linkedin: ['main', '.scaffold-layout', '.global-nav', '.pv-top-card', 'section.artdeco-card', 'input.search-global-typeahead__input'],
   facebook: ['div[role="feed"]', 'input[aria-label="Search Facebook"]', '[aria-label="Facebook"]'],
   gmail: ['div[role="main"]', 'input[placeholder*="Search mail"]', 'div[gh="cm"]'],
+  youtube: ['ytd-app', 'ytd-masthead', 'ytcp-app', 'ytcp-uploads-dialog'],
   chatgpt: ['div[contenteditable="true"][aria-label*="message"]', '[data-testid="send-button"]', 'main'],
   gemini: ['rich-textarea div[contenteditable="true"]', 'mat-icon.send-icon', 'model-response'],
   whatsapp: ['div[data-testid="chat-list"]', 'div[role="grid"]', 'footer div[contenteditable="true"]'],
@@ -53,6 +57,7 @@ const LOGIN_SELECTORS = {
   facebook: ['input[name="email"]', 'input[name="pass"]'],
   gmail: ['input[type="email"]', 'input[type="password"]', '#identifierId'],
   whatsapp: ['canvas[aria-label*="Scan"]', 'div[data-ref] canvas'],
+  youtube: ['input[type="email"]', 'input[type="password"]', '#identifierId'],
   chatgpt: ['input[type="email"]', 'input[type="password"]', 'button[type="submit"]'],
   gemini: ['input[type="email"]', 'input[type="password"]', 'button[type="submit"]'],
 };
@@ -64,6 +69,7 @@ const LOGGED_OUT_TEXT = {
   facebook: ['log in', 'password'],
   gmail: ['sign in', 'to continue to gmail'],
   whatsapp: ['scan to log in', 'log in with phone number'],
+  youtube: ['sign in', 'to continue to youtube', 'to continue to youtube studio'],
   chatgpt: ['log in', 'sign up', 'welcome back'],
   gemini: ['log in', 'sign in', 'welcome'],
 };
@@ -96,6 +102,10 @@ export function buildPlatformTargetUrl(platform, username) {
   if (platform === 'twitter') return `https://x.com/${handle}`;
   if (platform === 'linkedin') return handle.includes('linkedin.com') ? handle : `https://www.linkedin.com/in/${handle}/`;
   if (platform === 'facebook') return handle.startsWith('http') ? handle : `https://www.facebook.com/${handle}`;
+  if (platform === 'youtube') {
+    if (handle.startsWith('http')) return handle;
+    return `https://www.youtube.com/${handle.startsWith('@') ? handle : `@${handle}`}`;
+  }
   if (platform === 'gmail') return PLATFORM_URLS.gmail;
   if (platform === 'whatsapp') {
     const digits = handle.replace(/\D/g, '');
@@ -110,6 +120,7 @@ export function buildPlatformSearchUrl(platform, query) {
   if (platform === 'twitter') return `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query`;
   if (platform === 'linkedin') return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
   if (platform === 'facebook') return `https://www.facebook.com/search/people/?q=${encodeURIComponent(query)}`;
+  if (platform === 'youtube') return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
   if (platform === 'gmail') return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(query)}`;
   if (platform === 'whatsapp') return PLATFORM_URLS.whatsapp;
   return PLATFORM_URLS[platform];
@@ -1537,6 +1548,7 @@ export function summarizeAction(platform, step, detail = {}) {
   if (step.action === 'engage_post') return detail.sent ? `Engaged with latest post${username} on ${platform}` : `Drafted engagement${username} on ${platform}`;
   if (step.action === 'follow_user') return detail.clicked ? `Triggered follow/connect${username} on ${platform}` : `Could not find follow control${username} on ${platform}`;
   if (step.action === 'follow_search') return `Processed ${platform} people search follow results for "${query}"`;
+  if (step.action === 'join_groups_search') return `Processed ${platform} group join results for "${query}"`;
   if (step.action === 'engage_batch') return `Processed ${count} ${platform} engagement targets`;
   if (step.action === 'follow_batch') return `Processed ${count} ${platform} follow targets`;
   if (step.action === 'compose_post') return `Opened ${platform} composer`;
@@ -1546,6 +1558,16 @@ export function summarizeAction(platform, step, detail = {}) {
   if (step.action === 'open_result') return `Opened search results for "${query}"`;
   if (step.action === 'extract_context') return `Captured page context for "${query}"`;
   if (step.action === 'export_artifact') return `Prepared artifact output`;
+  if (step.action === 'open_youtube_studio') return 'Opened YouTube Studio';
+  if (step.action === 'open_youtube_content') return 'Opened YouTube Studio content';
+  if (step.action === 'open_youtube_analytics') return 'Opened YouTube Studio analytics';
+  if (step.action === 'open_youtube_community') return 'Opened YouTube Studio community';
+  if (step.action === 'open_youtube_customization') return 'Opened YouTube Studio customization';
+  if (step.action === 'open_youtube_settings') return 'Opened YouTube Studio settings';
+  if (step.action === 'upload_youtube_video') return detail.sent ? 'Uploaded and published YouTube video' : 'Prepared YouTube video upload';
+  if (step.action === 'upload_youtube_short') return detail.sent ? 'Uploaded and published YouTube Short' : 'Prepared YouTube Short upload';
+  if (step.action === 'create_youtube_post') return detail.sent ? 'Published YouTube community post' : 'Drafted YouTube community post';
+  if (step.action === 'write_youtube_description') return detail.filled ? 'Updated YouTube description draft' : 'Prepared YouTube description text';
   return `Completed ${platform}:${step.action}`;
 }
 

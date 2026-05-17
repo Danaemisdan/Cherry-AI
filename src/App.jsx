@@ -1,575 +1,1519 @@
-import { useState, useEffect, useRef } from 'react';
-import './index.css';
+import { useEffect, useMemo, useState } from 'react';
+import { NavLink, Route, Routes } from 'react-router-dom';
+import { PLATFORM_SKILL_CAPABILITIES, WORKFLOW_PRESETS } from '@cherry/shared';
+import { 
+  Search, 
+  Zap, 
+  Plus, 
+  Mic, 
+  ArrowUp, 
+  Paperclip,
+  ChevronDown,
+  RefreshCw,
+  ThumbsUp,
+  ThumbsDown,
+  Copy,
+  Share,
+  Globe,
+  Lightbulb
+} from 'lucide-react';
+import { IntegrationShowcase } from './components/ui/IntegrationShowcase';
+import { AdvancedAIChatInput } from './components/ui/AdvancedAIChatInput';
+// Simple inline logo to avoid 3.5MB SVG parse issue
+const Logo = () => (
+  <svg viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-10 w-auto">
+    <circle cx="20" cy="20" r="18" fill="#dc2626"/>
+    <text x="45" y="28" fill="white" fontSize="24" fontWeight="bold" fontFamily="system-ui">Cherry</text>
+  </svg>
+);
 
-const parseUsernamesFromCsv = (text) => {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8787';
+const backendWsUrl = backendUrl.replace(/^http/i, 'ws');
 
-  if (lines.length <= 1) {
-    return [];
+const platformMeta = [
+  { id: 'instagram', label: 'Instagram', short: 'IG', icon: InstagramIcon, defaultQuery: 'founders in fintech', description: 'Direct outreach and scraping via attached session.' },
+  { id: 'twitter', label: 'X', short: 'X', icon: XIcon, defaultQuery: 'fintech founders', description: 'Automate mentions and DMs on the X platform.' },
+  { id: 'linkedin', label: 'LinkedIn', short: 'in', icon: LinkedinIcon, defaultQuery: 'fintech founders india', description: 'Professional B2B lead generation and outreach.' },
+  { id: 'facebook', label: 'Facebook', short: 'f', icon: FacebookIcon, defaultQuery: 'saas founders', description: 'Group engagement and lead prospecting.' },
+  { id: 'gmail', label: 'Gmail', short: 'M', icon: GmailIcon, defaultQuery: 'warm follow up', description: 'Automated follow-ups and inbox monitoring.' },
+  { id: 'whatsapp', label: 'WhatsApp', short: 'WA', icon: WhatsAppIcon, defaultQuery: 'customer follow up', description: 'One-to-one chat automation in a logged-in WhatsApp Web session.' },
+  { id: 'youtube', label: 'YouTube', short: 'YT', icon: YoutubeIcon, defaultQuery: 'creator community comments', description: 'Creator studio, channel audience, and community intelligence.' },
+  { id: 'chatgpt', label: 'ChatGPT', short: 'GPT', icon: ChatGPTIcon, defaultQuery: 'A cinematic landscape', description: 'Generate images via ChatGPT.' },
+  { id: 'gemini', label: 'Gemini', short: 'G', icon: GeminiIcon, defaultQuery: 'A futuristic city', description: 'Generate images via Gemini.' },
+  { id: 'research', label: 'Research', short: 'R', icon: SearchIcon, defaultQuery: 'best fintech founders in india', description: 'Deep research using managed stealth browser.' },
+];
+
+const defaultCampaignPlatforms = ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube', 'research', 'chatgpt', 'gemini'];
+
+function usePlatformData() {
+  const [events, setEvents] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [agentOnline, setAgentOnline] = useState(false);
+  const [agentState, setAgentState] = useState(null);
+  const [contactMetrics, setContactMetrics] = useState(null);
+
+  async function refreshTasks() {
+    const response = await fetch(`${backendUrl}/tasks`);
+    const payload = await response.json();
+    setTasks(payload.sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt)));
   }
 
-  return lines
-    .slice(1)
-    .map((line) => {
-      const firstCol = line.split(',')[0];
-      return firstCol ? firstCol.replace(/^["'@]+|["']+$/g, '').trim() : '';
-    })
-    .filter(Boolean);
-};
+  async function refreshCampaigns() {
+    const response = await fetch(`${backendUrl}/campaigns`);
+    const payload = await response.json();
+    setCampaigns(payload.reverse());
+  }
 
-// Pure SVG Icons
-const InstagramIcon = () => (
-  <svg viewBox="0 0 24 24">
-    <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zM12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm5.25-8.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>
-  </svg>
-);
+  async function refreshAgents() {
+    const response = await fetch(`${backendUrl}/agents`);
+    const payload = await response.json();
+    const current = payload.find((agent) => agent.online) || payload[0] || null;
+    setAgentState(current);
+    setAgentOnline(Boolean(current?.online));
+  }
 
-const LinkedinIcon = () => (
-  <svg viewBox="0 0 24 24">
-    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-  </svg>
-);
+  async function refreshContactMetrics() {
+    try {
+      const response = await fetch(`${backendUrl}/metrics/contacts`);
+      const payload = await response.json();
+      setContactMetrics(payload);
+    } catch {
+      // Silently fail - metrics not critical
+    }
+  }
 
-const SettingsIcon = () => (
-  <svg viewBox="0 0 24 24">
-    <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm9.953-2.915a10.021 10.021 0 0 0-.256-1.545l-2.02-.387a7.025 7.025 0 0 0-.825-1.996l1.246-1.637a9.972 9.972 0 0 0-1.092-1.092l-1.637 1.246a7.02 7.02 0 0 0-1.996-.826l-.387-2.02A10.02 10.02 0 0 0 13.441 2h-2.882a10.021 10.021 0 0 0-1.545.256l-.387 2.02a7.02 7.02 0 0 0-1.996.825l-1.637-1.246a9.972 9.972 0 0 0-1.092 1.092l1.246 1.637a7.02 7.02 0 0 0-.826 1.996l-2.02.387A10.02 10.02 0 0 0 2 10.559v2.882c.045.518.13 1.037.256 1.545l2.02.387a7.02 7.02 0 0 0 .825 1.996l-1.246 1.637c.3.393.633.766 1.092 1.092l1.637-1.246a7.02 7.02 0 0 0 1.996.826l.387 2.02c.508.126 1.027.211 1.545.256h2.882c.518-.045 1.037-.13 1.545-.256l.387-2.02a7.02 7.02 0 0 0 1.996-.825l1.637 1.246c.393-.3.766-.633 1.092-1.092l-1.246-1.637a7.02 7.02 0 0 0 .826-1.996l2.02-.387c.126-.508.211-1.027.256-1.545v-2.882zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/>
-  </svg>
-);
+  useEffect(() => {
+    refreshTasks().catch(() => {});
+    refreshCampaigns().catch(() => {});
+    refreshAgents().catch(() => {});
+    refreshContactMetrics().catch(() => {});
 
-const XIcon = () => (<svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>);
-const FacebookIcon = () => (<svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>);
-const GmailIcon = () => (<svg viewBox="0 0 24 24"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>);
-const SearchIcon = () => (<svg viewBox="0 0 24 24"><path d="M23.707 20.879l-5.632-5.632A9.972 9.972 0 0 0 20 9.999a10 10 0 1 0-10 10 9.972 9.972 0 0 0 5.247-1.925l5.632 5.632a2 2 0 1 0 2.828-2.828ZM2 9.999a8 8 0 1 1 8 8 8.01 8.01 0 0 1-8-8Z"/></svg>);
+    const socket = new WebSocket(`${backendWsUrl}/ws?role=web`);
+    
+    socket.onopen = () => {
+      console.log('WebSocket connected successfully');
+    };
+    
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    socket.onclose = (event) => {
+      console.log('WebSocket closed:', event.code, event.reason);
+      // Attempt to reconnect after 3 seconds
+      setTimeout(() => {
+        console.log('Attempting to reconnect WebSocket...');
+        const newSocket = new WebSocket(`${backendWsUrl}/ws?role=web`);
+        newSocket.onmessage = socket.onmessage;
+        newSocket.onopen = socket.onopen;
+        newSocket.onerror = socket.onerror;
+        newSocket.onclose = socket.onclose;
+      }, 3000);
+    };
+    
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'agent.status') {
+        setAgentOnline(Boolean(payload.online));
+        setAgentState((current) => ({ ...(current || {}), ...payload }));
+      }
+      if (payload.type === 'contact.metrics.updated') {
+        setContactMetrics(payload.metrics);
+      }
+      setEvents((current) => [payload, ...current].slice(0, 80));
+      refreshTasks().catch(() => {});
+      if (payload.type === 'campaign.updated') {
+        refreshCampaigns().catch(() => {});
+      }
+    };
 
-const UniversalPlatformModule = ({ platformId, title, activeTask, progress, onStart, onStop }) => {
-  const [targetSearch, setTargetSearch] = useState('tech');
-  const [targetUser, setTargetUser] = useState('');
+    const interval = window.setInterval(() => {
+      refreshTasks().catch(() => {});
+      refreshCampaigns().catch(() => {});
+      refreshAgents().catch(() => {});
+      refreshContactMetrics().catch(() => {});
+    }, 4000);
+
+    return () => {
+      socket.close();
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  return {
+    agentState,
+    agentOnline,
+    campaigns,
+    contactMetrics,
+    events,
+    refreshAgents,
+    refreshCampaigns,
+    refreshContactMetrics,
+    refreshTasks,
+    tasks,
+  };
+}
+
+function Shell({ agentOnline, agentState, children }) {
+  const browserAttached = Boolean(agentState?.browserAttached);
+  const sc = !agentOnline ? '' : browserAttached ? 'attached' : 'online';
+  const sl = !agentOnline ? 'Offline' : browserAttached ? 'Browser Attached' : 'Agent Online';
+  const ss = agentState?.profileDirectory
+    ? `${agentState.tabs||0} tabs · ${agentState.profileDirectory.split(/[\\/]/).pop()}`
+    : 'Waiting for local agent…';
+  return (
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <div className="brand">
+            <div className="brand-dot"/>
+            <span className="brand-name">Cherry</span>
+            <span className="brand-tag">AI</span>
+          </div>
+          <div className="status-pill">
+            <div className={`status-dot ${sc}`}/>
+            <div><div className="status-text">{sl}</div><div className="status-sub">{ss}</div></div>
+          </div>
+          <nav className="sidebar-nav">
+            <NavLink to="/" end className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z"/></svg>Workspace
+            </NavLink>
+            <NavLink to="/dashboard" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard
+            </NavLink>
+            <NavLink to="/campaigns" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v2H2zm0 3h12v2H2zm0 3h8v2H2z"/></svg>Campaigns
+            </NavLink>
+            <NavLink to="/history" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM7 4h2v4.414l2.293 2.293-1.414 1.414L7 9.414V4z"/></svg>History
+            </NavLink>
+            <NavLink to="/pairing" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v1h1a3 3 0 0 1 0 6h-1v1a1 1 0 0 1-2 0v-1H6v1a1 1 0 0 1-2 0v-1H3a3 3 0 0 1 0-6h1V4a1 1 0 0 1 1-1h5z"/></svg>Pairing
+            </NavLink>
+          </nav>
+        </div>
+        <div className="sidebar-bottom">
+          <span style={{fontSize:10,color:'var(--text-3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.1em'}}>v1.0 · Cherry AI</span>
+        </div>
+      </aside>
+      <main className="content">{children}</main>
+    </div>
+  );
+}
+
+
+function DialogueBox({ dialogue, onSelect, selectedPlatforms }) {
+  if (!dialogue) return null;
+  const isPlatformSelection = dialogue.type === 'platform_selection';
+  return (
+    <div className="bg-zinc-900/80 border border-zinc-700 rounded-2xl p-6 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <p className="text-white font-medium mb-4">{dialogue.message}</p>
+      <div className="flex flex-wrap gap-2">
+        {dialogue.options?.map((option) => {
+          const isSelected = isPlatformSelection && selectedPlatforms?.includes(option.id);
+          return (
+            <button
+              key={option.id}
+              onClick={() => onSelect(option, isPlatformSelection)}
+              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${
+                isSelected ? 'bg-red-500 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+      {isPlatformSelection && dialogue.continueAction && selectedPlatforms?.length > 0 && (
+        <button
+          onClick={() => onSelect({ action: 'confirm_platforms', data: { platforms: selectedPlatforms } }, false)}
+          className="mt-4 px-6 py-2 bg-white text-black rounded-xl font-bold text-sm hover:bg-zinc-200 transition-all"
+        >
+          {dialogue.continueAction.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Workspace({ refreshTasks, tasks }) {
+  const [prompt, setPrompt] = useState('');
+  const [dialogue, setDialogue] = useState(null);
+  const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [selectedPlatform, setSelectedPlatform] = useState('instagram');
+  const [query, setQuery] = useState('fintech founders');
+  const [username] = useState('');
+  const [batchUsernames] = useState('');
   const [goal, setGoal] = useState('Get a meeting');
   const [tone, setTone] = useState('Casual and brief');
-  const [attachmentAsset, setAttachmentAsset] = useState('');
-  const [maxLimit, setMaxLimit] = useState(15);
-  const [bulkLimit, setBulkLimit] = useState(10);
-  const [minFollowers, setMinFollowers] = useState('');
-  const [maxFollowers, setMaxFollowers] = useState('');
-  const [csvUsernames, setCsvUsernames] = useState([]);
-  const [csvFileLabel, setCsvFileLabel] = useState('');
-  const [followBeforeDM, setFollowBeforeDM] = useState(false);
-  const fileInputRef = useRef(null);
+  const [attachmentPath, setAttachmentPath] = useState('');
+  const [targetUsername, setTargetUsername] = useState('');
+  const [analysisTarget, setAnalysisTarget] = useState('');
+  const [analysisScope, setAnalysisScope] = useState('full');
+  const [maxResults, setMaxResults] = useState(15);
+  const [submitting, setSubmitting] = useState(false);
+  const [automationMode, setAutomationMode] = useState('auto');
 
-  const handleCsvUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = String(ev.target.result || '');
-      const list = parseUsernamesFromCsv(text);
-      setCsvUsernames(list);
-      setCsvFileLabel(list.length > 0 ? `${file.name} • ${list.length} usernames loaded` : `${file.name} • no usernames found`);
-    };
-    reader.readAsText(file);
-    e.target.value = null; // reset for same file uploads
+  // Gmail-specific fields
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailCc, setEmailCc] = useState('');
+  const [emailBcc, setEmailBcc] = useState('');
+  const [emailSignature, setEmailSignature] = useState('');
+  const [gmailSearchQuery, setGmailSearchQuery] = useState('');
+
+  const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
+  const selectedPlatformMeta = platformMeta.find((item) => item.id === selectedPlatform) || platformMeta[0];
+  const capabilities = PLATFORM_SKILL_CAPABILITIES[selectedPlatform] || [];
+  const supports = (action) => {
+    const supported = capabilities.includes(action);
+    console.log(`Platform: ${selectedPlatform}, Action: ${action}, Supported: ${supported}, Capabilities:`, capabilities);
+    return supported;
   };
+  const supportsContactIntelligence = capabilities.includes('map_contacts');
+  const socialIntelligencePlatforms = ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube'];
+  const isSocialIntelligencePlatform = socialIntelligencePlatforms.includes(selectedPlatform);
 
-  const startCsvAction = (type) => {
-    if (csvUsernames.length === 0) {
+  function cn(...classes) {
+    return classes.filter(Boolean).join(' ');
+  }
+
+  useEffect(() => {
+    setQuery(selectedPlatformMeta.defaultQuery);
+  }, [selectedPlatformMeta]);
+
+  async function dispatchTask(payload) {
+    setSubmitting(true);
+    try {
+      await fetch(`${backendUrl}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      await refreshTasks();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitConversation(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    if (!prompt.trim()) return;
+
+    // Send message to dialogue API
+    const response = await fetch(`${backendUrl}/dialogue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'default', message: prompt }),
+    });
+
+    const result = await response.json();
+    setDialogue(result);
+    setSelectedPlatforms([]);
+    setPrompt('');
+  }
+
+  async function submitConversationText(text) {
+    const nextPrompt = String(text || '').trim();
+    if (!nextPrompt) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${backendUrl}/dialogue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'default', message: nextPrompt }),
+      });
+      const result = await response.json();
+      setDialogue(result);
+      setSelectedPlatforms([]);
+      setPrompt('');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDialogueSelect(option, isMultiSelect) {
+    if (isMultiSelect) {
+      // Toggle platform selection
+      setSelectedPlatforms(prev =>
+        prev.includes(option.id)
+          ? prev.filter(p => p !== option.id)
+          : [...prev, option.id]
+      );
       return;
     }
 
-    const limit = Math.min(bulkLimit, csvUsernames.length);
-    const limitedUsernames = csvUsernames.slice(0, limit);
-
-    onStart('engage', `${platformId}_${type}`, {
-      usernameList: limitedUsernames,
-      userGoal: goal,
-      tonePrompt: tone,
-      attachmentUrl: attachmentAsset,
-      maxLimit: limit,
-      followFirst: followBeforeDM && type.includes('dm'),
+    // Handle regular selection
+    const response = await fetch(`${backendUrl}/dialogue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'default', choice: option }),
     });
-  };
-  
-  return (
-    <>
-      <div className="section">
-        <span className="section-title">{title} - Lead Scraper Engine</span>
-        <div className="card">
-          <div className="input-group">
-            <label>Target Keyword/Niche</label>
-            <input type="text" className="input-field" value={targetSearch} onChange={(e)=>setTargetSearch(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Max Profiles to Scrape</label>
-            <input type="number" className="input-field" value={maxLimit} onChange={(e)=>setMaxLimit(parseInt(e.target.value)||1)} min="1" max="1000" />
-          </div>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label>Min Followers</label>
-              <input type="number" className="input-field" value={minFollowers} onChange={(e)=>setMinFollowers(e.target.value)} placeholder="e.g. 1000" min="0" />
-            </div>
-            <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label>Max Followers</label>
-              <input type="number" className="input-field" value={maxFollowers} onChange={(e)=>setMaxFollowers(e.target.value)} placeholder="e.g. 50000" min="0" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('scrape', `${platformId}_scrape`, { hashtag: targetSearch, maxLimit, minFollowers: minFollowers ? parseInt(minFollowers) : null, maxFollowers: maxFollowers ? parseInt(maxFollowers) : null })}>
-              Execute Deep Scrape
-            </button>
-            {activeTask === 'scrape' && (
-              <button className="btn-primary" style={{ backgroundColor: 'var(--apple-red)' }} onClick={onStop}>
-                STOP
-              </button>
-            )}
-          </div>
-          {activeTask === 'scrape' && progress.total > 0 && typeof progress.current !== 'undefined' && (
-             <div style={{ width: '100%', marginTop: '10px' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                 <span>Scraping...</span>
-                 <span>{progress.current} / {progress.total}</span>
-               </div>
-               <div style={{ width: '100%', backgroundColor: '#222', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                 <div style={{ width: `${Math.min(100, Math.max(0, (progress.current / progress.total) * 100))}%`, backgroundColor: 'var(--accent-color)', height: '100%', transition: 'width 0.3s ease' }}></div>
-               </div>
-             </div>
-          )}
-        </div>
-      </div>
 
-      <div className="section">
-        <span className="section-title">{title} - Auto-Engagement Suite</span>
-        <div className="card">
-          <div className="input-group">
-            <label>Target Username</label>
-            <input type="text" className="input-field" value={targetUser} onChange={(e)=>setTargetUser(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>LLM Goal (For DMs/Comments)</label>
-            <input type="text" className="input-field" value={goal} onChange={(e)=>setGoal(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>LLM Tone</label>
-            <input type="text" className="input-field" value={tone} onChange={(e)=>setTone(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Attachment Asset Path (Optional)</label>
-            <input type="text" className="input-field" placeholder="/absolute/path/to/image.png" value={attachmentAsset} onChange={(e)=>setAttachmentAsset(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Feed Usernames From CSV</label>
-            <input type="file" accept=".csv" ref={fileInputRef} style={{ display: 'none' }} onChange={handleCsvUpload} />
-            <button disabled={activeTask !== null} className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
-              Upload Username CSV
-            </button>
-            <div className="helper-text">
-              {csvFileLabel || csvUsernames.length > 0 ? `${csvUsernames.length} usernames loaded` : 'Use a CSV where the first column contains usernames.'}
-            </div>
-          </div>
-          
-          {/* Bulk Action Settings */}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px', padding: '10px', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <label style={{ fontSize: '12px', color: '#aaa' }}>Bulk Limit:</label>
-              <input 
-                type="number" 
-                style={{ width: '60px', padding: '4px 8px', background: '#222', border: '1px solid #333', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
-                value={bulkLimit} 
-                onChange={(e)=>setBulkLimit(Math.max(1, parseInt(e.target.value)||1))} 
-                min="1" 
-                max="100"
-              />
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#aaa', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={followBeforeDM} 
-                onChange={(e) => setFollowBeforeDM(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              Follow first, then DM
-            </label>
-          </div>
+    const result = await response.json();
+    setDialogue(result);
 
-          {/* Single Actions */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm_contact`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
-              DM a Contact
-            </button>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_dm_new`, { username: targetUser, userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset, followFirst: followBeforeDM })}>
-              DM a New Person
-            </button>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_engage`, { username: targetUser, userGoal: goal, tonePrompt: tone })}>
-              Like + AI Comment
-            </button>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_follow`, { username: targetUser })}>
-              Follow User
-            </button>
-            <button disabled={activeTask !== null} className="btn-primary" onClick={() => onStart('engage', `${platformId}_post`, { userGoal: goal, tonePrompt: tone, attachmentUrl: attachmentAsset })}>
-              Auto-Post
-            </button>
-            {activeTask === 'engage' && (
-              <button className="btn-primary" style={{ backgroundColor: 'var(--apple-red)' }} onClick={onStop}>
-                STOP
-              </button>
-            )}
-          </div>
-          
-          {/* Bulk Actions - Only show if CSV loaded */}
-          {csvUsernames.length > 0 && (
-            <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#1a1a1a', borderRadius: '8px', border: '1px solid #333' }}>
-              <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Bulk Actions ({Math.min(bulkLimit, csvUsernames.length)} of {csvUsernames.length} users)
-              </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_dm')} style={{ backgroundColor: followBeforeDM ? '#4a4a2a' : undefined }}>
-                  {followBeforeDM ? 'Follow + DM' : 'Bulk DM'}
-                </button>
-                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_engage')}>
-                  Bulk Engage
-                </button>
-                <button disabled={activeTask !== null} className="btn-secondary" onClick={() => startCsvAction('csv_follow')}>
-                  Bulk Follow
-                </button>
-              </div>
-            </div>
-          )}
-          {activeTask === 'engage' && progress.total > 0 && typeof progress.current !== 'undefined' && (
-             <div style={{ width: '100%', marginTop: '10px' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '4px' }}>
-                 <span>Working...</span>
-                 <span>{progress.current} / {progress.total}</span>
-               </div>
-               <div style={{ width: '100%', backgroundColor: '#222', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                 <div style={{ width: `${Math.min(100, Math.max(0, (progress.current / progress.total) * 100))}%`, backgroundColor: 'var(--accent-color)', height: '100%', transition: 'width 0.3s ease' }}></div>
-               </div>
-             </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-};
-
-function App() {
-  const [tab, setTab] = useState('instagram');
-  const [activeTask, setActiveTask] = useState(null); // 'scrape' or 'engage'
-  const [statusMsg, setStatusMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
-  
-  // License state
-  const [licenseStatus, setLicenseStatus] = useState('checking');
-  const [licenseCode, setLicenseCode] = useState('');
-  const [serverUrl, setServerUrl] = useState('http://localhost:8080');
-  const [showLicenseModal, setShowLicenseModal] = useState(false);
-  
-  // Load saved server URL on mount
-  useEffect(() => {
-    chrome.storage.local.get(['cherry_server_url'], (result) => {
-      if (result.cherry_server_url) {
-        setServerUrl(result.cherry_server_url);
-      }
-    });
-  }, []);
-  
-  useEffect(() => {
-    // Check license status on mount
-    checkLicense();
-  }, []);
-  
-  const checkLicense = async () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ action: 'CHECK_LICENSE' }, (res) => {
-        if (res?.isActive) {
-          setLicenseStatus('active');
-          setShowLicenseModal(false);
-        } else {
-          setLicenseStatus(res?.status || 'inactive');
-          setShowLicenseModal(true);
-        }
-      });
-    }
-  };
-  
-  const [isActivating, setIsActivating] = useState(false);
-  
-  const activateLicense = async () => {
-    if (!licenseCode || !serverUrl) return;
-    
-    // Save server URL
-    await chrome.storage.local.set({ cherry_server_url: serverUrl });
-    
-    setIsActivating(true);
-    setStatusMsg('Connecting to license server...');
-    setErrorMsg('');
-    
-    console.log('[Cherry UI] Starting activation with code:', licenseCode, 'server:', serverUrl);
-    
-    chrome.runtime.sendMessage({ 
-      action: 'ACTIVATE_LICENSE', 
-      code: licenseCode,
-      serverUrl: serverUrl
-    }, (res) => {
-      setIsActivating(false);
-      console.log('[Cherry UI] Activation response:', res);
-      
-      if (chrome.runtime.lastError) {
-        console.error('[Cherry UI] Runtime error:', chrome.runtime.lastError);
-        setErrorMsg('Error: ' + chrome.runtime.lastError.message);
-        return;
-      }
-      
-      if (!res) {
-        setErrorMsg('No response from background. Check console for errors.');
-        return;
-      }
-      
-      if (res.success) {
-        setLicenseStatus('active');
-        setShowLicenseModal(false);
-        setStatusMsg('✓ License activated!');
-        setErrorMsg('');
-      } else {
-        setErrorMsg(res.message || 'Activation failed. Is admin extension installed?');
-      }
-    });
-  };
-  
-  useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-      const listener = (msg) => {
-        if (msg.action === 'PROGRESS') {
-          setProgress({ current: msg.current, total: msg.total });
-        }
-      };
-      chrome.runtime.onMessage.addListener(listener);
-      return () => chrome.runtime.onMessage.removeListener(listener);
-    }
-  }, []);
-
-  const startEngine = (taskCategory, type, customPayload) => {
-    setActiveTask(taskCategory);
-    setProgress({ current: 0, total: customPayload?.maxLimit || 15 });
-    setStatusMsg('Waking engine...');
-    setErrorMsg('');
-    
-    try {
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage({
-          action: 'START_ENGINE',
-          type: type,
-          payload: customPayload || {}
-        }, (res) => {
-          setActiveTask(null);
-          setProgress({ current: 0, total: 0 });
-          if (chrome.runtime.lastError) {
-            setErrorMsg(chrome.runtime.lastError.message);
-            setStatusMsg('');
-          } else if (res?.status?.startsWith('Error')) {
-            setErrorMsg(res.status);
-            setStatusMsg('');
-          } else {
-            // CSV is downloaded by the service worker via chrome.downloads.download()
-            // We just display the status here
-            setStatusMsg(res?.status || 'Done.');
-          }
+    // If we have tasks to execute, dispatch them
+    if (result.type === 'execution_plan' && result.tasks) {
+      for (const task of result.tasks) {
+        await dispatchTask({
+          prompt: task.prompt,
+          context: task.context,
+          preferredBrowserMode: task.platform === 'research' ? 'managed' : 'attached',
         });
-      } else {
-        setTimeout(() => { setActiveTask(null); setStatusMsg('Simulated run ok.'); }, 2000);
       }
-    } catch (e) {
-      setActiveTask(null);
-      setErrorMsg(e.toString());
-      setStatusMsg('');
+      setDialogue(null);
+      setSelectedPlatforms([]);
     }
-  };
+  }
 
-  const stopEngine = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-      chrome.runtime.sendMessage({ action: 'ABORT_ENGINE' });
-      setStatusMsg('Aborting engine safely...');
-      setActiveTask(null);
+  async function runPlatformAction(operation) {
+    console.log('[runPlatformAction] Starting operation:', operation);
+    console.log('[runPlatformAction] Selected platform:', selectedPlatform);
+    console.log('[runPlatformAction] Query value:', query);
+
+    const usernames = normalizeList(batchUsernames);
+    const targetHandle = targetUsername.trim() || username.trim() || undefined;
+    const autoOnlyOperations = new Set(['auto_dm', 'auto_dm_contact', 'auto_dm_new', 'like_ai_comment', 'like_post', 'auto_comment', 'follow_user', 'follow_search', 'connect', 'connect_swn', 'connect_sn', 'auto_post', 'bulk_dm_csv', 'bulk_engage_csv', 'bulk_follow_csv']);
+    const messageOperations = new Set(['send_message', 'message_batch', 'lead_and_message', 'auto_dm', 'auto_dm_contact', 'auto_dm_new', 'bulk_dm_csv']);
+    const trimmedQuery = query.trim();
+    const noisyDefaults = new Set(['customer follow up']);
+    const messageContext = messageOperations.has(operation) && trimmedQuery && !noisyDefaults.has(trimmedQuery.toLowerCase())
+      ? trimmedQuery
+      : undefined;
+    const baseContext = {
+      destination: operation === 'find_leads' || operation === 'lead_and_message' ? 'sheet' : 'inbox',
+      maxResults: Number(maxResults) || 15,
+      messageGoal: goal,
+      platform: selectedPlatform,
+      query: messageOperations.has(operation) ? messageContext : trimmedQuery,
+      requireManualReview: autoOnlyOperations.has(operation) ? false : automationMode === 'manual',
+      tone,
+      attachmentPath: attachmentPath.trim() || undefined,
+      emailSubject: emailSubject.trim() || undefined,
+      emailCc: emailCc.trim() || undefined,
+      emailBcc: emailBcc.trim() || undefined,
+      emailSignature: emailSignature.trim() || undefined,
+      username: targetHandle,
+      usernames,
+    };
+
+    console.log('[runPlatformAction] Base context:', baseContext);
+
+    const focusedAnalysisTarget = analysisTarget.trim() || targetHandle || undefined;
+    const payloads = {
+      open_workspace: {
+        prompt: `Open ${selectedPlatformMeta.label} in my attached Chrome workspace.`,
+        context: { ...baseContext, operation: 'open_workspace' },
+      },
+      find_leads: {
+        prompt: `Find ${maxResults} leads on ${selectedPlatformMeta.label} for "${query}" and export them to a sheet.`,
+        context: { ...baseContext, operation: 'find_leads' },
+      },
+      send_message: {
+        prompt: `Message ${username || 'the selected contact'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'send_message' },
+      },
+      message_batch: {
+        prompt: `Message these ${usernames.length} contacts one by one on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Respect caps and review before send.`,
+        context: { ...baseContext, operation: 'message_batch' },
+      },
+      lead_and_message: {
+        prompt: `Find ${maxResults} leads on ${selectedPlatformMeta.label} for "${query}", put them in a sheet, then message them one by one. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'lead_and_message' },
+      },
+      scrape_profiles: {
+        prompt: `Scrape profile search results for "${query}" on ${selectedPlatformMeta.label}. Limit: ${maxResults}.`,
+        context: { ...baseContext, operation: 'scrape_profiles' },
+      },
+      execute_deep_scrape: {
+        prompt: `Execute a deep scrape on ${selectedPlatformMeta.label} for keyword "${query}". Limit: ${maxResults}.`,
+        context: { ...baseContext, operation: 'execute_deep_scrape' },
+      },
+      auto_dm: {
+        prompt: `Send an automated DM to ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_dm', attachmentPath },
+      },
+      auto_dm_contact: {
+        prompt: `Send an automated DM to contact ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_dm_contact', attachmentPath },
+      },
+      auto_dm_new: {
+        prompt: `Send an automated DM to new person ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Attachment: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_dm_new', attachmentPath },
+      },
+      like_ai_comment: {
+        prompt: `Like and leave an AI-generated comment on ${targetHandle || 'the user'}'s recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'like_ai_comment' },
+      },
+      like_post: {
+        prompt: `Like ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'like_post' },
+      },
+      auto_comment: {
+        prompt: `Leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'auto_comment' },
+      },
+      comment_post: {
+        prompt: `Leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'comment_post' },
+      },
+      engage_post: {
+        prompt: `Like and leave an AI-generated comment on ${targetHandle || 'the user'}'s most recent post on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'engage_post' },
+      },
+      follow_user: {
+        prompt: `Follow ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'follow_user' },
+      },
+      follow_search: {
+        prompt: `Search people on ${selectedPlatformMeta.label} for "${query}" and follow or add each result one by one. Limit: ${maxResults}.`,
+        context: { ...baseContext, operation: 'follow_search' },
+      },
+      connect: {
+        prompt: `LinkedIn connect-SWN: send connection request without a note to ${targetHandle || 'the user'}.`,
+        context: { ...baseContext, operation: 'connect_swn' },
+      },
+      connect_swn: {
+        prompt: `LinkedIn connect-SWN: send connection request without a note to ${targetHandle || 'the user'}.`,
+        context: { ...baseContext, operation: 'connect_swn' },
+      },
+      connect_sn: {
+        prompt: `LinkedIn connect-SN: send connection request with a personal note to ${targetHandle || 'the user'}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'connect_sn' },
+      },
+      follow_and_message: {
+        prompt: `Follow ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}, then send a contextual message. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'follow_and_message' },
+      },
+      scrape_and_message: {
+        prompt: `Scrape ${maxResults} ${selectedPlatformMeta.label} profiles for "${query}", then message the provided targets one by one. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'scrape_and_message', destination: 'sheet' },
+      },
+      auto_post: {
+        prompt: `Automatically create a post on ${selectedPlatformMeta.label}. Content goal: ${goal}. Tone: ${tone}. Asset: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'auto_post', attachmentPath },
+      },
+      // Gmail-specific
+      gmail_search: {
+        prompt: `Search Gmail for: ${gmailSearchQuery || query}`,
+        context: { ...baseContext, operation: 'gmail_search', query: gmailSearchQuery || query },
+      },
+      gmail_get_context: {
+        prompt: `Read and extract context from my Gmail inbox.`,
+        context: { ...baseContext, operation: 'gmail_get_context', maxResults: 20 },
+      },
+      gmail_get_profile: {
+        prompt: `Get profile context for email ${targetUsername} from Gmail history.`,
+        context: { ...baseContext, operation: 'gmail_get_profile' },
+      },
+      gmail_reply: {
+        prompt: `Reply to the latest email from ${targetUsername} on Gmail. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'gmail_reply' },
+      },
+      bulk_dm_csv: {
+        prompt: `Execute a bulk DM campaign from CSV on ${selectedPlatformMeta.label}. List size: ${usernames.length}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'bulk_dm_csv' },
+      },
+      bulk_engage_csv: {
+        prompt: `Execute bulk engagement (like/comment) from CSV on ${selectedPlatformMeta.label}. List size: ${usernames.length}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'bulk_engage_csv' },
+      },
+      bulk_follow_csv: {
+        prompt: `Execute bulk follow from CSV on ${selectedPlatformMeta.label}. List size: ${usernames.length}.`,
+        context: { ...baseContext, operation: 'bulk_follow_csv' },
+      },
+      open_status: {
+        prompt: `Open the status or updates view in ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'open_status' },
+      },
+      post_status: {
+        prompt: `Create a new status on ${selectedPlatformMeta.label}. Goal: ${goal}. Tone: ${tone}. Asset: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'post_status', attachmentPath },
+      },
+      change_profile_photo: {
+        prompt: `Change the profile photo on ${selectedPlatformMeta.label}. Asset: ${attachmentPath || 'none'}.`,
+        context: { ...baseContext, operation: 'change_profile_photo', attachmentPath },
+      },
+      delete_chat: {
+        prompt: `Delete the chat with ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'delete_chat' },
+      },
+      block_user: {
+        prompt: `Block ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'block_user' },
+      },
+      report_user: {
+        prompt: `Report ${targetHandle || 'the selected contact'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'report_user' },
+      },
+      scrape_followers: {
+        prompt: `Scrape followers or competitor audience from ${targetHandle || query} on ${selectedPlatformMeta.label}. Limit: ${maxResults}.`,
+        context: { ...baseContext, operation: 'scrape_followers', query: targetHandle || query },
+      },
+      map_contacts: {
+        prompt: focusedAnalysisTarget
+          ? `Analyze ${focusedAnalysisTarget} on ${selectedPlatformMeta.label}: profile context, chat context, and sentiment for the dashboard.`
+          : `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
+        context: {
+          ...baseContext,
+          operation: 'map_contacts',
+          destination: 'artifact',
+          username: focusedAnalysisTarget,
+          query: focusedAnalysisTarget || trimmedQuery,
+          analysisScope,
+          includeConversations: analysisScope !== 'profiles',
+          analyzeIntelligence: true,
+        },
+      },
+      // ChatGPT & Gemini specific — combine ALL panel inputs into a rich prompt
+      generate_image: (() => {
+        const subject = query.trim() || 'A cinematic landscape';
+        const parts = [`Create an image of: ${subject}.`];
+        if (targetUsername.trim()) parts.push(`Subject/Target: ${targetUsername.trim()}.`);
+        if (goal && goal.trim()) parts.push(`Goal/Purpose: ${goal.trim()}.`);
+        if (tone && tone.trim()) parts.push(`Style/Tone: ${tone.trim()}.`);
+        if (maxResults) parts.push(`Variations: ${maxResults}.`);
+        if (attachmentPath.trim()) parts.push(`Reference asset: ${attachmentPath.trim()}.`);
+        const composedPrompt = parts.join(' ');
+        return {
+          prompt: composedPrompt,
+          context: {
+            ...baseContext,
+            operation: 'generate_image',
+            messageGoal: subject,
+            query: subject,
+            imageSubject: subject,
+            imageTarget: targetUsername.trim() || undefined,
+            imageGoal: goal && goal.trim() ? goal.trim() : undefined,
+            imageTone: tone && tone.trim() ? tone.trim() : undefined,
+            imageVariations: Number(maxResults) || 1,
+            attachmentPath: attachmentPath.trim() || undefined,
+          },
+        };
+      })(),
+      ask: (() => {
+        const question = query.trim() || 'What can you help me with?';
+        const parts = [question];
+        if (targetUsername.trim()) parts.push(`Context — about: ${targetUsername.trim()}.`);
+        if (goal && goal.trim()) parts.push(`Goal: ${goal.trim()}.`);
+        if (tone && tone.trim()) parts.push(`Tone: ${tone.trim()}.`);
+        if (attachmentPath.trim()) parts.push(`Attached file: ${attachmentPath.trim()}.`);
+        const composedPrompt = parts.join(' ');
+        return {
+          prompt: composedPrompt,
+          context: {
+            ...baseContext,
+            operation: 'ask',
+            messageGoal: question,
+            query: question,
+            askTarget: targetUsername.trim() || undefined,
+            askGoal: goal && goal.trim() ? goal.trim() : undefined,
+            askTone: tone && tone.trim() ? tone.trim() : undefined,
+            attachmentPath: attachmentPath.trim() || undefined,
+          },
+        };
+      })(),
+    };
+
+    const operationPayload = payloads[operation];
+    console.log('[runPlatformAction] Operation payload:', operationPayload);
+
+    if (!operationPayload) {
+      console.error(`[runPlatformAction] Missing payload for operation: ${operation}`);
+      console.error('[runPlatformAction] Available operations:', Object.keys(payloads));
+      return;
     }
-  };
+
+    await dispatchTask({
+      ...operationPayload,
+      preferredBrowserMode: selectedPlatform === 'research' ? 'managed' : 'attached',
+    });
+    console.log('[runPlatformAction] Task dispatched successfully');
+  }
+
+
+  const isAI = selectedPlatform==='chatgpt'||selectedPlatform==='gemini';
+  const isGmail = selectedPlatform==='gmail';
+  const isWA = selectedPlatform==='whatsapp';
+  const isLI = selectedPlatform==='linkedin';
 
   return (
-    <div className="app-container">
-      <header>
-        <div className="nav-bar" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
-          <button className={`nav-icon ${tab === 'instagram' ? 'active' : ''}`} onClick={() => { setTab('instagram'); setStatusMsg(''); setErrorMsg(''); }}>
-            <InstagramIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'twitter' ? 'active' : ''}`} onClick={() => { setTab('twitter'); setStatusMsg(''); setErrorMsg(''); }}>
-            <XIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'linkedin' ? 'active' : ''}`} onClick={() => { setTab('linkedin'); setStatusMsg(''); setErrorMsg(''); }}>
-            <LinkedinIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'facebook' ? 'active' : ''}`} onClick={() => { setTab('facebook'); setStatusMsg(''); setErrorMsg(''); }}>
-            <FacebookIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'gmail' ? 'active' : ''}`} onClick={() => { setTab('gmail'); setStatusMsg(''); setErrorMsg(''); }}>
-            <GmailIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'ddg' ? 'active' : ''}`} onClick={() => { setTab('ddg'); setStatusMsg(''); setErrorMsg(''); }}>
-            <SearchIcon />
-          </button>
-          <button className={`nav-icon ${tab === 'settings' ? 'active' : ''}`} onClick={() => { setTab('settings'); setStatusMsg(''); setErrorMsg(''); }}>
-            <SettingsIcon />
-          </button>
+    <div className="workspace">
+      {/* LEFT: Chat feed */}
+      <div className="chat-pane">
+        <div className="chat-header">
+          <div style={{width:26,height:26,borderRadius:8,background:'var(--red-dim)',border:'1px solid rgba(229,57,53,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <selectedPlatformMeta.icon style={{width:13,height:13}}/>
+          </div>
+          <div>
+            <div className="chat-header-title">Cherry AI — {selectedPlatformMeta.label}</div>
+            <div className="chat-header-sub">Agentic task feed</div>
+          </div>
+          <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
         </div>
-      </header>
 
-      <div className="content-layer" style={{ overflowY: 'auto' }}>
-        {errorMsg && <div className="error-box" style={{ marginBottom: '16px' }}>{errorMsg}</div>}
-        {statusMsg && <div className="status-box" style={{ marginBottom: '16px' }}>{statusMsg}</div>}
-
-        {tab === 'instagram' && (
-          <UniversalPlatformModule platformId="ig" title="Instagram" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'linkedin' && (
-          <UniversalPlatformModule platformId="li" title="LinkedIn" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'twitter' && (
-          <UniversalPlatformModule platformId="twitter" title="X/Twitter" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'facebook' && (
-          <UniversalPlatformModule platformId="fb" title="Facebook" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'gmail' && (
-          <UniversalPlatformModule platformId="gmail" title="Gmail" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'ddg' && (
-          <UniversalPlatformModule platformId="ddg" title="DuckDuckGo" activeTask={activeTask} progress={progress} onStart={startEngine} onStop={stopEngine} />
-        )}
-
-        {tab === 'settings' && (
-          <div className="section">
-            <span className="section-title">System Properties</span>
-            <div className="card">
-              <div className="input-group">
-                <label>Stealth Engine Cooldowns</label>
-                <input type="text" className="input-field" defaultValue="15s - 45s (Dynamic)" disabled />
-              </div>
-              <div className="input-group" style={{ marginTop: '12px' }}>
-                <label>LLM Active Pipeline</label>
-                <input type="text" className="input-field" defaultValue="Cherry AI Engine (TinyLlama GGUF)" disabled />
-              </div>
-              <div className="input-group" style={{ marginTop: '12px' }}>
-                <label>License Server IP/URL</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  value={serverUrl} 
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder="http://192.168.1.100:8080"
-                />
-                <p style={{ color: '#666', fontSize: '11px', marginTop: '4px' }}>
-                  Enter the admin laptop's IP address (e.g., http://192.168.1.100:8080)
-                </p>
-              </div>
-              <div style={{ marginTop: '12px' }}>
-                <label>License Status: </label>
-                <span style={{ 
-                  color: licenseStatus === 'active' ? '#34C759' : 
-                         licenseStatus === 'checking' ? '#FF9500' : '#FF3B30',
-                  fontWeight: 'bold'
-                }}>
-                  {licenseStatus === 'active' ? '✓ ACTIVE' : 
-                   licenseStatus === 'checking' ? '⏳ CHECKING' : 
-                   licenseStatus === 'pending_activation' ? '⚠ PENDING ACTIVATION' :
-                   licenseStatus === 'revoked' ? '❌ REVOKED' : '✗ INACTIVE'}
-                </span>
+        <div className="chat-messages custom-scroll">
+          {displayedTasks.length===0 ? (
+            <div className="chat-empty">
+              <div className="chat-empty-icon"><selectedPlatformMeta.icon style={{width:26,height:26}}/></div>
+              <h2>What's on your mind?</h2>
+              <p>Type a command or use the panel →</p>
+            </div>
+          ) : displayedTasks.map(task=>(
+            <div key={task.id} className="task-bubble">
+              <div className="task-bubble-user">{task.prompt}</div>
+              <div className="task-bubble-agent">
+                <div className="task-card">
+                  <div className="task-card-header">
+                    <div className="task-card-icon"><selectedPlatformMeta.icon style={{width:12,height:12}}/></div>
+                    <span className="task-card-prompt">{task.context?.platform||'auto'} · {task.context?.operation||'task'}</span>
+                    <span className="task-card-time">{new Date(task.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                    <span className={`task-badge ${task.status}`}>{task.status}</span>
+                  </div>
+                  {task.events?.find(e=>e.type==='plan.generated')?.plan?.steps?.length ? (
+                    <div className="task-steps">
+                      {task.events.find(e=>e.type==='plan.generated').plan.steps.map(step=>{
+                        const ev=[...(task.events||[])].reverse();
+                        const fail=ev.find(e=>e.stepId===step.id&&e.type==='step.failed');
+                        const done=ev.find(e=>e.stepId===step.id&&e.type==='step.progress');
+                        const run=ev.find(e=>e.stepId===step.id&&e.type==='step.started');
+                        const kind=fail?'failed':done?'done':run?'running':'';
+                        return (
+                          <div key={step.id} className="task-step">
+                            <div className={`task-step-dot ${kind}`}/>
+                            <span className="task-step-name">{step.platform}:{step.action} </span>
+                            <span className="task-step-result">{fail?.error||done?.message||run?.label||'Queued'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ):null}
+                  {(()=>{
+                    const fail=[...(task.events||[])].reverse().find(e=>e.type==='task.failed'||e.type==='step.failed');
+                    const hitl=[...(task.events||[])].reverse().find(e=>e.type==='hitl.required');
+                    const done=[...(task.events||[])].reverse().find(e=>e.type==='task.completed');
+                    if(hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--amber)',borderTop:'1px solid var(--panel-border)'}}>⚠️ {hitl.message}</div>;
+                    if(fail&&!hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--red)',borderTop:'1px solid var(--panel-border)'}}>{fail.error||fail.detail}</div>;
+                    if(done)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--green)',borderTop:'1px solid var(--panel-border)'}}>✓ {done.summary}</div>;
+                    return null;
+                  })()}
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+
+        {dialogue && (
+          <div className="dialogue-box">
+            <div className="dialogue-msg">{dialogue.message}</div>
+            <div className="dialogue-opts">
+              {dialogue.options?.map(opt=>(
+                <button key={opt.id} className={`dialogue-opt ${dialogue.type==='platform_selection'&&selectedPlatforms.includes(opt.id)?'selected':''}`}
+                  onClick={()=>handleDialogueSelect(opt,dialogue.type==='platform_selection')}>{opt.label}</button>
+              ))}
+            </div>
+            {dialogue.type==='platform_selection'&&dialogue.continueAction&&selectedPlatforms.length>0&&(
+              <button className="dialogue-confirm" onClick={()=>handleDialogueSelect({action:'confirm_platforms',data:{platforms:selectedPlatforms}},false)}>{dialogue.continueAction.label}</button>
+            )}
           </div>
         )}
-        
-        {/* License Activation Modal */}
-        {showLicenseModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              backgroundColor: '#1a1a1a',
-              padding: '30px',
-              borderRadius: '12px',
-              width: '90%',
-              maxWidth: '400px',
-              textAlign: 'center'
-            }}>
-              <h2 style={{ color: '#007AFF', marginBottom: '20px' }}>🔐 License Required</h2>
-              <p style={{ color: '#888', marginBottom: '20px', fontSize: '14px' }}>
-                This extension requires activation. Please enter your license code or contact your administrator.
-              </p>
-              <div style={{ marginBottom: '15px' }}>
-                <input
-                  type="password"
-                  placeholder="Enter license code"
-                  value={licenseCode}
-                  onChange={(e) => setLicenseCode(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#2a2a2a',
-                    border: '1px solid #333',
-                    borderRadius: '6px',
-                    color: '#fff',
-                    fontSize: '14px',
-                    boxSizing: 'border-box'
-                  }}
-                />
+
+        <div className="chat-input-wrap">
+          <div className="chat-input-box">
+            <textarea rows={1} placeholder="Talk to Cherry…" value={prompt}
+              onChange={e=>{setPrompt(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'}}
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitConversation()}}}/>
+            <button className="chat-send-btn" onClick={submitConversation} disabled={!prompt.trim()||submitting}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1 14L8 2l7 12H9.5L8 9.5 6.5 14H1z"/></svg>
+            </button>
+          </div>
+          <div className="chat-quick-prompts">
+            {[['💰','More sales'],['📢','Grow brand'],['🔍','Research'],['👁️','Monitor']].map(([ic,lb])=>(
+              <button key={lb} className="quick-prompt-btn" onClick={()=>submitConversationText(`${lb} on ${selectedPlatformMeta.label}`)}>{ic} {lb}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT: Command Panel */}
+      <div className="command-panel">
+        <div className="command-panel-header">
+          <span className="command-panel-title">Command Center</span>
+          <div className="auto-toggle" style={{width:150}}>
+            <button className={`auto-toggle-btn ${automationMode==='manual'?'active':''}`} onClick={()=>setAutomationMode('manual')}>Manual</button>
+            <button className={`auto-toggle-btn ${automationMode==='auto'?'active':''}`} onClick={()=>setAutomationMode('auto')}>Auto</button>
+          </div>
+        </div>
+
+        <div className="platform-tabs">
+          {platformMeta.map(p=>(
+            <button key={p.id} className={`platform-tab ${selectedPlatform===p.id?'active':''}`} onClick={()=>setSelectedPlatform(p.id)}>
+              <div className="platform-tab-dot"/>{p.label}
+            </button>
+          ))}
+        </div>
+
+        {isSocialIntelligencePlatform && supportsContactIntelligence && (
+          <div className="intelligence-strip">
+            <div>
+              <div className="intelligence-kicker">Profile + chat intelligence</div>
+              <div className="intelligence-copy">
+                Enter a handle, email, profile URL, or chat name to focus the analysis. Leave blank to scan visible contacts.
               </div>
-              <p style={{ color: '#666', fontSize: '12px', marginBottom: '15px' }}>
-                Make sure the admin has started the license server on their laptop.
-              </p>
-              <button
-                onClick={activateLicense}
-                disabled={!licenseCode || !serverUrl || isActivating}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: licenseCode && serverUrl && !isActivating ? '#007AFF' : '#333',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  cursor: licenseCode && serverUrl && !isActivating ? 'pointer' : 'not-allowed',
-                  fontWeight: 'bold'
-                }}
-              >
-                {isActivating ? 'Activating...' : 'Activate'}
+            </div>
+            <div className="intelligence-target-row">
+              <input
+                className="intelligence-input"
+                placeholder={`@handle, email, profile URL, or chat name on ${selectedPlatformMeta.label}`}
+                value={analysisTarget}
+                onChange={(event)=>setAnalysisTarget(event.target.value)}
+                onKeyDown={(event)=>{if(event.key==='Enter'){event.preventDefault();runPlatformAction('map_contacts')}}}
+              />
+              <button className="mini-clear-btn" onClick={()=>setAnalysisTarget('')} disabled={!analysisTarget.trim()}>
+                Clear
               </button>
-              
-              {errorMsg && (
-                <p style={{ color: '#FF3B30', marginTop: '15px', fontSize: '13px' }}>
-                  {errorMsg}
-                </p>
-              )}
-              {licenseStatus === 'revoked' && (
-                <p style={{ color: '#FF3B30', marginTop: '15px', fontSize: '13px' }}>
-                  ⚠️ Your license has been revoked. Please contact your administrator.
-                </p>
-              )}
             </div>
+            <div className="analysis-scope-toggle" aria-label="Analysis scope">
+              {[
+                ['full', 'Profile + Chat'],
+                ['profiles', 'Profile only'],
+                ['chats', 'Chat + Sentiment'],
+              ].map(([scope, label]) => (
+                <button
+                  key={scope}
+                  className={analysisScope === scope ? 'active' : ''}
+                  onClick={()=>setAnalysisScope(scope)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button className="cmd-btn intelligence-primary" onClick={()=>runPlatformAction('map_contacts')}>
+              {analysisTarget.trim() ? `Analyze ${analysisTarget.trim()}` : 'Sync Visible Intelligence'}
+            </button>
           </div>
         )}
+
+        <div className="command-scroll custom-scroll">
+          <div className="cmd-section">
+            <div className="cmd-section-title">{isAI?'Prompt Studio':'Lead Scraper'}</div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Subject / Prompt':'Keyword / Niche'}</label>
+              <input className="cmd-input" placeholder={isAI?'A cinematic landscape…':'e.g. fintech founders'} value={query} onChange={e=>setQuery(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Variations':'Max Results'}</label>
+              <input className="cmd-input small" type="number" value={maxResults} onChange={e=>setMaxResults(e.target.value)}/>
+            </div>
+            {(supports('scrape_results')||supports('search'))&&<button className="cmd-btn primary" onClick={()=>runPlatformAction('execute_deep_scrape')}>🔍 Deep Scrape</button>}
+            {supports('scrape_results')&&<button className="cmd-btn" onClick={()=>runPlatformAction('scrape_profiles')}>Search Results Scrape →</button>}
+            {supports('scrape_followers')&&<button className="cmd-btn" onClick={()=>runPlatformAction('scrape_followers')}>Extract Competitor Audience →</button>}
+          </div>
+
+          <div className="divider"/>
+
+          <div className="cmd-section">
+            <div className="cmd-section-title">{isAI?'AI Options':'Outreach'}</div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Subject / Focus':'Target Username / Email'}</label>
+              <input className="cmd-input" placeholder={isAI?'e.g. hospital at sunset':'username or email'} value={targetUsername} onChange={e=>setTargetUsername(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">Goal</label>
+              <input className="cmd-input" placeholder="e.g. Get a meeting" value={goal} onChange={e=>setGoal(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">Tone</label>
+              <input className="cmd-input" placeholder="e.g. Casual and brief" value={tone} onChange={e=>setTone(e.target.value)}/>
+            </div>
+            <div className="cmd-field">
+              <label className="cmd-label">{isAI?'Reference File':'Attachment'}</label>
+              <input className="cmd-input" placeholder="/path/to/file" value={attachmentPath} onChange={e=>setAttachmentPath(e.target.value)}/>
+            </div>
+
+            {isGmail&&<>
+              <div className="cmd-field"><label className="cmd-label">Subject</label><input className="cmd-input" placeholder="AI picks if empty" value={emailSubject} onChange={e=>setEmailSubject(e.target.value)}/></div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5,marginBottom:8}}>
+                <div><label className="cmd-label">CC</label><input className="cmd-input small" placeholder="cc@…" value={emailCc} onChange={e=>setEmailCc(e.target.value)}/></div>
+                <div><label className="cmd-label">BCC</label><input className="cmd-input small" placeholder="bcc@…" value={emailBcc} onChange={e=>setEmailBcc(e.target.value)}/></div>
+              </div>
+              <div className="cmd-field"><label className="cmd-label">Signature</label><textarea className="cmd-input" rows={2} style={{resize:'none'}} placeholder={"Best,\nYour Name"} value={emailSignature} onChange={e=>setEmailSignature(e.target.value)}/></div>
+              <div style={{display:'flex',gap:5,marginBottom:5}}>
+                <input className="cmd-input" style={{flex:1}} placeholder="Search Gmail…" value={gmailSearchQuery} onChange={e=>setGmailSearchQuery(e.target.value)}/>
+                <button className="cmd-btn" style={{width:'auto',padding:'0 10px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_search')}>🔍</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:4,marginBottom:8}}>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_get_context')}>📬 Inbox</button>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_get_profile')}>👤 Profile</button>
+                <button className="cmd-btn" style={{fontSize:10,padding:'6px 3px',marginBottom:0}} onClick={()=>runPlatformAction('gmail_reply')}>↩️ Reply</button>
+              </div>
+            </>}
+
+            {supports('send_message')&&<>
+              <button className="cmd-btn primary" onClick={()=>runPlatformAction(isGmail?'auto_dm':'auto_dm_contact')}>{isGmail?'✉️ Auto-Email':'💬 DM Contact'}</button>
+              {!isGmail&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('auto_dm_new')}>💬 DM New Person</button>}
+            </>}
+            {isAI&&supports('ask')&&<button className="cmd-btn primary" onClick={()=>runPlatformAction('ask')}>💬 Ask Question</button>}
+            {isAI&&supports('generate_image')&&<button className="cmd-btn secondary" onClick={()=>runPlatformAction('generate_image')}>🎨 Generate Image</button>}
+            {supports('like_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('like_post')}>❤️ Like Post</button>}
+            {supports('engage_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('engage_post')}>💬 AI Comment</button>}
+            {supports('follow_user')&&<button className="cmd-btn" onClick={()=>runPlatformAction('follow_user')}>➕ Follow User</button>}
+            {isLI&&supports('connect_swn')&&<>
+              <button className="cmd-btn" onClick={()=>runPlatformAction('connect_swn')}>🤝 Connect (No Note)</button>
+              <button className="cmd-btn" onClick={()=>runPlatformAction('connect_sn')}>🤝 Connect (With Note)</button>
+            </>}
+            {supports('publish_post')&&<button className="cmd-btn" onClick={()=>runPlatformAction('auto_post')}>📝 Auto-Post</button>}
+            {isWA&&<>
+              {supports('open_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('open_status')}>👁️ View Status</button>}
+              {supports('post_status')&&<button className="cmd-btn" onClick={()=>runPlatformAction('post_status')}>📸 Post Status</button>}
+            </>}
+          </div>
+
+          {WORKFLOW_PRESETS.filter(p=>({find_leads:supports('scrape_results'),scrape_profiles:supports('scrape_results'),follow_user:supports('follow_user'),send_message:supports('send_message'),follow_and_message:supports('follow_user')&&supports('send_message'),lead_and_message:supports('scrape_results')&&supports('message_batch'),map_contacts:supports('map_contacts')})[p.id]).length>0&&<>
+            <div className="divider"/>
+            <div className="cmd-section">
+              <div className="cmd-section-title">Workflow Presets</div>
+              <div className="preset-grid">
+                {WORKFLOW_PRESETS.filter(p=>({find_leads:supports('scrape_results'),scrape_profiles:supports('scrape_results'),follow_user:supports('follow_user'),send_message:supports('send_message'),follow_and_message:supports('follow_user')&&supports('send_message'),lead_and_message:supports('scrape_results')&&supports('message_batch'),map_contacts:supports('map_contacts')})[p.id]).map(p=>(
+                  <button key={p.id} className="preset-btn" onClick={()=>runPlatformAction(p.id)}>
+                    <span className="preset-btn-label">{p.id === 'map_contacts' ? 'Profile + Chat Sync' : p.label}</span>
+                    <span className="preset-btn-desc">
+                      {p.id === 'map_contacts'
+                        ? 'Analyze contacts, conversations, sentiment, and profile signals.'
+                        : p.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          <div className="divider"/>
+          <div className="cmd-section">
+            <div className="cmd-section-title">Bulk Actions</div>
+            {supports('message_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_dm_csv')}>📋 Bulk {isGmail?'Email':'DM'} from CSV</button>}
+            {supports('engage_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_engage_csv')}>📋 Bulk Engage from CSV</button>}
+            {supports('follow_batch')&&<button className="cmd-btn" onClick={()=>runPlatformAction('bulk_follow_csv')}>📋 Bulk Follow from CSV</button>}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-export default App;
+
+      {/* 1. Full-Height AI Chat Section (The "Home Screen") */}
+function Campaigns({ campaigns, refreshCampaigns }) {
+  const [name, setName] = useState('Always-on social outreach');
+  const [objective, setObjective] = useState('Monitor inboxes, continue outreach follow-ups, refresh lead pools, and push approved messages one by one.');
+  const [keywords, setKeywords] = useState('fintech founders, saas operators');
+  const [cadenceMinutes, setCadenceMinutes] = useState(60);
+  const [tone, setTone] = useState('Casual and brief');
+  const [goal, setGoal] = useState('Get a meeting');
+  const [selectedPlatforms, setSelectedPlatforms] = useState(defaultCampaignPlatforms);
+  const [response, setResponse] = useState(null);
+
+  function togglePlatform(platformId) {
+    setSelectedPlatforms((current) =>
+      current.includes(platformId) ? current.filter((item) => item !== platformId) : [...current, platformId],
+    );
+  }
+
+  async function createCampaign(event) {
+    event.preventDefault();
+
+    const perPlatform = Object.fromEntries(
+      selectedPlatforms.map((platform) => [platform, platform === 'research' ? 'managed' : 'attached']),
+    );
+
+    const payload = {
+      name,
+      objective,
+      platforms: selectedPlatforms,
+      browserStrategy: {
+        defaultMode: 'attached',
+        perPlatform,
+      },
+      schedules: [{ id: 'primary', label: `Every ${cadenceMinutes} min`, cadenceMinutes: Number(cadenceMinutes) || 60 }],
+      caps: {
+        perPlatformDailyActions: { instagram: 50, twitter: 40, linkedin: 30, facebook: 20, gmail: 35, whatsapp: 35 },
+        perPlatformDailyMessages: { instagram: 20, twitter: 15, linkedin: 20, facebook: 10, gmail: 30, whatsapp: 25 },
+        maxConcurrentTabs: 4,
+        maxConcurrentConversations: 2,
+      },
+      quietHours: {
+        timezone: 'Asia/Kolkata',
+        windows: [{ start: '23:00', end: '07:00' }],
+      },
+      targets: {
+        usernames: [],
+        emails: [],
+        keywords: normalizeList(keywords.replace(/,/g, '\n')),
+        notes: 'Structured from the new campaigns console.',
+      },
+      leadSources: [
+        { sourceType: 'search_engine', engine: 'duckduckgo', query: keywords.split(',')[0]?.trim() || 'fintech founders', browserMode: 'managed' },
+      ],
+      stopRules: [{ type: 'daily_cap_reached' }, { type: 'consecutive_failures', count: 5 }],
+      contentPolicy: {
+        tone,
+        outreachGoal: goal,
+        allowAutonomousReplies: false,
+      },
+      status: 'draft',
+    };
+
+    const res = await fetch(`${backendUrl}/campaigns`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    setResponse(await res.json());
+    await refreshCampaigns();
+  }
+
+  return (
+    <section className="campaigns-grid">
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <span className="eyebrow">Campaign builder</span>
+            <h2>Per-platform campaign strategy</h2>
+            <p>Research stays managed. Outreach platforms stay attached so the agent works in your real Chrome session.</p>
+          </div>
+        </div>
+
+        <form className="campaign-form" onSubmit={createCampaign}>
+          <label htmlFor="campaign-name">Campaign name</label>
+          <input id="campaign-name" value={name} onChange={(event) => setName(event.target.value)} />
+
+          <label htmlFor="campaign-objective">Objective</label>
+          <textarea id="campaign-objective" rows={4} value={objective} onChange={(event) => setObjective(event.target.value)} />
+
+          <div className="campaign-fields">
+            <div>
+              <label htmlFor="campaign-keywords">Lead keywords</label>
+              <input id="campaign-keywords" value={keywords} onChange={(event) => setKeywords(event.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="campaign-cadence">Cadence minutes</label>
+              <input id="campaign-cadence" type="number" min="15" value={cadenceMinutes} onChange={(event) => setCadenceMinutes(Number(event.target.value) || 15)} />
+            </div>
+          </div>
+
+          <div className="campaign-fields">
+            <div>
+              <label htmlFor="campaign-goal">Outreach goal</label>
+              <input id="campaign-goal" value={goal} onChange={(event) => setGoal(event.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="campaign-tone">Tone</label>
+              <input id="campaign-tone" value={tone} onChange={(event) => setTone(event.target.value)} />
+            </div>
+          </div>
+
+          <div className="platform-toggle-grid">
+            {platformMeta.map((platform) => (
+              <button
+                key={platform.id}
+                className={`platform-toggle ${selectedPlatforms.includes(platform.id) ? 'active' : ''}`}
+                onClick={() => togglePlatform(platform.id)}
+                type="button"
+              >
+                <span>{platform.label}</span>
+                <small>{platform.id === 'research' ? 'Managed' : 'Attached'}</small>
+              </button>
+            ))}
+          </div>
+
+          <button type="submit">Create campaign draft</button>
+        </form>
+      </div>
+
+      <div className="campaigns-side">
+        <div className="panel">
+          <h3>Latest draft</h3>
+          {response ? <pre>{JSON.stringify(response, null, 2)}</pre> : <p>No campaign draft yet.</p>}
+        </div>
+
+        <div className="panel">
+          <h3>Campaign queue</h3>
+          <div className="task-list">
+            {campaigns.length ? campaigns.map((campaign) => (
+              <div key={campaign.id} className="campaign-card">
+                <div className="task-card-top">
+                  <strong>{campaign.name}</strong>
+                  <span className={`status-badge ${campaign.status}`}>{campaign.status}</span>
+                </div>
+                <p>{campaign.objective}</p>
+                <div className="meta-row">
+                  <span>{campaign.platforms.join(', ')}</span>
+                  <span>{campaign.schedules[0]?.cadenceMinutes || 0} min cadence</span>
+                </div>
+              </div>
+            )) : <p>No campaigns yet.</p>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Dashboard({ contactMetrics, refreshContactMetrics }) {
+  const metrics = contactMetrics || {};
+  const summary = metrics.summary || {};
+  const categories = metrics.categories || {};
+  const categoryDetails = metrics.categoryDetails || {};
+  const platforms = metrics.platforms || [];
+  const sentiment = metrics.sentiment || {};
+  const recentActivity = metrics.recentActivity || [];
+  const totalContacts = summary.totalContacts ?? platforms.reduce((sum, platform) => sum + (platform.total || 0), 0);
+  const activePlatforms = summary.totalPlatforms ?? platforms.filter((platform) => (platform.total || 0) > 0).length;
+  const totalChats = recentActivity.length;
+  const leadCount = categories.leads || categoryDetails.leads?.length || 0;
+  const maxPlatformTotal = Math.max(1, ...platforms.map((platform) => platform.total || 0));
+  const categoryEntries = Object.entries({
+    leads: 0,
+    prospects: 0,
+    customers: 0,
+    influencers: 0,
+    contacts: 0,
+    ...categories,
+  });
+  const sentimentEntries = ['positive', 'neutral', 'negative'].map((name) => [name, sentiment[name] || 0]);
+  const sentimentTotal = Math.max(1, sentimentEntries.reduce((sum, [, value]) => sum + value, 0));
+  const lastSync = metrics.updatedAt
+    ? new Date(metrics.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Not synced';
+  const syncPending = metrics.status === 'pending_initial_sync' || totalContacts === 0;
+  const platformRows = platforms.length
+    ? platforms
+    : ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube'].map((name) => ({ name, total: 0 }));
+
+  return (
+    <section className="dashboard-page custom-scroll">
+      <div className="dashboard-header">
+        <div>
+          <span className="dashboard-eyebrow">All social media handles</span>
+          <h2>Contact Intelligence</h2>
+          <p>Profiles, conversations, categories, and sentiment from the attached browser sessions.</p>
+        </div>
+        <div className="dashboard-actions">
+          <div className={`sync-state ${syncPending ? 'pending' : 'ready'}`}>
+            <span />
+            {syncPending ? 'Awaiting sync' : 'Live metrics'}
+          </div>
+          <button onClick={() => refreshContactMetrics()} className="dash-refresh">Refresh</button>
+        </div>
+      </div>
+
+      <div className="dashboard-command-band">
+        <div>
+          <span className="command-band-label">Action center</span>
+          <strong>Use Sync Intelligence from any social platform to update this dashboard.</strong>
+        </div>
+        <NavLink to="/" className="command-band-link">Open Action Center</NavLink>
+      </div>
+
+      <div className="kpi-strip">
+        <div className="kpi-cell">
+          <span>Total contacts</span>
+          <strong>{totalContacts}</strong>
+          <small>Mapped profiles and visible handles</small>
+        </div>
+        <div className="kpi-cell">
+          <span>Active platforms</span>
+          <strong>{activePlatforms}</strong>
+          <small>Instagram, X, LinkedIn, Facebook, Gmail, WhatsApp, YouTube</small>
+        </div>
+        <div className="kpi-cell accent">
+          <span>Lead candidates</span>
+          <strong>{leadCount}</strong>
+          <small>Tagged as sales or outreach opportunities</small>
+        </div>
+        <div className="kpi-cell">
+          <span>Conversation signals</span>
+          <strong>{totalChats}</strong>
+          <small>Recent profile or chat context records</small>
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-panel platform-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Platform coverage</span>
+              <h3>Handle map</h3>
+            </div>
+            <small>Last sync: {lastSync}</small>
+          </div>
+          <div className="platform-bars">
+            {platformRows.map((platform) => {
+              const meta = platformMeta.find((item) => item.id === platform.name);
+              const Icon = meta?.icon || Globe;
+              const total = platform.total || 0;
+              return (
+                <div className="platform-bar-row" key={platform.name}>
+                  <div className="platform-bar-meta">
+                    <span className="platform-mark"><Icon /></span>
+                    <div>
+                      <strong>{meta?.label || platform.name}</strong>
+                      <small>{platform.connections || platform.followers || platform.messages || 0} linked signals</small>
+                    </div>
+                  </div>
+                  <div className="platform-track">
+                    <span style={{ width: `${Math.max(4, (total / maxPlatformTotal) * 100)}%` }} />
+                  </div>
+                  <b>{total}</b>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="dashboard-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Contact classification</span>
+              <h3>Audience lanes</h3>
+            </div>
+          </div>
+          <div className="category-lanes">
+            {categoryEntries.map(([name, count]) => (
+              <div className="category-lane" key={name}>
+                <span>{name}</span>
+                <strong>{count || 0}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Conversation tone</span>
+              <h3>Sentiment</h3>
+            </div>
+          </div>
+          <div className="sentiment-list">
+            {sentimentEntries.map(([name, value]) => (
+              <div className="sentiment-row" key={name}>
+                <div>
+                  <span className={`sentiment-dot ${name}`} />
+                  <strong>{name}</strong>
+                </div>
+                <div className="sentiment-track">
+                  <span className={name} style={{ width: `${Math.max(5, (value / sentimentTotal) * 100)}%` }} />
+                </div>
+                <b>{value}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-panel activity-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Recent context</span>
+              <h3>Profiles and chats</h3>
+            </div>
+          </div>
+          {recentActivity.length > 0 ? (
+            <div className="activity-table">
+              {recentActivity.slice(0, 10).map((activity, idx) => (
+                <div className="activity-row" key={`${activity.platform}-${activity.name}-${idx}`}>
+                  <div>
+                    <strong>{activity.name || 'Unknown contact'}</strong>
+                    <small>{activity.platform || 'platform'} / {activity.category || 'contact'}</small>
+                  </div>
+                  <span>{activity.potentialUse || activity.sentiment || 'Profile context captured'}</span>
+                  <time>{activity.lastMessageAt ? new Date(activity.lastMessageAt).toLocaleDateString() : 'No date'}</time>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-dashboard">
+              <strong>No synced conversation context yet</strong>
+              <p>Open the Action Center, select Instagram, X, LinkedIn, Facebook, Gmail, WhatsApp, or YouTube, then run Sync Intelligence.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Pairing() {
+  const [pairing, setPairing] = useState(null);
+
+  useEffect(() => {
+    fetch(`${backendUrl}/agent/pairing/code`, { method: 'POST' })
+      .then((response) => response.json())
+      .then(setPairing);
+  }, []);
+
+  return (
+    <section className="pairing-grid max-w-2xl mx-auto py-12">
+      <div className="panel border-white/5 bg-[#0c0c0c] rounded-2xl border p-8 text-center">
+        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-red-500 mb-2 block">Agent Pairing</span>
+        <h2 className="text-3xl font-bold text-white mb-4">Secure Device Connection</h2>
+        <p className="text-zinc-500 mb-8">Enter this unique authorization code in your local agent instance to link this workspace.</p>
+
+        {pairing ? (
+          <div className="bg-black/40 border border-white/5 rounded-3xl p-12 shadow-2xl">
+            <div className="text-6xl font-black tracking-[0.3em] text-white mb-4 font-mono">{pairing.code}</div>
+            <div className="text-xs text-zinc-600 uppercase tracking-widest">
+              Expires at {new Date(pairing.expiresAt).toLocaleTimeString()}
+            </div>
+          </div>
+        ) : (
+          <div className="animate-pulse text-zinc-500 italic">Generating secure code...</div>
+        )}
+        
+        <div className="mt-12 p-6 bg-white/5 rounded-2xl border border-white/5 text-left">
+          <h4 className="text-sm font-bold text-white mb-2">Instructions</h4>
+          <p className="text-sm text-zinc-500 leading-relaxed">
+            Ensure your local Cherry Agent is running. When prompted, enter the code above to authorize this browser session. 
+            Once paired, your social automation engine will become active.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function History({ events, tasks }) {
+  return (
+    <section className="history-grid">
+      <div className="panel">
+        <h2>Task ledger</h2>
+        <div className="task-list">
+          {tasks.map((task) => <TaskCard key={task.id} task={task} compact />)}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2>Event stream</h2>
+        <div className="event-list long">
+          {events.map((event, index) => (
+            <div key={`${event.type}-${index}`} className="event-row">
+              <span className="event-type">{event.type}</span>
+              <span className="event-text">{describeEvent(event)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TaskCard({ compact = false, task }) {
+  const latestArtifact = [...(task.events || [])].reverse().find((event) => event.type === 'artifact.ready');
+  const latestFailure = [...(task.events || [])].reverse().find((event) => event.type === 'task.failed' || event.type === 'step.failed');
+  const hitlEvent = [...(task.events || [])].reverse().find((event) => event.type === 'hitl.required');
+  const completedEvent = [...(task.events || [])].reverse().find((event) => event.type === 'task.completed');
+  const plan = task.events?.find((event) => event.type === 'plan.generated')?.plan;
+
+
+  const stepStates = useMemo(() => {
+    const state = new Map();
+    for (const event of task.events || []) {
+      if (event.type === 'step.started') {
+        state.set(event.stepId, { kind: 'running', label: event.label });
+      }
+      if (event.type === 'step.progress') {
+        state.set(event.stepId, { kind: 'done', detail: event.message });
+      }
+      if (event.type === 'step.failed') {
+        state.set(event.stepId, { kind: 'failed', detail: event.error });
+      }
+      if (event.type === 'hitl.required') {
+        state.set(event.stepId, { kind: 'paused', detail: event.message });
+      }
+    }
+    return state;
+  }, [task.events]);
+
+
+  return (
+    <article className={`task-card ${compact ? 'compact' : ''}`}>
+      <div className="task-card-top">
+        <div>
+          <strong>{task.prompt}</strong>
+          <div className="meta-row">
+            <span>{task.context?.platform || 'auto-routing'}</span>
+            <span>{new Date(task.createdAt).toLocaleString()}</span>
+          </div>
+        </div>
+        <span className={`status-badge ${task.status}`}>{task.status}</span>
+      </div>
+
+      {task.context?.operation ? <p className="task-summary">Operation: <code>{task.context.operation}</code></p> : null}
+
+      {plan?.steps?.length ? (
+        <div className="step-stack">
+          {plan.steps.map((step) => {
+            const current = stepStates.get(step.id);
+            return (
+              <div key={step.id} className={`step-row ${current?.kind || 'idle'}`}>
+                <div>
+                  <span className="step-label">{step.platform}:{step.action}</span>
+                  <small>{step.browserMode}</small>
+                </div>
+                <span className="step-detail">{current?.detail || current?.label || 'Queued'}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {completedEvent ? <p className="success-note">{completedEvent.summary}</p> : null}
+      {latestFailure && !hitlEvent ? <p className="error-note">{latestFailure.error || latestFailure.detail}</p> : null}
+      {hitlEvent ? (
+        <div className="hitl-banner">
+          <span className="hitl-icon">⚠️</span>
+          <div>
+            <strong>Action Required — Log In</strong>
+            <p>{hitlEvent.message}</p>
+            <small>Log in to <strong>{hitlEvent.platform}</strong> in the browser window, then re-send this task to retry.</small>
+          </div>
+        </div>
+      ) : null}
+      {latestArtifact?.url ? <p className="artifact-note">Artifact: <code>{latestArtifact.url}</code></p> : null}
+    </article>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="empty-state">
+      <strong>No tasks yet</strong>
+      <p>Dispatch a conversational task or use a direct platform action.</p>
+    </div>
+  );
+}
+
+function normalizeList(text) {
+  return text
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function describeEvent(event) {
+  if (event.type === 'agent.status') return event.online ? 'Agent session active' : 'Agent disconnected';
+  if (event.type === 'task.created') return `Initialized: ${event.prompt}`;
+  if (event.type === 'campaign.updated') return `Campaign ${event.status}`;
+  if (event.type === 'step.progress') return event.message;
+  if (event.type === 'task.failed') return `Execution Error: ${event.error}`;
+  if (event.type === 'task.completed') return `Success: ${event.summary}`;
+  if (event.type === 'hitl.required') return `⚠️ Login required on ${event.platform} — please log in and retry`;
+  return 'System Event';
+}
+
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zM12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm5.25-8.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z" />
+    </svg>
+  );
+}
+
+function LinkedinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
+
+function GmailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.52 3.449A11.815 11.815 0 0 0 12.041 0C5.495 0 .162 5.333.16 11.879a11.82 11.82 0 0 0 1.62 5.986L0 24l6.303-1.652a11.83 11.83 0 0 0 5.734 1.462h.005c6.545 0 11.878-5.333 11.88-11.879A11.82 11.82 0 0 0 20.52 3.449ZM12.043 21.8h-.004a9.8 9.8 0 0 1-4.995-1.369l-.358-.213-3.74.98 1-3.648-.233-.375A9.8 9.8 0 0 1 2.2 11.88C2.202 6.447 6.61 2.04 12.041 2.04c2.633 0 5.108 1.026 6.971 2.89a9.79 9.79 0 0 1 2.886 6.972c-.002 5.432-4.41 9.839-9.855 9.839Zm5.395-7.358c-.295-.148-1.746-.862-2.017-.96-.27-.099-.467-.148-.665.148-.197.295-.764.96-.936 1.158-.172.197-.344.221-.639.074-.295-.148-1.246-.459-2.373-1.463-.876-.781-1.467-1.746-1.639-2.041-.172-.295-.018-.454.13-.602.133-.132.295-.344.443-.516.147-.172.197-.295.295-.492.098-.197.049-.369-.025-.516-.074-.148-.664-1.6-.91-2.189-.239-.575-.482-.496-.665-.505-.172-.008-.369-.01-.566-.01-.197 0-.516.074-.787.369-.27.295-1.033 1.009-1.033 2.459s1.058 2.853 1.205 3.05c.148.197 2.082 3.179 5.044 4.456.705.304 1.254.485 1.682.621.707.225 1.351.193 1.86.117.568-.085 1.746-.713 1.992-1.403.246-.689.246-1.279.172-1.402-.074-.123-.271-.197-.566-.344Z" />
+    </svg>
+  );
+}
+
+function YoutubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8ZM9.6 15.55v-7.1L15.85 12 9.6 15.55Z" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.707 20.879l-5.632-5.632A9.972 9.972 0 0 0 20 9.999a10 10 0 1 0-10 10 9.972 9.972 0 0 0 5.247-1.925l5.632 5.632a2 2 0 1 0 2.828-2.828ZM2 9.999a8 8 0 1 1 8 8 8.01 8.01 0 0 1-8-8Z" />
+    </svg>
+  );
+}
+
+function ChatGPTIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-1.5609-7.2502 6.0063 6.0063 0 0 0-8.3202.9649 5.9856 5.9856 0 0 0-8.3973 2.0526 6.0063 6.0063 0 0 0 .548 8.3534 5.985 5.985 0 0 0 1.5609 7.2503 6.0063 6.0063 0 0 0 8.3202-.9649 5.9856 5.9856 0 0 0 8.3973-2.0525 6.006 6.006 0 0 0-.548-8.3536Zm-8.6521 7.3651v-5.1054l4.423-2.5532.032.013v5.527l-4.455 2.5705v-.4519Zm-1.21-1.0664-4.4365-2.5604 2.2155-3.8373h5.539l-2.202 3.8138-1.116.6453-.0001 1.9386Zm-5.326-1.5162-2.228-3.859 4.423-2.5532 2.2144 3.8354-4.41 2.5457v.0311Zm-1.464-6.3117 2.2155-3.8374h8.86l-2.2156 3.8374H7.6298Zm2.674-2.5828 4.4365 2.5604-2.2154 3.8374H4.386l2.202-3.8138 1.116-.6453.0001-1.9387Zm5.326 1.5163 2.228 3.859-4.423 2.5532-2.2144-3.8353 4.41-2.5458v-.0311Zm1.464 6.3117-2.2156 3.8373h-8.86l2.2156-3.8373h6.6444Zm-5.111-2.6075 2.2281-1.2863 2.2281 1.2863v2.5726l-2.2281 1.2862-2.2281-1.2862V10.93Z"/>
+    </svg>
+  );
+}
+
+function GeminiIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.049 2.006c-.456-1.048-1.745-1.048-2.201 0l-1.921 4.409-4.321 2.052c-1.018.484-1.018 1.91 0 2.394l4.32 2.053 1.922 4.408c.456 1.048 1.745 1.048 2.201 0l1.922-4.408 4.32-2.053c1.018-.484 1.018-1.91 0-2.394l-4.32-2.052Zm8.081 13.918c-.342-.786-1.308-.786-1.65 0l-.824 1.89-1.851.879c-.437.208-.437.82 0 1.027l1.85.88.825 1.889c.342.786 1.308.786 1.65 0l.824-1.89 1.851-.879c.437-.208.437-.82 0-1.027l-1.85-.88Z"/>
+    </svg>
+  );
+}
+
+export function App() {
+  const { 
+    agentOnline, 
+    agentState, 
+    campaigns, 
+    events, 
+    refreshCampaigns, 
+    refreshTasks, 
+    tasks, 
+    contactMetrics, 
+    refreshContactMetrics 
+  } = usePlatformData();
+
+  return (
+    <Shell agentOnline={agentOnline} agentState={agentState}>
+      <Routes>
+        <Route path="/" element={<Workspace agentOnline={agentOnline} events={events} refreshTasks={refreshTasks} tasks={tasks} />} />
+        <Route path="/dashboard" element={<Dashboard contactMetrics={contactMetrics} refreshContactMetrics={refreshContactMetrics} />} />
+        <Route path="/campaigns" element={<Campaigns campaigns={campaigns} refreshCampaigns={refreshCampaigns} />} />
+        <Route path="/pairing" element={<Pairing />} />
+        <Route path="/history" element={<History events={events} tasks={tasks} />} />
+      </Routes>
+    </Shell>
+  );
+}

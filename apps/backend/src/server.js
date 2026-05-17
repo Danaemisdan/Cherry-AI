@@ -291,6 +291,113 @@ app.get('/campaigns', (_req, res) => {
 // Contact Metrics API
 const contactMetricsCache = new Map();
 
+function emptyContactMetrics() {
+  return {
+    summary: {
+      totalContacts: 0,
+      totalPlatforms: 0,
+      lastUpdated: Date.now(),
+    },
+    categories: {
+      leads: 0,
+      partners: 0,
+      candidates: 0,
+      customers: 0,
+      network: 0,
+      audience: 0,
+      unknown: 0,
+    },
+    platforms: [
+      { name: 'whatsapp', total: 0, connections: 0, pending: 0 },
+      { name: 'linkedin', total: 0, connections: 0, pending: 0 },
+      { name: 'instagram', total: 0, followers: 0, pending: 0 },
+      { name: 'twitter', total: 0, connections: 0, pending: 0 },
+      { name: 'facebook', total: 0, connections: 0, pending: 0 },
+      { name: 'gmail', total: 0, connections: 0, pending: 0 },
+      { name: 'youtube', total: 0, connections: 0, pending: 0 },
+    ],
+    recentActivity: [],
+    sentiment: { positive: 0, neutral: 0, negative: 0 },
+    status: 'pending_initial_sync',
+    message: 'Run "map_contacts" action on any platform to sync contact data',
+  };
+}
+
+function normalizeMetricNumber(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+
+function mergeContactMetrics(existing, incoming) {
+  const base = existing || emptyContactMetrics();
+  const next = {
+    ...base,
+    summary: { ...base.summary },
+    categories: { ...base.categories },
+    sentiment: { ...base.sentiment },
+    platforms: [...(base.platforms || [])],
+    recentActivity: [...(base.recentActivity || [])],
+  };
+
+  const incomingCategories = incoming.categories || {};
+  if (Array.isArray(incomingCategories)) {
+    for (const category of incomingCategories) {
+      next.categories[category.name] = normalizeMetricNumber(category.count);
+    }
+  } else {
+    for (const [key, value] of Object.entries(incomingCategories)) {
+      next.categories[key] = normalizeMetricNumber(value);
+    }
+  }
+
+  const platformMap = new Map(next.platforms.map((platform) => [platform.name, platform]));
+  for (const platform of incoming.platforms || []) {
+    platformMap.set(platform.name, {
+      ...(platformMap.get(platform.name) || {}),
+      ...platform,
+      total: normalizeMetricNumber(platform.total),
+      connections: normalizeMetricNumber(platform.connections),
+      pending: normalizeMetricNumber(platform.pending),
+    });
+  }
+  next.platforms = [...platformMap.values()];
+
+  const activityMap = new Map(next.recentActivity.map((item) => [item.id || `${item.platform}:${item.name}:${item.lastMessageAt}`, item]));
+  for (const item of incoming.recentActivity || []) {
+    activityMap.set(item.id || `${item.platform}:${item.name}:${item.lastMessageAt}`, item);
+  }
+  next.recentActivity = [...activityMap.values()]
+    .sort((left, right) => normalizeMetricNumber(right.lastMessageAt) - normalizeMetricNumber(left.lastMessageAt))
+    .slice(0, 50);
+
+  next.sentiment = {
+    positive: normalizeMetricNumber(incoming.sentiment?.positive ?? next.sentiment.positive),
+    neutral: normalizeMetricNumber(incoming.sentiment?.neutral ?? next.sentiment.neutral),
+    negative: normalizeMetricNumber(incoming.sentiment?.negative ?? next.sentiment.negative),
+  };
+
+  next.summary = {
+    totalContacts: next.platforms.reduce((sum, platform) => sum + normalizeMetricNumber(platform.total), 0),
+    totalPlatforms: next.platforms.filter((platform) => normalizeMetricNumber(platform.total) > 0 || platform.error).length,
+    lastUpdated: incoming.summary?.lastUpdated || Date.now(),
+  };
+  next.status = next.summary.totalContacts > 0 ? 'ready' : 'pending_initial_sync';
+  next.message = next.summary.totalContacts > 0
+    ? 'Contact intelligence synced from agent results'
+    : base.message || 'Run "map_contacts" action on any platform to sync contact data';
+
+  return next;
+}
+
+function ingestContactMetrics(stepData) {
+  const incoming = stepData?.dashboardData || stepData?.metrics;
+  if (!incoming) return null;
+  const current = contactMetricsCache.get('data')?.data || emptyContactMetrics();
+  const merged = mergeContactMetrics(current, incoming);
+  contactMetricsCache.set('data', { data: merged, timestamp: Date.now() });
+  broadcast({ type: 'contact.metrics.updated', metrics: merged });
+  return merged;
+}
+
 app.get('/metrics/contacts', async (_req, res) => {
   try {
     // Return cached data if available and fresh (< 5 minutes)
@@ -299,34 +406,7 @@ app.get('/metrics/contacts', async (_req, res) => {
       return res.json(cached.data);
     }
 
-    // Mock data for now - in production this would come from the agent
-    const metrics = {
-      summary: {
-        totalContacts: 0,
-        totalPlatforms: 0,
-        lastUpdated: Date.now(),
-      },
-      categories: {
-        leads: 0,
-        partners: 0,
-        candidates: 0,
-        customers: 0,
-        network: 0,
-        audience: 0,
-        unknown: 0,
-      },
-      platforms: [
-        { name: 'whatsapp', total: 0, connections: 0, pending: 0 },
-        { name: 'linkedin', total: 0, connections: 0, pending: 0 },
-        { name: 'instagram', total: 0, followers: 0, pending: 0 },
-        { name: 'twitter', total: 0, connections: 0, pending: 0 },
-        { name: 'facebook', total: 0, connections: 0, pending: 0 },
-      ],
-      recentActivity: [],
-      sentiment: { positive: 0, neutral: 0, negative: 0 },
-      status: 'pending_initial_sync',
-      message: 'Run "map_contacts" action on any platform to sync contact data',
-    };
+    const metrics = emptyContactMetrics();
 
     contactMetricsCache.set('data', { data: metrics, timestamp: Date.now() });
     res.json(metrics);
@@ -404,6 +484,9 @@ wss.on('connection', (socket, req) => {
       const task = tasks.get(event.taskId);
       if (task) {
         task.events.push(event.payload);
+        if (event.payload.type === 'step.progress') {
+          ingestContactMetrics(event.payload.data);
+        }
         if (event.payload.type === 'step.started') task.status = 'running';
         if (event.payload.type === 'task.completed') task.status = 'completed';
         if (event.payload.type === 'task.failed') task.status = 'failed';

@@ -23,6 +23,895 @@ import { createSocialHandler } from '../social-base.js';
  * Uses full page extraction + intelligent parsing (resilient to UI changes)
  */
 
+const INSTAGRAM_NAVIGATION_ACTIONS = {
+  'connect_instagram_account': 'https://www.instagram.com/',
+  'refresh_permissions': 'https://www.instagram.com/accounts/edit/',
+  'sync_profile': 'https://www.instagram.com/',
+  'view_account_status': 'https://www.instagram.com/accounts/status/',
+  'open_profile': 'https://www.instagram.com/',
+  'edit_profile': 'https://www.instagram.com/accounts/edit/',
+  'change_profile_photo': 'https://www.instagram.com/accounts/edit/',
+  'open_settings': 'https://www.instagram.com/accounts/edit/',
+  'open_more_menu': 'https://www.instagram.com/',
+  'open_activity': 'https://www.instagram.com/your_activity/',
+  'open_saved': 'https://www.instagram.com/saved/',
+  'open_search_results': 'https://www.instagram.com/explore/search/keyword/',
+  'open_notifications': 'https://www.instagram.com/accounts/activity/',
+  'open_explore': 'https://www.instagram.com/explore/',
+  'open_reels': 'https://www.instagram.com/reels/',
+  'view_suggestions': 'https://www.instagram.com/explore/people/',
+  'view_feed_posts': 'https://www.instagram.com/',
+  'switch_professional_account': 'https://www.instagram.com/accounts/account_type_and_tools/',
+  'switch_normal_account': 'https://www.instagram.com/accounts/account_type_and_tools/',
+  'open_professional_dashboard': 'https://www.instagram.com/professional_dashboard/',
+  'sync_insights': 'https://www.instagram.com/professional_dashboard/',
+  'view_report': 'https://www.instagram.com/professional_dashboard/',
+  'export_report': 'https://www.instagram.com/professional_dashboard/',
+  'open_ad_account': 'https://www.instagram.com/professional_dashboard/',
+  'open_content_tools': 'https://www.instagram.com/professional_dashboard/',
+  'open_ad_tools': 'https://www.instagram.com/professional_dashboard/',
+  'open_professional_settings': 'https://www.instagram.com/accounts/account_type_and_tools/',
+  'create_ad': 'https://www.instagram.com/professional_dashboard/',
+  'track_post_performance': 'https://www.instagram.com/professional_dashboard/',
+  'track_reel_performance': 'https://www.instagram.com/professional_dashboard/',
+  'track_story_performance': 'https://www.instagram.com/professional_dashboard/',
+  'open_inbox': 'https://www.instagram.com/direct/inbox/',
+  'open_messages_list': 'https://www.instagram.com/direct/inbox/',
+  'open_requested_messages': 'https://www.instagram.com/direct/requests/',
+  'open_primary_messages': 'https://www.instagram.com/direct/inbox/',
+  'open_general_messages': 'https://www.instagram.com/direct/inbox/',
+  'create_media_publish_flow': 'https://www.instagram.com/create/select/',
+  'create_post_draft': 'https://www.instagram.com/create/select/',
+  'upload_media': 'https://www.instagram.com/create/select/',
+  'create_reel': 'https://www.instagram.com/create/select/',
+  'create_story': 'https://www.instagram.com/create/select/',
+  'start_live': 'https://www.instagram.com/create/select/',
+  'create_live_video': 'https://www.instagram.com/create/select/',
+  'open_ai_create': 'https://www.instagram.com/create/select/',
+  'view_stories': 'https://www.instagram.com/',
+  'open_user_posts': 'https://www.instagram.com/',
+  'open_user_videos': 'https://www.instagram.com/reels/',
+};
+
+const INSTAGRAM_UNSUPPORTED_ACTIONS = new Set([
+  'change_bio',
+  'switch_appearance',
+  'report_problem',
+  'switch_accounts',
+  'logout',
+  'write_caption',
+  'add_hashtags',
+  'add_location',
+  'tag_users',
+  'save_draft',
+  'schedule_post',
+  'publish_now',
+  'delete_post',
+  'archive_post',
+  'pin_post',
+  'publish_reel',
+  'delete_reel',
+  'publish_story',
+  'delete_story',
+  'add_story_highlight',
+  'reply_to_story',
+  'comment_on_story',
+  'reply_to_post_comment',
+  'open_user_videos',
+  'repost_post',
+  'use_saved_reply',
+  'accept_message_request',
+  'delete_message_request',
+  'blur_message_request',
+  'move_request_primary',
+  'move_request_general',
+  'move_request_channel',
+  'assign_conversation_to_human',
+  'mark_conversation_resolved',
+  'reply_to_comment',
+  'hide_comment',
+  'unhide_comment',
+  'delete_comment',
+  'disable_comments',
+  'enable_comments',
+  'send_private_reply',
+  'hide_spam_comment',
+  'flag_negative_comment',
+  'escalate_issue',
+  'block_user',
+  'restrict_user',
+  'report_user',
+  'remove_follower',
+  'create_live_video',
+  'qualify_lead',
+  'score_lead',
+  'save_lead',
+  'push_lead_to_crm',
+  'add_lead_to_spreadsheet',
+  'create_follow_up',
+  'create_automation_rule',
+  'enable_rule',
+  'pause_rule',
+  'run_workflow',
+  'approve_action',
+  'reject_action',
+  'view_action_log',
+]);
+
+function unsupportedInstagramAction(action) {
+  return {
+    status: 'failed',
+    summary: `Instagram action "${action}" is not supported yet`,
+    data: {
+      platform: 'instagram',
+      action,
+      unsupported: true,
+      message: `Instagram action "${action}" is not supported yet`,
+    },
+  };
+}
+
+async function extractVisibleInstagramComments(page, maxResults = 25) {
+  const comments = await page.evaluate((limit) => {
+    const nodes = Array.from(document.querySelectorAll('article span, ul span, div[role="dialog"] span'));
+    const ignored = new Set(['Reply', 'See translation', 'View replies', 'Like', 'More']);
+    const values = [];
+    for (const node of nodes) {
+      const text = (node.innerText || node.textContent || '').trim();
+      if (!text || ignored.has(text) || text.length < 2 || text.length > 500) continue;
+      if (!values.includes(text)) values.push(text);
+      if (values.length >= limit) break;
+    }
+    return values;
+  }, maxResults);
+  return comments.map((text, index) => ({ id: `comment_${index + 1}`, text }));
+}
+
+function classifySpamComments(comments) {
+  const spamPattern = /\b(dm\s+me|crypto|forex|investment|giveaway|free\s+followers|promo|http|www\.|telegram|whatsapp)\b/i;
+  return comments.map((comment) => ({
+    ...comment,
+    spam: spamPattern.test(comment.text),
+  }));
+}
+
+function inferAccountType(text) {
+  const normalized = text.toLowerCase();
+  if (/"is_professional_account"\s*:\s*true/.test(normalized)
+    || /\bis_professional_account\\?":\s*true/.test(normalized)
+    || /\b(professional dashboard|ad tools|ad account|insights|professional account|content tools)\b/.test(normalized)) {
+    return 'professional';
+  }
+  if (/"is_professional_account"\s*:\s*false/.test(normalized)
+    || /\bis_professional_account\\?":\s*false/.test(normalized)
+    || /\b(switch to professional|account type and tools|creator|business)\b/.test(normalized)) {
+    return 'normal';
+  }
+  return 'unknown';
+}
+
+const INSTAGRAM_DESTRUCTIVE_ACTIONS = new Set([
+  'delete_post',
+  'archive_post',
+  'delete_reel',
+  'delete_story',
+  'disable_comments',
+  'delete_comment',
+  'hide_comment',
+  'hide_spam_comment',
+  'block_user',
+  'restrict_user',
+  'report_user',
+  'remove_follower',
+  'delete_message_request',
+  'logout',
+  'publish_now',
+  'publish_reel',
+  'publish_story',
+  'start_live',
+  'create_live_video',
+  'create_ad',
+  'switch_professional_account',
+  'switch_normal_account',
+]);
+
+async function clickInstagramLabel(page, labels = [], options = {}) {
+  const {
+    partial = false,
+    withinDialog = false,
+    preferLeftRail = false,
+    timeoutAfterClick = 600,
+  } = options;
+  const normalizedLabels = labels.filter(Boolean).map((label) => String(label));
+  if (!normalizedLabels.length) return null;
+
+  const match = await page.evaluate(({ labels: evalLabels, partial: allowPartial, withinDialog: dialogOnly, preferLeftRail: leftRail }) => {
+    const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const wanted = evalLabels.map(normalize);
+    const isVisible = (element) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    };
+    const elementLabel = (element) => {
+      const aria = element.getAttribute('aria-label');
+      const placeholder = element.getAttribute('placeholder');
+      const title = element.getAttribute('title');
+      const text = element.innerText || element.textContent || '';
+      return [aria, placeholder, title, text].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    };
+    const clickableFor = (element) => {
+      if (element.matches('button,a,[role="button"],[role="link"],[role="menuitem"],input,textarea')) return element;
+      return element.closest('button,a,[role="button"],[role="link"],[role="menuitem"]') || element;
+    };
+    const root = dialogOnly ? document.querySelector('div[role="dialog"]') : document;
+    if (!root) return null;
+    const candidates = Array.from(root.querySelectorAll('button,a,[role="button"],[role="link"],[role="menuitem"],input,textarea,svg[aria-label]'));
+    const scored = [];
+
+    for (const element of candidates) {
+      const clickable = clickableFor(element);
+      if (!clickable || !isVisible(clickable)) continue;
+      const rect = clickable.getBoundingClientRect();
+      if (rect.width < 4 || rect.height < 4) continue;
+      if (leftRail && rect.left > 430) continue;
+
+      const label = normalize(elementLabel(element) || elementLabel(clickable));
+      if (!label) continue;
+
+      for (let index = 0; index < wanted.length; index += 1) {
+        const target = wanted[index];
+        if (!target) continue;
+        const exact = label === target;
+        const textExact = normalize(clickable.innerText || clickable.textContent || '') === target;
+        const contains = allowPartial && label.includes(target);
+        if (!exact && !textExact && !contains) continue;
+
+        const score = (exact || textExact ? 100 : 20) - index - Math.min(20, Math.round(rect.left / 100));
+        scored.push({
+          score,
+          label,
+          requested: evalLabels[index],
+          x: Math.round(rect.left + rect.width / 2),
+          y: Math.round(rect.top + rect.height / 2),
+        });
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0] || null;
+  }, { labels: normalizedLabels, partial, withinDialog, preferLeftRail });
+
+  if (!match) return null;
+  await page.mouse.click(match.x, match.y).catch(() => {});
+  await minimalDelay(timeoutAfterClick);
+  return match;
+}
+
+async function clickInstagramAny(page, selectors = [], labels = [], options = {}) {
+  const clickedBySelector = await tryClick(page, selectors);
+  if (clickedBySelector) {
+    await minimalDelay(options.timeoutAfterClick || 600);
+    return { via: 'selector' };
+  }
+  const clickedByText = await clickInstagramLabel(page, labels, options);
+  if (clickedByText) return { via: 'label', ...clickedByText };
+  return null;
+}
+
+async function openInstagramMoreMenu(page) {
+  return clickInstagramAny(page, [
+    'svg[aria-label="Settings"]',
+    'svg[aria-label="More"]',
+    'div[role="button"]:has-text("More")',
+    'button:has-text("More")',
+  ], ['More', 'Settings'], { preferLeftRail: true, timeoutAfterClick: 800 });
+}
+
+async function openInstagramCreateMenu(page) {
+  return clickInstagramAny(page, [
+    'svg[aria-label="New post"]',
+    'svg[aria-label="Create"]',
+    'a[href="/create/select/"]',
+    'div[role="button"]:has-text("Create")',
+  ], ['New post', 'Create'], { preferLeftRail: true, timeoutAfterClick: 900 });
+}
+
+async function openInstagramInbox(page) {
+  const clicked = await clickInstagramAny(page, [
+    'a[href="/direct/inbox/"]',
+    'a[href*="/direct/inbox"]',
+    'svg[aria-label="Messages"]',
+  ], ['Messages'], { preferLeftRail: true, timeoutAfterClick: 1000 });
+  if (clicked) return clicked;
+  await navigate(page, 'https://www.instagram.com/direct/inbox/', 'instagram');
+  await waitForAppShell(page, 'instagram');
+  return { via: 'fallback-url', target: 'inbox' };
+}
+
+async function openInstagramSettings(page) {
+  const settingsDirect = await clickInstagramLabel(page, ['Settings'], { partial: false, timeoutAfterClick: 900 });
+  if (settingsDirect) return settingsDirect;
+  await openInstagramMoreMenu(page);
+  return clickInstagramLabel(page, ['Settings', 'Settings and activity'], { partial: false, timeoutAfterClick: 900 });
+}
+
+async function openInstagramProfileUi(page, args = {}) {
+  const username = args.username || args.handle;
+  if (username) {
+    await navigateToProfileViaSearch(page, username);
+    return { via: 'search', username };
+  }
+  const clicked = await clickInstagramAny(page, [
+    'a[href^="/"][href$="/"]:has(img[alt*="profile picture"])',
+    'a[role="link"]:has-text("Profile")',
+    'svg[aria-label="Profile"]',
+  ], ['Profile'], { preferLeftRail: true, timeoutAfterClick: 1000 });
+  if (clicked) return clicked;
+  await navigate(page, 'https://www.instagram.com/', 'instagram');
+  await waitForAppShell(page, 'instagram');
+  return { via: 'fallback-home' };
+}
+
+async function openInstagramSearchUi(page, query) {
+  const clicked = await clickInstagramAny(page, [
+    'svg[aria-label="Search"]',
+    'input[placeholder*="Search"]',
+    'a[href*="/explore/search"]',
+  ], ['Search'], { preferLeftRail: true, timeoutAfterClick: 600 });
+  if (query) {
+    await fillEditable(page, [
+      'input[placeholder*="Search"]',
+      'input[aria-label*="Search"]',
+      'input[aria-label="Search input"]',
+      'div[contenteditable="true"][role="textbox"]',
+    ], query, { humanLike: true, typingSpeed: 'normal' }).catch(() => {});
+    await minimalDelay(900);
+  }
+  return clicked || { via: 'search-open-attempt' };
+}
+
+async function openInstagramAccountTypeTools(page) {
+  await openInstagramSettings(page).catch(() => null);
+  const clicked = await clickInstagramLabel(page, [
+    'Account type and tools',
+    'Creator tools and controls',
+    'Business tools and controls',
+    'Professional account',
+  ], { partial: true, timeoutAfterClick: 900 });
+  if (clicked) return clicked;
+  await navigate(page, 'https://www.instagram.com/accounts/account_type_and_tools/', 'instagram');
+  await waitForAppShell(page, 'instagram');
+  return { via: 'fallback-url', target: 'account_type_and_tools' };
+}
+
+async function openInstagramProfessionalDashboard(page, targetLabels = []) {
+  const direct = await clickInstagramLabel(page, ['Professional dashboard'], { partial: true, timeoutAfterClick: 1000 });
+  if (!direct) {
+    await openInstagramProfileUi(page).catch(() => null);
+    await clickInstagramLabel(page, ['Professional dashboard'], { partial: true, timeoutAfterClick: 1000 }).catch(() => null);
+  }
+  if (targetLabels.length) {
+    await clickInstagramLabel(page, targetLabels, { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+  }
+  const content = await extractPageContent(page).catch(() => ({ fullText: '' }));
+  if (!/professional dashboard|insights|ad tools|content|ad account/i.test(content.fullText || '')) {
+    await navigate(page, 'https://www.instagram.com/professional_dashboard/', 'instagram');
+    await waitForAppShell(page, 'instagram');
+    if (targetLabels.length) {
+      await clickInstagramLabel(page, targetLabels, { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    }
+    return { via: 'fallback-url', target: targetLabels[0] || 'Professional dashboard' };
+  }
+  return { via: 'ui', target: targetLabels[0] || 'Professional dashboard' };
+}
+
+async function uploadInstagramMediaIfProvided(page, args = {}) {
+  const attachmentPath = args.attachmentPath || args.filePath || args.mediaPath;
+  if (!attachmentPath) return false;
+  const input = await page.locator('input[type="file"]').first();
+  if (await input.count() > 0) {
+    await input.setInputFiles(attachmentPath);
+    await minimalDelay(1500);
+    return true;
+  }
+  return false;
+}
+
+async function openInstagramPostOptions(page, targetLabels = [], args = {}) {
+  const opened = await clickInstagramAny(page, [
+    'svg[aria-label="More options"]',
+    'svg[aria-label="Options"]',
+    'button[aria-label*="options" i]',
+    'div[role="button"][aria-label*="options" i]',
+  ], ['More options', 'Options'], { timeoutAfterClick: 700 });
+  if (!opened) return null;
+  if (args.requireManualReview) return { via: 'ui', waitingForReview: true, target: targetLabels[0] };
+  if (targetLabels.length) {
+    return clickInstagramLabel(page, targetLabels, { partial: true, timeoutAfterClick: 800 });
+  }
+  return opened;
+}
+
+async function clickInstagramDialogConfirmation(page, labels = ['Done', 'Save', 'Confirm', 'OK', 'Apply']) {
+  return clickInstagramLabel(page, labels, {
+    partial: false,
+    withinDialog: true,
+    timeoutAfterClick: 900,
+  });
+}
+
+async function setInstagramAppearance(page, desiredAppearance) {
+  const target = String(desiredAppearance || '').trim().toLowerCase();
+  const targetLabels = target.includes('dark')
+    ? ['Dark mode', 'Dark']
+    : target.includes('light')
+      ? ['Light mode', 'Light']
+      : ['Dark mode', 'Switch appearance', 'Appearance'];
+
+  const clickedLabel = await clickInstagramLabel(page, targetLabels, {
+    partial: true,
+    withinDialog: true,
+    timeoutAfterClick: 700,
+  }).catch(() => null);
+  if (clickedLabel) return { changed: true, method: 'label', target: target || clickedLabel.requested };
+
+  const toggle = await page.evaluate((desired) => {
+    const normalize = (value) => (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const isVisible = (element) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    };
+    const root = document.querySelector('div[role="dialog"]') || document;
+    const candidates = Array.from(root.querySelectorAll('[role="switch"], input[type="checkbox"], button, [role="button"]'));
+    for (const element of candidates) {
+      if (!isVisible(element)) continue;
+      const text = normalize([
+        element.getAttribute('aria-label'),
+        element.getAttribute('aria-checked'),
+        element.innerText,
+        element.textContent,
+      ].filter(Boolean).join(' '));
+      if (desired && !text.includes(desired) && !text.includes('dark') && !text.includes('appearance')) continue;
+      const rect = element.getBoundingClientRect();
+      return {
+        x: Math.round(rect.left + rect.width / 2),
+        y: Math.round(rect.top + rect.height / 2),
+        label: text.slice(0, 80),
+      };
+    }
+    return null;
+  }, target.includes('dark') ? 'dark' : target.includes('light') ? 'light' : '');
+
+  if (!toggle) return { changed: false, method: 'not-found' };
+  await page.mouse.click(toggle.x, toggle.y).catch(() => {});
+  await minimalDelay(700);
+  return { changed: true, method: 'toggle', target: target || toggle.label };
+}
+
+async function chooseInstagramSearchResult(page, query) {
+  if (!query) return null;
+  await minimalDelay(900);
+  const selected = await page.evaluate((rawQuery) => {
+    const query = String(rawQuery || '').trim().toLowerCase().replace(/^@+/, '');
+    if (!query) return null;
+    const isVisible = (element) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const rows = Array.from(document.querySelectorAll('a, [role="button"], [role="option"], button')).filter(isVisible);
+    for (const row of rows) {
+      const text = (row.innerText || row.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const href = row.getAttribute('href') || '';
+      if (!text.includes(query) && !href.toLowerCase().includes(query)) continue;
+      const rect = row.getBoundingClientRect();
+      return {
+        x: Math.round(rect.left + Math.min(rect.width / 2, 120)),
+        y: Math.round(rect.top + rect.height / 2),
+        text: text.slice(0, 80),
+      };
+    }
+    return null;
+  }, query);
+  if (!selected) return null;
+  await page.mouse.click(selected.x, selected.y).catch(() => {});
+  await minimalDelay(900);
+  return selected;
+}
+
+async function runInstagramUiAction(page, action, args = {}, step = {}) {
+  const requireManualReview = Boolean(args.requireManualReview);
+  const ready = async (summary, extra = {}) => ({
+    status: extra.status || 'ready',
+    summary,
+    data: {
+      action,
+      page: await pageSnapshot(page),
+      requiresManualReview: requireManualReview || INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action),
+      ...extra.data,
+    },
+  });
+
+  if (action === 'connect_instagram_account' || action === 'sync_profile' || action === 'view_feed_posts') {
+    const clicked = await clickInstagramAny(page, ['a[href="/"]', 'svg[aria-label="Home"]'], ['Home'], { preferLeftRail: true, timeoutAfterClick: 900 });
+    if (!clicked) await navigateToInstagramHome(page);
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (action === 'refresh_permissions' || action === 'open_settings') {
+    await openInstagramSettings(page);
+    return ready(summarizeAction('instagram', step));
+  }
+
+  if (action === 'open_more_menu') {
+    await openInstagramMoreMenu(page);
+    return ready('Opened Instagram More menu');
+  }
+
+  if (action === 'view_account_status') {
+    await openInstagramSettings(page);
+    await clickInstagramLabel(page, ['Account status'], { partial: true, timeoutAfterClick: 800 }).catch(() => null);
+    return ready('Opened Instagram account status', { status: 'completed' });
+  }
+
+  if (action === 'open_profile') {
+    await openInstagramProfileUi(page, args);
+    return ready(args.username ? `Opened Instagram profile @${args.username}` : 'Opened Instagram profile', { status: 'completed' });
+  }
+
+  if (action === 'edit_profile' || action === 'change_bio' || action === 'change_profile_photo') {
+    await openInstagramProfileUi(page, args);
+    await clickInstagramLabel(page, ['Edit profile', 'Edit Profile'], { partial: false, timeoutAfterClick: 900 }).catch(() => null);
+    if (action === 'change_bio' && args.bio) {
+      await fillEditable(page, ['textarea', 'input[name="biography"]', 'div[contenteditable="true"]'], args.bio, { humanLike: true }).catch(() => null);
+      if (!requireManualReview) {
+        await clickInstagramDialogConfirmation(page, ['Submit', 'Done', 'Save']).catch(() => null);
+        await clickInstagramLabel(page, ['Submit', 'Done', 'Save'], { partial: false, timeoutAfterClick: 900 }).catch(() => null);
+      }
+    }
+    if (action === 'change_profile_photo') {
+      await clickInstagramLabel(page, ['Change photo', 'Change profile photo', 'Edit picture or avatar'], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+      await uploadInstagramMediaIfProvided(page, args).catch(() => false);
+      if (!requireManualReview) {
+        await clickInstagramDialogConfirmation(page, ['Done', 'Save', 'Apply']).catch(() => null);
+      }
+    }
+    return ready(summarizeAction('instagram', step), { status: requireManualReview ? 'ready' : 'completed' });
+  }
+
+  if (['open_activity', 'open_saved', 'switch_appearance', 'report_problem', 'switch_accounts', 'logout'].includes(action)) {
+    await openInstagramMoreMenu(page);
+    const labelsByAction = {
+      open_activity: ['Your activity', 'Activity'],
+      open_saved: ['Saved'],
+      switch_appearance: ['Switch appearance', 'Appearance'],
+      report_problem: ['Report a problem'],
+      switch_accounts: ['Switch accounts'],
+      logout: ['Log out', 'Logout'],
+    };
+    await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    if (action === 'switch_appearance') {
+      const appearance = await setInstagramAppearance(page, args.appearance || args.mode || args.theme);
+      return ready(appearance.changed ? 'Changed Instagram appearance' : 'Opened Instagram appearance control', {
+        status: appearance.changed ? 'completed' : 'ready',
+        data: { appearance },
+      });
+    }
+    if (action === 'report_problem' && (args.message || args.text || args.description)) {
+      await fillEditable(page, ['textarea', 'input', 'div[contenteditable="true"][role="textbox"]'], args.message || args.text || args.description, { humanLike: true }).catch(() => null);
+      if (!requireManualReview) {
+        await clickInstagramDialogConfirmation(page, ['Send', 'Submit', 'Report']).catch(() => null);
+      }
+      return ready('Submitted Instagram problem report', { status: requireManualReview ? 'ready' : 'completed' });
+    }
+    if (action === 'switch_accounts' && args.username) {
+      await clickInstagramLabel(page, [args.username, args.username.replace(/^@+/, '')], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+      return ready(`Switched Instagram account to ${args.username}`, { status: 'completed' });
+    }
+    return ready(action === 'logout' && requireManualReview ? 'Opened Instagram logout control for review' : summarizeAction('instagram', step), {
+      status: INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) && requireManualReview ? 'ready' : 'completed',
+    });
+  }
+
+  if (action === 'open_search_results') {
+    await openInstagramSearchUi(page, args.query || args.search || '');
+    await chooseInstagramSearchResult(page, args.select || args.username || args.target || '').catch(() => null);
+    return ready(args.query ? `Opened Instagram search for "${args.query}"` : 'Opened Instagram search', { status: 'completed' });
+  }
+
+  if (action === 'open_notifications') {
+    await clickInstagramAny(page, ['svg[aria-label="Notifications"]'], ['Notifications'], { preferLeftRail: true, timeoutAfterClick: 900 });
+    return ready('Opened Instagram notifications', { status: 'completed' });
+  }
+
+  if (action === 'open_explore' || action === 'open_reels' || action === 'view_suggestions') {
+    const labelsByAction = {
+      open_explore: ['Explore'],
+      open_reels: ['Reels'],
+      view_suggestions: ['See all', 'Suggested for you'],
+    };
+    const selectorsByAction = {
+      open_explore: ['a[href="/explore/"]', 'a[href*="/explore/"]', 'svg[aria-label="Explore"]'],
+      open_reels: ['a[href="/reels/"]', 'a[href*="/reels/"]', 'svg[aria-label="Reels"]'],
+      view_suggestions: ['a[href="/explore/people/"]', 'a[href*="/explore/people"]'],
+    };
+    await clickInstagramAny(page, selectorsByAction[action], labelsByAction[action], { preferLeftRail: action !== 'view_suggestions', timeoutAfterClick: 1000 });
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (action === 'switch_professional_account' || action === 'switch_normal_account') {
+    await openInstagramAccountTypeTools(page);
+    const labels = action === 'switch_professional_account'
+      ? ['Switch to professional account', 'Switch to professional', 'Professional account']
+      : ['Switch to personal account', 'Switch to personal', 'Switch to normal'];
+    if (!requireManualReview) {
+      await clickInstagramLabel(page, labels, { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    }
+    return ready(action === 'switch_professional_account'
+      ? 'Opened Instagram professional account conversion flow'
+      : 'Opened Instagram personal account conversion flow', {
+      status: requireManualReview ? 'ready' : 'completed',
+    });
+  }
+
+  if ([
+    'create_media_publish_flow',
+    'create_post_draft',
+    'upload_media',
+    'create_reel',
+    'create_story',
+    'start_live',
+    'create_live_video',
+    'open_ai_create',
+    'create_ad',
+  ].includes(action)) {
+    await openInstagramCreateMenu(page);
+    const labelsByAction = {
+      create_media_publish_flow: ['Post', 'Reel', 'Story'],
+      create_post_draft: ['Post'],
+      upload_media: ['Post', 'Select from computer'],
+      create_reel: ['Reel', 'Reels'],
+      create_story: ['Story'],
+      start_live: ['Live video', 'Live'],
+      create_live_video: ['Live video', 'Live'],
+      open_ai_create: ['AI'],
+      create_ad: ['Ad', 'Create ad'],
+    };
+    await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    await uploadInstagramMediaIfProvided(page, args).catch(() => false);
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) ? 'ready' : 'completed',
+    });
+  }
+
+  if (['write_caption', 'add_hashtags', 'add_location', 'tag_users', 'save_draft', 'schedule_post', 'publish_now', 'publish_reel', 'publish_story'].includes(action)) {
+    const textByAction = {
+      write_caption: args.caption || args.text || '',
+      add_hashtags: args.hashtags || args.text || '',
+      add_location: args.location || '',
+      tag_users: Array.isArray(args.users) ? args.users.join(' ') : (args.username || args.users || ''),
+    };
+    const labelsByAction = {
+      add_location: ['Add location', 'Location'],
+      tag_users: ['Tag people', 'Tag users'],
+      save_draft: ['Save draft', 'Save'],
+      schedule_post: ['Schedule', 'Advanced settings'],
+      publish_now: ['Share', 'Post', 'Publish'],
+      publish_reel: ['Share', 'Post', 'Publish'],
+      publish_story: ['Share', 'Your story', 'Publish'],
+    };
+    if (labelsByAction[action] && !['publish_now', 'publish_reel', 'publish_story'].includes(action)) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 700 }).catch(() => null);
+    }
+    if (textByAction[action]) {
+      await fillEditable(page, ['textarea', 'input[placeholder*="caption" i]', 'input[placeholder*="location" i]', 'input[aria-label*="location" i]', 'input[placeholder*="Search" i]', 'div[contenteditable="true"]'], textByAction[action], { humanLike: true }).catch(() => null);
+      if (action === 'add_location' || action === 'tag_users') {
+        await chooseInstagramSearchResult(page, textByAction[action]).catch(() => null);
+      }
+    }
+    if (labelsByAction[action] && !(requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action))) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+      if (action === 'schedule_post') {
+        await clickInstagramDialogConfirmation(page, ['Schedule', 'Done', 'Save']).catch(() => null);
+      }
+    }
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) ? 'ready' : 'completed',
+    });
+  }
+
+  if (['delete_post', 'archive_post', 'pin_post', 'disable_comments', 'enable_comments', 'delete_reel', 'delete_story', 'add_story_highlight'].includes(action)) {
+    const labelsByAction = {
+      delete_post: ['Delete'],
+      archive_post: ['Archive'],
+      pin_post: ['Pin to your profile', 'Pin'],
+      disable_comments: ['Turn off commenting', 'Disable comments'],
+      enable_comments: ['Turn on commenting', 'Enable comments'],
+      delete_reel: ['Delete'],
+      delete_story: ['Delete'],
+      add_story_highlight: ['Highlight', 'Add to highlights'],
+    };
+    await openInstagramPostOptions(page, labelsByAction[action], args);
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) ? 'ready' : 'completed',
+    });
+  }
+
+  if (['view_stories', 'reply_to_story', 'comment_on_story'].includes(action)) {
+    await clickInstagramAny(page, ['a[href*="/stories/"]', 'canvas'], ['Stories', 'Your story'], { timeoutAfterClick: 1000 });
+    if ((action === 'reply_to_story' || action === 'comment_on_story') && (args.message || args.comment)) {
+      await fillEditable(page, ['textarea', 'input', 'div[contenteditable="true"]'], args.message || args.comment, { humanLike: true }).catch(() => null);
+      if (!requireManualReview) {
+        await clickInstagramLabel(page, ['Send', 'Post', 'Reply'], { partial: true, timeoutAfterClick: 800 }).catch(() => null);
+      }
+    }
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (['open_user_posts', 'open_user_videos'].includes(action)) {
+    await openInstagramProfileUi(page, args);
+    if (action === 'open_user_videos') {
+      await clickInstagramLabel(page, ['Reels', 'Videos'], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    } else {
+      await clickInstagramLabel(page, ['Posts'], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    }
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (action === 'repost_post') {
+    await clickInstagramAny(page, ['svg[aria-label="Share"]'], ['Share'], { timeoutAfterClick: 700 });
+    await clickInstagramLabel(page, ['Add post to your story', 'Repost', 'Share'], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    return ready('Opened Instagram repost/share flow', { status: requireManualReview ? 'ready' : 'completed' });
+  }
+
+  if (['open_inbox', 'open_messages_list', 'open_requested_messages', 'open_primary_messages', 'open_general_messages'].includes(action)) {
+    await openInstagramInbox(page);
+    const labelsByAction = {
+      open_requested_messages: ['Requests', 'Message requests'],
+      open_primary_messages: ['Primary'],
+      open_general_messages: ['General'],
+    };
+    if (labelsByAction[action]) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    }
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (['accept_message_request', 'delete_message_request', 'blur_message_request', 'move_request_primary', 'move_request_general', 'move_request_channel', 'use_saved_reply'].includes(action)) {
+    await openInstagramInbox(page);
+    await clickInstagramLabel(page, ['Requests', 'Message requests'], { partial: true, timeoutAfterClick: 800 }).catch(() => null);
+    const labelsByAction = {
+      accept_message_request: ['Accept'],
+      delete_message_request: ['Delete'],
+      blur_message_request: ['Blur', 'Hide'],
+      move_request_primary: ['Move to Primary', 'Primary'],
+      move_request_general: ['Move to General', 'General'],
+      move_request_channel: ['Move to Channel', 'Channel'],
+      use_saved_reply: ['Saved reply', 'Saved replies'],
+    };
+    if (!(requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action))) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+      await clickInstagramDialogConfirmation(page, ['Move', 'Accept', 'OK', 'Done', 'Confirm']).catch(() => null);
+    }
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) ? 'ready' : 'completed',
+    });
+  }
+
+  if (['assign_conversation_to_human', 'mark_conversation_resolved'].includes(action)) {
+    await openInstagramInbox(page);
+    const labelsByAction = {
+      assign_conversation_to_human: ['Assign', 'Assign to', 'Human'],
+      mark_conversation_resolved: ['Resolved', 'Mark resolved', 'Done'],
+    };
+    await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+    return ready(action === 'assign_conversation_to_human'
+      ? 'Opened Instagram inbox for human assignment'
+      : 'Opened Instagram inbox for resolution', { status: 'completed' });
+  }
+
+  if (['reply_to_post_comment', 'reply_to_comment', 'hide_comment', 'unhide_comment', 'delete_comment', 'send_private_reply', 'hide_spam_comment', 'flag_negative_comment', 'escalate_issue'].includes(action)) {
+    if (args.comment || args.message) {
+      await clickInstagramLabel(page, ['Reply'], { partial: true, timeoutAfterClick: 600 }).catch(() => null);
+      await fillEditable(page, ['textarea', 'input', 'div[contenteditable="true"]'], args.comment || args.message, { humanLike: true }).catch(() => null);
+      if (!requireManualReview) {
+        await clickInstagramLabel(page, ['Post', 'Send', 'Reply'], { partial: false, timeoutAfterClick: 800 }).catch(() => null);
+      }
+    } else {
+      await clickInstagramLabel(page, ['More', 'Options'], { partial: true, timeoutAfterClick: 600 }).catch(() => null);
+    }
+    const labelsByAction = {
+      hide_comment: ['Hide'],
+      unhide_comment: ['Unhide'],
+      delete_comment: ['Delete'],
+      send_private_reply: ['Message', 'Send message', 'Private reply'],
+      hide_spam_comment: ['Hide'],
+      flag_negative_comment: ['Report'],
+      escalate_issue: ['Report'],
+    };
+    if (labelsByAction[action] && !(requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action))) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 800 }).catch(() => null);
+      await clickInstagramDialogConfirmation(page, ['Done', 'Confirm', 'OK', 'Delete', 'Hide']).catch(() => null);
+    }
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview && INSTAGRAM_DESTRUCTIVE_ACTIONS.has(action) ? 'ready' : 'completed',
+    });
+  }
+
+  if (['block_user', 'restrict_user', 'report_user', 'remove_follower'].includes(action)) {
+    await openInstagramProfileUi(page, args);
+    await clickInstagramLabel(page, ['Options', 'More options'], { partial: true, timeoutAfterClick: 700 }).catch(() => null);
+    const labelsByAction = {
+      block_user: ['Block'],
+      restrict_user: ['Restrict'],
+      report_user: ['Report'],
+      remove_follower: ['Remove follower', 'Remove'],
+    };
+    if (!requireManualReview) {
+      await clickInstagramLabel(page, labelsByAction[action], { partial: true, timeoutAfterClick: 900 }).catch(() => null);
+      await clickInstagramDialogConfirmation(page, ['Block', 'Restrict', 'Report', 'Remove', 'Confirm']).catch(() => null);
+    }
+    return ready(summarizeAction('instagram', step), {
+      status: requireManualReview ? 'ready' : 'completed',
+    });
+  }
+
+  if (action === 'open_professional_settings') {
+    await openInstagramAccountTypeTools(page);
+    return ready('Opened Instagram professional account settings', { status: 'completed' });
+  }
+
+  if (['open_professional_dashboard', 'sync_insights', 'view_report', 'export_report', 'open_ad_account', 'open_content_tools', 'open_ad_tools', 'track_post_performance', 'track_reel_performance', 'track_story_performance'].includes(action)) {
+    const labelsByAction = {
+      sync_insights: ['Insights'],
+      view_report: ['Insights', 'Report'],
+      export_report: ['Export', 'Download'],
+      open_ad_account: ['Ad account'],
+      open_content_tools: ['Content'],
+      open_ad_tools: ['Ad tools'],
+      track_post_performance: ['Content', 'Posts'],
+      track_reel_performance: ['Content', 'Reels'],
+      track_story_performance: ['Content', 'Stories'],
+    };
+    await openInstagramProfessionalDashboard(page, labelsByAction[action] || []);
+    return ready(summarizeAction('instagram', step), { status: 'completed' });
+  }
+
+  if (['qualify_lead', 'score_lead', 'save_lead', 'push_lead_to_crm', 'add_lead_to_spreadsheet', 'create_follow_up'].includes(action)) {
+    await openInstagramInbox(page);
+    const leadData = {
+      username: args.username || args.handle || null,
+      score: args.score || null,
+      qualification: args.qualification || args.status || null,
+      note: args.note || args.message || '',
+      nextStep: action === 'create_follow_up' ? (args.followUp || args.nextStep || 'Follow up') : null,
+    };
+    return ready(summarizeAction('instagram', step), {
+      status: 'completed',
+      data: { lead: leadData },
+    });
+  }
+
+  if (['create_automation_rule', 'enable_rule', 'pause_rule', 'run_workflow', 'approve_action', 'reject_action', 'view_action_log'].includes(action)) {
+    return ready(summarizeAction('instagram', step), {
+      status: 'completed',
+      data: {
+        automation: {
+          rule: args.rule || args.name || action,
+          state: action,
+        },
+      },
+    });
+  }
+
+  return null;
+}
+
 // Navigate to Instagram home via UI (not direct URL) - FAST
 async function navigateToInstagramHome(page) {
   console.log('[Instagram] Navigating to home...');
@@ -858,6 +1747,126 @@ export const instagramHandler = {
     }
 
     const page = await openAttachedPage(attachedBrowser, PLATFORM_URLS.instagram, { platform: 'instagram' });
+
+    if (action === 'analyze_instagram_account_type') {
+      const firstPassContent = await extractPageContent(page).catch(() => ({ fullText: '' }));
+      let accountType = inferAccountType(firstPassContent.fullText || '');
+      if (accountType === 'unknown') {
+        await openInstagramAccountTypeTools(page).catch(() => null);
+      }
+      const content = await extractPageContent(page);
+      accountType = inferAccountType(content.fullText || '') || accountType;
+      return {
+        status: 'completed',
+        summary: `Instagram account type: ${accountType}`,
+        data: {
+          action,
+          accountType,
+          signals: {
+            professionalDashboard: /professional dashboard/i.test(content.fullText || ''),
+            insights: /insights/i.test(content.fullText || ''),
+            switchToProfessional: /switch to professional/i.test(content.fullText || ''),
+            accountTypeTools: /account type and tools/i.test(content.fullText || ''),
+          },
+          page: await pageSnapshot(page),
+        },
+      };
+    }
+
+    if (action === 'analyze_instagram_profile' || action === 'analyze_user_profile') {
+      const username = args.username;
+      if (action === 'analyze_user_profile' && username) {
+        await navigateToProfileViaSearch(page, username);
+      } else {
+        await openInstagramProfileUi(page, args).catch(() => navigateToInstagramHome(page));
+      }
+      const content = await extractPageContent(page);
+      const profile = parseProfileFromContent(content, 'instagram');
+      return {
+        status: 'completed',
+        summary: action === 'analyze_user_profile'
+          ? `Analyzed Instagram profile ${username ? `@${username}` : ''}`.trim()
+          : 'Analyzed current Instagram profile/feed context',
+        data: {
+          action,
+          profile,
+          accountType: inferAccountType(content.fullText || ''),
+          page: await pageSnapshot(page),
+        },
+      };
+    }
+
+    if (action === 'open_profile' && args.username) {
+      await navigateToProfileViaSearch(page, args.username);
+      return {
+        status: 'ready',
+        summary: `Opened Instagram profile @${args.username}`,
+        data: { action, page: await pageSnapshot(page) },
+      };
+    }
+
+    const uiActionResult = await runInstagramUiAction(page, action, args, step);
+    if (uiActionResult) return uiActionResult;
+
+    if (INSTAGRAM_NAVIGATION_ACTIONS[action]) {
+      await navigate(page, INSTAGRAM_NAVIGATION_ACTIONS[action], 'instagram');
+      await waitForAppShell(page, 'instagram');
+
+      if (action === 'upload_media' && args.attachmentPath) {
+        const input = await page.locator('input[type="file"]').first();
+        if (await input.count() > 0) {
+          await input.setInputFiles(args.attachmentPath);
+          await minimalDelay(1500);
+        }
+      }
+
+      return {
+        status: 'ready',
+        summary: summarizeAction('instagram', step),
+        data: {
+          action,
+          page: await pageSnapshot(page),
+          requiresManualReview: Boolean(args.requireManualReview),
+        },
+      };
+    }
+
+    if (action === 'reply_to_dm' || action === 'send_dm_media') {
+      if (!args.username) {
+        return {
+          status: 'failed',
+          summary: `Instagram action "${action}" requires a target username`,
+          data: { action, missing: 'username' },
+        };
+      }
+      return this.execute({
+        step: {
+          ...step,
+          action: 'send_message',
+          args: { ...args, operation: action },
+        },
+        attachedBrowser,
+      });
+    }
+
+    if (action === 'load_comments' || action === 'detect_spam') {
+      const comments = await extractVisibleInstagramComments(page, Number(args.maxResults) || 25);
+      return {
+        status: 'completed',
+        summary: action === 'detect_spam'
+          ? `Checked ${comments.length} Instagram comments for spam`
+          : `Loaded ${comments.length} Instagram comments`,
+        data: {
+          action,
+          comments: action === 'detect_spam' ? classifySpamComments(comments) : comments,
+          page: await pageSnapshot(page),
+        },
+      };
+    }
+
+    if (INSTAGRAM_UNSUPPORTED_ACTIONS.has(action)) {
+      return unsupportedInstagramAction(action);
+    }
     
     // ACTION: Open profile
     if (action === 'open_target') {

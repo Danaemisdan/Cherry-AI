@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .cherry-agent
+.cherry-audit
+.cherry-audit.config.json
 apps/web/dist
 release
 

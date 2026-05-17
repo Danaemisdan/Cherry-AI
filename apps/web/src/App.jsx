@@ -37,12 +37,13 @@ const platformMeta = [
   { id: 'facebook', label: 'Facebook', short: 'f', icon: FacebookIcon, defaultQuery: 'saas founders', description: 'Group engagement and lead prospecting.' },
   { id: 'gmail', label: 'Gmail', short: 'M', icon: GmailIcon, defaultQuery: 'warm follow up', description: 'Automated follow-ups and inbox monitoring.' },
   { id: 'whatsapp', label: 'WhatsApp', short: 'WA', icon: WhatsAppIcon, defaultQuery: 'customer follow up', description: 'One-to-one chat automation in a logged-in WhatsApp Web session.' },
+  { id: 'youtube', label: 'YouTube', short: 'YT', icon: YoutubeIcon, defaultQuery: 'creator community comments', description: 'Creator studio, channel audience, and community intelligence.' },
   { id: 'chatgpt', label: 'ChatGPT', short: 'GPT', icon: ChatGPTIcon, defaultQuery: 'A cinematic landscape', description: 'Generate images via ChatGPT.' },
   { id: 'gemini', label: 'Gemini', short: 'G', icon: GeminiIcon, defaultQuery: 'A futuristic city', description: 'Generate images via Gemini.' },
   { id: 'research', label: 'Research', short: 'R', icon: SearchIcon, defaultQuery: 'best fintech founders in india', description: 'Deep research using managed stealth browser.' },
 ];
 
-const defaultCampaignPlatforms = ['instagram', 'twitter', 'linkedin', 'gmail', 'whatsapp', 'research', 'chatgpt', 'gemini'];
+const defaultCampaignPlatforms = ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube', 'research', 'chatgpt', 'gemini'];
 
 function usePlatformData() {
   const [events, setEvents] = useState([]);
@@ -116,6 +117,9 @@ function usePlatformData() {
       if (payload.type === 'agent.status') {
         setAgentOnline(Boolean(payload.online));
         setAgentState((current) => ({ ...(current || {}), ...payload }));
+      }
+      if (payload.type === 'contact.metrics.updated') {
+        setContactMetrics(payload.metrics);
       }
       setEvents((current) => [payload, ...current].slice(0, 80));
       refreshTasks().catch(() => {});
@@ -245,6 +249,8 @@ function Workspace({ refreshTasks, tasks }) {
   const [tone, setTone] = useState('Casual and brief');
   const [attachmentPath, setAttachmentPath] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
+  const [analysisTarget, setAnalysisTarget] = useState('');
+  const [analysisScope, setAnalysisScope] = useState('full');
   const [maxResults, setMaxResults] = useState(15);
   const [submitting, setSubmitting] = useState(false);
   const [automationMode, setAutomationMode] = useState('auto');
@@ -264,6 +270,9 @@ function Workspace({ refreshTasks, tasks }) {
     console.log(`Platform: ${selectedPlatform}, Action: ${action}, Supported: ${supported}, Capabilities:`, capabilities);
     return supported;
   };
+  const supportsContactIntelligence = capabilities.includes('map_contacts');
+  const socialIntelligencePlatforms = ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube'];
+  const isSocialIntelligencePlatform = socialIntelligencePlatforms.includes(selectedPlatform);
 
   function cn(...classes) {
     return classes.filter(Boolean).join(' ');
@@ -391,6 +400,7 @@ function Workspace({ refreshTasks, tasks }) {
 
     console.log('[runPlatformAction] Base context:', baseContext);
 
+    const focusedAnalysisTarget = analysisTarget.trim() || targetHandle || undefined;
     const payloads = {
       open_workspace: {
         prompt: `Open ${selectedPlatformMeta.label} in my attached Chrome workspace.`,
@@ -542,8 +552,19 @@ function Workspace({ refreshTasks, tasks }) {
         context: { ...baseContext, operation: 'scrape_followers', query: targetHandle || query },
       },
       map_contacts: {
-        prompt: `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
-        context: { ...baseContext, operation: 'map_contacts', destination: 'artifact' },
+        prompt: focusedAnalysisTarget
+          ? `Analyze ${focusedAnalysisTarget} on ${selectedPlatformMeta.label}: profile context, chat context, and sentiment for the dashboard.`
+          : `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
+        context: {
+          ...baseContext,
+          operation: 'map_contacts',
+          destination: 'artifact',
+          username: focusedAnalysisTarget,
+          query: focusedAnalysisTarget || trimmedQuery,
+          analysisScope,
+          includeConversations: analysisScope !== 'profiles',
+          analyzeIntelligence: true,
+        },
       },
       // ChatGPT & Gemini specific — combine ALL panel inputs into a rich prompt
       generate_image: (() => {
@@ -733,6 +754,47 @@ function Workspace({ refreshTasks, tasks }) {
           ))}
         </div>
 
+        {isSocialIntelligencePlatform && supportsContactIntelligence && (
+          <div className="intelligence-strip">
+            <div>
+              <div className="intelligence-kicker">Profile + chat intelligence</div>
+              <div className="intelligence-copy">
+                Enter a handle, email, profile URL, or chat name to focus the analysis. Leave blank to scan visible contacts.
+              </div>
+            </div>
+            <div className="intelligence-target-row">
+              <input
+                className="intelligence-input"
+                placeholder={`@handle, email, profile URL, or chat name on ${selectedPlatformMeta.label}`}
+                value={analysisTarget}
+                onChange={(event)=>setAnalysisTarget(event.target.value)}
+                onKeyDown={(event)=>{if(event.key==='Enter'){event.preventDefault();runPlatformAction('map_contacts')}}}
+              />
+              <button className="mini-clear-btn" onClick={()=>setAnalysisTarget('')} disabled={!analysisTarget.trim()}>
+                Clear
+              </button>
+            </div>
+            <div className="analysis-scope-toggle" aria-label="Analysis scope">
+              {[
+                ['full', 'Profile + Chat'],
+                ['profiles', 'Profile only'],
+                ['chats', 'Chat + Sentiment'],
+              ].map(([scope, label]) => (
+                <button
+                  key={scope}
+                  className={analysisScope === scope ? 'active' : ''}
+                  onClick={()=>setAnalysisScope(scope)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button className="cmd-btn intelligence-primary" onClick={()=>runPlatformAction('map_contacts')}>
+              {analysisTarget.trim() ? `Analyze ${analysisTarget.trim()}` : 'Sync Visible Intelligence'}
+            </button>
+          </div>
+        )}
+
         <div className="command-scroll custom-scroll">
           <div className="cmd-section">
             <div className="cmd-section-title">{isAI?'Prompt Studio':'Lead Scraper'}</div>
@@ -815,8 +877,12 @@ function Workspace({ refreshTasks, tasks }) {
               <div className="preset-grid">
                 {WORKFLOW_PRESETS.filter(p=>({find_leads:supports('scrape_results'),scrape_profiles:supports('scrape_results'),follow_user:supports('follow_user'),send_message:supports('send_message'),follow_and_message:supports('follow_user')&&supports('send_message'),lead_and_message:supports('scrape_results')&&supports('message_batch'),map_contacts:supports('map_contacts')})[p.id]).map(p=>(
                   <button key={p.id} className="preset-btn" onClick={()=>runPlatformAction(p.id)}>
-                    <span className="preset-btn-label">{p.label}</span>
-                    <span className="preset-btn-desc">{p.description}</span>
+                    <span className="preset-btn-label">{p.id === 'map_contacts' ? 'Profile + Chat Sync' : p.label}</span>
+                    <span className="preset-btn-desc">
+                      {p.id === 'map_contacts'
+                        ? 'Analyze contacts, conversations, sentiment, and profile signals.'
+                        : p.description}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -998,138 +1064,182 @@ function Dashboard({ contactMetrics, refreshContactMetrics }) {
   const metrics = contactMetrics || {};
   const summary = metrics.summary || {};
   const categories = metrics.categories || {};
+  const categoryDetails = metrics.categoryDetails || {};
   const platforms = metrics.platforms || [];
   const sentiment = metrics.sentiment || {};
   const recentActivity = metrics.recentActivity || [];
+  const totalContacts = summary.totalContacts ?? platforms.reduce((sum, platform) => sum + (platform.total || 0), 0);
+  const activePlatforms = summary.totalPlatforms ?? platforms.filter((platform) => (platform.total || 0) > 0).length;
+  const totalChats = recentActivity.length;
+  const leadCount = categories.leads || categoryDetails.leads?.length || 0;
+  const maxPlatformTotal = Math.max(1, ...platforms.map((platform) => platform.total || 0));
+  const categoryEntries = Object.entries({
+    leads: 0,
+    prospects: 0,
+    customers: 0,
+    influencers: 0,
+    contacts: 0,
+    ...categories,
+  });
+  const sentimentEntries = ['positive', 'neutral', 'negative'].map((name) => [name, sentiment[name] || 0]);
+  const sentimentTotal = Math.max(1, sentimentEntries.reduce((sum, [, value]) => sum + value, 0));
+  const lastSync = metrics.updatedAt
+    ? new Date(metrics.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Not synced';
+  const syncPending = metrics.status === 'pending_initial_sync' || totalContacts === 0;
+  const platformRows = platforms.length
+    ? platforms
+    : ['instagram', 'twitter', 'linkedin', 'facebook', 'gmail', 'whatsapp', 'youtube'].map((name) => ({ name, total: 0 }));
 
   return (
-    <section className="space-y-12">
-      <div className="flex items-center justify-between">
+    <section className="dashboard-page custom-scroll">
+      <div className="dashboard-header">
         <div>
-          <h2 className="text-4xl font-black text-white tracking-tighter">Contact Intelligence</h2>
-          <p className="text-[12px] text-zinc-600 font-black uppercase tracking-[0.4em] mt-4">
-            Cross-platform contact mapping and analytics
-          </p>
+          <span className="dashboard-eyebrow">All social media handles</span>
+          <h2>Contact Intelligence</h2>
+          <p>Profiles, conversations, categories, and sentiment from the attached browser sessions.</p>
         </div>
-        <button 
-          onClick={() => refreshContactMetrics()}
-          className="px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-        >
-          Refresh Data
-        </button>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-6">
-        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
-          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Total Contacts</p>
-          <p className="text-5xl font-black text-white mt-4">{summary.totalContacts || 0}</p>
-        </div>
-        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
-          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Platforms</p>
-          <p className="text-5xl font-black text-white mt-4">{summary.totalPlatforms || 0}</p>
-        </div>
-        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
-          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Leads</p>
-          <p className="text-5xl font-black text-green-500 mt-4">{categories.leads || 0}</p>
-        </div>
-        <div className="p-8 bg-zinc-900/40 rounded-[2rem] border border-zinc-800">
-          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.4em]">Active Chats</p>
-          <p className="text-5xl font-black text-blue-500 mt-4">
-            {(recentActivity || []).length}
-          </p>
+        <div className="dashboard-actions">
+          <div className={`sync-state ${syncPending ? 'pending' : 'ready'}`}>
+            <span />
+            {syncPending ? 'Awaiting sync' : 'Live metrics'}
+          </div>
+          <button onClick={() => refreshContactMetrics()} className="dash-refresh">Refresh</button>
         </div>
       </div>
 
-      {/* Platform Breakdown */}
-      <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
-        <h3 className="text-2xl font-black text-white mb-8">Platform Breakdown</h3>
-        <div className="grid grid-cols-5 gap-6">
-          {platforms.map((platform) => (
-            <div key={platform.name} className="p-6 bg-zinc-900/40 rounded-2xl border border-zinc-800 text-center">
-              <p className="text-lg font-bold text-white capitalize">{platform.name}</p>
-              <p className="text-3xl font-black text-white mt-2">{platform.total || 0}</p>
-              <div className="mt-3 space-y-1 text-xs text-zinc-500">
-                <p>{platform.connections || platform.followers || 0} connections</p>
-                {platform.pending > 0 && <p className="text-yellow-500">{platform.pending} pending</p>}
-              </div>
+      <div className="dashboard-command-band">
+        <div>
+          <span className="command-band-label">Action center</span>
+          <strong>Use Sync Intelligence from any social platform to update this dashboard.</strong>
+        </div>
+        <NavLink to="/" className="command-band-link">Open Action Center</NavLink>
+      </div>
+
+      <div className="kpi-strip">
+        <div className="kpi-cell">
+          <span>Total contacts</span>
+          <strong>{totalContacts}</strong>
+          <small>Mapped profiles and visible handles</small>
+        </div>
+        <div className="kpi-cell">
+          <span>Active platforms</span>
+          <strong>{activePlatforms}</strong>
+          <small>Instagram, X, LinkedIn, Facebook, Gmail, WhatsApp, YouTube</small>
+        </div>
+        <div className="kpi-cell accent">
+          <span>Lead candidates</span>
+          <strong>{leadCount}</strong>
+          <small>Tagged as sales or outreach opportunities</small>
+        </div>
+        <div className="kpi-cell">
+          <span>Conversation signals</span>
+          <strong>{totalChats}</strong>
+          <small>Recent profile or chat context records</small>
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="dashboard-panel platform-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Platform coverage</span>
+              <h3>Handle map</h3>
             </div>
-          ))}
+            <small>Last sync: {lastSync}</small>
+          </div>
+          <div className="platform-bars">
+            {platformRows.map((platform) => {
+              const meta = platformMeta.find((item) => item.id === platform.name);
+              const Icon = meta?.icon || Globe;
+              const total = platform.total || 0;
+              return (
+                <div className="platform-bar-row" key={platform.name}>
+                  <div className="platform-bar-meta">
+                    <span className="platform-mark"><Icon /></span>
+                    <div>
+                      <strong>{meta?.label || platform.name}</strong>
+                      <small>{platform.connections || platform.followers || platform.messages || 0} linked signals</small>
+                    </div>
+                  </div>
+                  <div className="platform-track">
+                    <span style={{ width: `${Math.max(4, (total / maxPlatformTotal) * 100)}%` }} />
+                  </div>
+                  <b>{total}</b>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Categories & Sentiment */}
-      <div className="grid grid-cols-2 gap-8">
-        <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
-          <h3 className="text-2xl font-black text-white mb-8">Contact Categories</h3>
-          <div className="space-y-4">
-            {Object.entries(categories).map(([name, count]) => (
-              <div key={name} className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
-                <span className="text-zinc-400 capitalize font-bold">{name}</span>
-                <span className="text-2xl font-black text-white">{count || 0}</span>
+        <div className="dashboard-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Contact classification</span>
+              <h3>Audience lanes</h3>
+            </div>
+          </div>
+          <div className="category-lanes">
+            {categoryEntries.map(([name, count]) => (
+              <div className="category-lane" key={name}>
+                <span>{name}</span>
+                <strong>{count || 0}</strong>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
-          <h3 className="text-2xl font-black text-white mb-8">Sentiment Analysis</h3>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
-              <span className="text-green-500 font-bold">Positive</span>
-              <span className="text-2xl font-black text-white">{sentiment.positive || 0}</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
-              <span className="text-zinc-400 font-bold">Neutral</span>
-              <span className="text-2xl font-black text-white">{sentiment.neutral || 0}</span>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
-              <span className="text-red-500 font-bold">Negative</span>
-              <span className="text-2xl font-black text-white">{sentiment.negative || 0}</span>
+        <div className="dashboard-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Conversation tone</span>
+              <h3>Sentiment</h3>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="panel bg-black/40 rounded-[3rem] border border-zinc-800 p-12">
-        <h3 className="text-2xl font-black text-white mb-8">Recent Activity</h3>
-        {recentActivity.length > 0 ? (
-          <div className="space-y-4">
-            {recentActivity.slice(0, 10).map((activity, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-zinc-900/40 rounded-xl">
+          <div className="sentiment-list">
+            {sentimentEntries.map(([name, value]) => (
+              <div className="sentiment-row" key={name}>
                 <div>
-                  <p className="text-white font-bold">{activity.name}</p>
-                  <p className="text-xs text-zinc-500 capitalize">{activity.platform} • {activity.category}</p>
+                  <span className={`sentiment-dot ${name}`} />
+                  <strong>{name}</strong>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-zinc-600">
-                    {activity.lastMessageAt ? new Date(activity.lastMessageAt).toLocaleDateString() : 'No recent activity'}
-                  </p>
-                  {activity.potentialUse && (
-                    <span className="text-xs text-zinc-500">{activity.potentialUse}</span>
-                  )}
+                <div className="sentiment-track">
+                  <span className={name} style={{ width: `${Math.max(5, (value / sentimentTotal) * 100)}%` }} />
                 </div>
+                <b>{value}</b>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-zinc-600">No recent activity. Run "map_contacts" to sync data.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Instructions */}
-      {metrics.status === 'pending_initial_sync' && (
-        <div className="p-8 bg-yellow-500/10 border border-yellow-500/30 rounded-[2rem]">
-          <p className="text-yellow-500 font-bold text-lg">Initial Setup Required</p>
-          <p className="text-zinc-400 mt-2">
-            To populate your dashboard, run the "map_contacts" action on any platform. 
-            This will extract your contacts, conversations, and build intelligence.
-          </p>
         </div>
-      )}
+
+        <div className="dashboard-panel activity-panel">
+          <div className="panel-title-row">
+            <div>
+              <span>Recent context</span>
+              <h3>Profiles and chats</h3>
+            </div>
+          </div>
+          {recentActivity.length > 0 ? (
+            <div className="activity-table">
+              {recentActivity.slice(0, 10).map((activity, idx) => (
+                <div className="activity-row" key={`${activity.platform}-${activity.name}-${idx}`}>
+                  <div>
+                    <strong>{activity.name || 'Unknown contact'}</strong>
+                    <small>{activity.platform || 'platform'} / {activity.category || 'contact'}</small>
+                  </div>
+                  <span>{activity.potentialUse || activity.sentiment || 'Profile context captured'}</span>
+                  <time>{activity.lastMessageAt ? new Date(activity.lastMessageAt).toLocaleDateString() : 'No date'}</time>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-dashboard">
+              <strong>No synced conversation context yet</strong>
+              <p>Open the Action Center, select Instagram, X, LinkedIn, Facebook, Gmail, WhatsApp, or YouTube, then run Sync Intelligence.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
@@ -1346,6 +1456,14 @@ function WhatsAppIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M20.52 3.449A11.815 11.815 0 0 0 12.041 0C5.495 0 .162 5.333.16 11.879a11.82 11.82 0 0 0 1.62 5.986L0 24l6.303-1.652a11.83 11.83 0 0 0 5.734 1.462h.005c6.545 0 11.878-5.333 11.88-11.879A11.82 11.82 0 0 0 20.52 3.449ZM12.043 21.8h-.004a9.8 9.8 0 0 1-4.995-1.369l-.358-.213-3.74.98 1-3.648-.233-.375A9.8 9.8 0 0 1 2.2 11.88C2.202 6.447 6.61 2.04 12.041 2.04c2.633 0 5.108 1.026 6.971 2.89a9.79 9.79 0 0 1 2.886 6.972c-.002 5.432-4.41 9.839-9.855 9.839Zm5.395-7.358c-.295-.148-1.746-.862-2.017-.96-.27-.099-.467-.148-.665.148-.197.295-.764.96-.936 1.158-.172.197-.344.221-.639.074-.295-.148-1.246-.459-2.373-1.463-.876-.781-1.467-1.746-1.639-2.041-.172-.295-.018-.454.13-.602.133-.132.295-.344.443-.516.147-.172.197-.295.295-.492.098-.197.049-.369-.025-.516-.074-.148-.664-1.6-.91-2.189-.239-.575-.482-.496-.665-.505-.172-.008-.369-.01-.566-.01-.197 0-.516.074-.787.369-.27.295-1.033 1.009-1.033 2.459s1.058 2.853 1.205 3.05c.148.197 2.082 3.179 5.044 4.456.705.304 1.254.485 1.682.621.707.225 1.351.193 1.86.117.568-.085 1.746-.713 1.992-1.403.246-.689.246-1.279.172-1.402-.074-.123-.271-.197-.566-.344Z" />
+    </svg>
+  );
+}
+
+function YoutubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor">
+      <path d="M23.5 6.2a3.02 3.02 0 0 0-2.12-2.14C19.5 3.56 12 3.56 12 3.56s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8ZM9.6 15.55v-7.1L15.85 12 9.6 15.55Z" />
     </svg>
   );
 }

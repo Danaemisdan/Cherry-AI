@@ -110,10 +110,19 @@ async function runTask(task, socket) {
         const stepDuration = Date.now() - stepStart;
         console.log(`[TIME] Step ${step.id} completed in ${stepDuration}ms`);
         results.push({ step, result, duration: stepDuration });
+        const progressPayload = {
+          type: 'step.progress',
+          stepId: step.id,
+          message: result.summary || 'Step complete',
+          duration: stepDuration,
+        };
+        if (step.action === 'map_contacts' || result.data?.dashboardData) {
+          progressPayload.data = result.data;
+        }
         socket.send(JSON.stringify({
           type: 'task.event',
           taskId: task.id,
-          payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete', duration: stepDuration },
+          payload: progressPayload,
         }));
       } catch (error) {
         // Login wall detected — pause task and ask user to log in, don't hard-fail
