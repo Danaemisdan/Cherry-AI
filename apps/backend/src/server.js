@@ -15,6 +15,8 @@ import {
   createId,
   safeParse,
 } from '@cherry/shared';
+import { setupAiRoutes } from './ai.js';
+
 
 const app = express();
 app.use(cors());
@@ -428,6 +430,10 @@ wss.on('connection', (socket, req) => {
 // Dialogue system routes
 import { setupDialogueRoutes } from './dialogue.js';
 setupDialogueRoutes(app);
+
+// AI chat routes (local LLM)
+setupAiRoutes(app, { tasks, upsertTask, broadcast, campaigns, createId, CampaignSchema });
+
 
 server.listen(8787, () => {
   console.log('Cherry backend listening on http://localhost:8787');

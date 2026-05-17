@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 import { NavLink, Route, Routes } from 'react-router-dom';
 import { PLATFORM_SKILL_CAPABILITIES, WORKFLOW_PRESETS } from '@cherry/shared';
 import { 
@@ -256,18 +257,32 @@ function Workspace({ refreshTasks, tasks }) {
   const [emailSignature, setEmailSignature] = useState('');
   const [gmailSearchQuery, setGmailSearchQuery] = useState('');
 
+  // AI Chat state
+  const [aiMessages, setAiMessages] = useState([{
+    role: 'assistant',
+    content: "Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.",
+    id: 'welcome',
+  }]);
+  const [llmOnline, setLlmOnline] = useState(null); // null=checking, true=ok, false=err
+  const [isTyping, setIsTyping] = useState(false);
+  const [pendingToolCall, setPendingToolCall] = useState(null);
+  const messagesEndRef = useRef(null);
+
   const displayedTasks = useMemo(() => tasks.slice(0, 20), [tasks]);
   const selectedPlatformMeta = platformMeta.find((item) => item.id === selectedPlatform) || platformMeta[0];
   const capabilities = PLATFORM_SKILL_CAPABILITIES[selectedPlatform] || [];
-  const supports = (action) => {
-    const supported = capabilities.includes(action);
-    console.log(`Platform: ${selectedPlatform}, Action: ${action}, Supported: ${supported}, Capabilities:`, capabilities);
-    return supported;
-  };
+  const supports = (action) => capabilities.includes(action);
 
-  function cn(...classes) {
-    return classes.filter(Boolean).join(' ');
-  }
+  const chatBottomRef = useRef(null);
+  useEffect(() => { chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [aiMessages, isTyping]);
+
+  // Check LLM health on mount
+  useEffect(() => {
+    fetch(`${backendUrl}/ai/health`)
+      .then(r => r.json())
+      .then(d => setLlmOnline(d.llm === 'online'))
+      .catch(() => setLlmOnline(false));
+  }, []);
 
   useEffect(() => {
     setQuery(selectedPlatformMeta.defaultQuery);
@@ -287,41 +302,76 @@ function Workspace({ refreshTasks, tasks }) {
     }
   }
 
-  async function submitConversation(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    if (!prompt.trim()) return;
-
-    // Send message to dialogue API
-    const response = await fetch(`${backendUrl}/dialogue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: 'default', message: prompt }),
-    });
-
-    const result = await response.json();
-    setDialogue(result);
-    setSelectedPlatforms([]);
+  async function sendAiMessage(text) {
+    const msg = (text || prompt).trim();
+    if (!msg) return;
     setPrompt('');
-  }
+    setIsTyping(true);
 
-  async function submitConversationText(text) {
-    const nextPrompt = String(text || '').trim();
-    if (!nextPrompt) return;
-    setSubmitting(true);
+    const userMsg = { role: 'user', content: msg, id: Date.now() + 'u' };
+    setAiMessages(prev => [...prev, userMsg]);
+
     try {
-      const response = await fetch(`${backendUrl}/dialogue`, {
+      const res = await fetch(`${backendUrl}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'default', message: nextPrompt }),
+        body: JSON.stringify({ userId: 'default', message: msg }),
       });
-      const result = await response.json();
-      setDialogue(result);
-      setSelectedPlatforms([]);
-      setPrompt('');
+
+      if (!res.ok) throw new Error('LLM offline');
+      setLlmOnline(true);
+
+      const data = await res.json();
+      const assistantMsg = {
+        role: 'assistant',
+        content: data.reply || '',
+        tool_call: data.tool_call || null,
+        task: data.task || null,
+        requiresConfirm: data.requiresConfirm || false,
+        id: Date.now() + 'a',
+      };
+      setAiMessages(prev => [...prev, assistantMsg]);
+      if (data.task) await refreshTasks();
+    } catch {
+      setLlmOnline(false);
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'The local LLM is offline. Start it with: `python3 llm_server.py`',
+        id: Date.now() + 'err',
+        error: true,
+      }]);
     } finally {
-      setSubmitting(false);
+      setIsTyping(false);
     }
   }
+
+  async function confirmToolCall(toolCall, approved) {
+    if (!approved) {
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Got it — skipped that action.', id: Date.now()+'skip' }]);
+      return;
+    }
+    try {
+      const res = await fetch(`${backendUrl}/ai/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'default', tool_call: toolCall, approved: true }),
+      });
+      const data = await res.json();
+      if (data.task || data.campaign) {
+        await refreshTasks();
+        setAiMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.campaign
+            ? `✅ Campaign created: "${data.campaign.name}" (${data.campaign.status})`
+            : `✅ Task queued — the agent is on it.`,
+          id: Date.now() + 'conf',
+        }]);
+      }
+    } catch (e) {
+      setAiMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}`, id: Date.now()+'ce', error: true }]);
+    }
+  }
+
 
   async function handleDialogueSelect(option, isMultiSelect) {
     if (isMultiSelect) {
@@ -632,84 +682,83 @@ function Workspace({ refreshTasks, tasks }) {
           <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
         </div>
 
-        <div className="chat-messages custom-scroll">
-          {displayedTasks.length===0 ? (
-            <div className="chat-empty">
-              <div className="chat-empty-icon"><selectedPlatformMeta.icon style={{width:26,height:26}}/></div>
-              <h2>What's on your mind?</h2>
-              <p>Type a command or use the panel →</p>
-            </div>
-          ) : displayedTasks.map(task=>(
-            <div key={task.id} className="task-bubble">
-              <div className="task-bubble-user">{task.prompt}</div>
-              <div className="task-bubble-agent">
-                <div className="task-card">
-                  <div className="task-card-header">
-                    <div className="task-card-icon"><selectedPlatformMeta.icon style={{width:12,height:12}}/></div>
-                    <span className="task-card-prompt">{task.context?.platform||'auto'} · {task.context?.operation||'task'}</span>
-                    <span className="task-card-time">{new Date(task.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                    <span className={`task-badge ${task.status}`}>{task.status}</span>
-                  </div>
-                  {task.events?.find(e=>e.type==='plan.generated')?.plan?.steps?.length ? (
-                    <div className="task-steps">
-                      {task.events.find(e=>e.type==='plan.generated').plan.steps.map(step=>{
-                        const ev=[...(task.events||[])].reverse();
-                        const fail=ev.find(e=>e.stepId===step.id&&e.type==='step.failed');
-                        const done=ev.find(e=>e.stepId===step.id&&e.type==='step.progress');
-                        const run=ev.find(e=>e.stepId===step.id&&e.type==='step.started');
-                        const kind=fail?'failed':done?'done':run?'running':'';
-                        return (
-                          <div key={step.id} className="task-step">
-                            <div className={`task-step-dot ${kind}`}/>
-                            <span className="task-step-name">{step.platform}:{step.action} </span>
-                            <span className="task-step-result">{fail?.error||done?.message||run?.label||'Queued'}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ):null}
-                  {(()=>{
-                    const fail=[...(task.events||[])].reverse().find(e=>e.type==='task.failed'||e.type==='step.failed');
-                    const hitl=[...(task.events||[])].reverse().find(e=>e.type==='hitl.required');
-                    const done=[...(task.events||[])].reverse().find(e=>e.type==='task.completed');
-                    if(hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--amber)',borderTop:'1px solid var(--panel-border)'}}>⚠️ {hitl.message}</div>;
-                    if(fail&&!hitl)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--red)',borderTop:'1px solid var(--panel-border)'}}>{fail.error||fail.detail}</div>;
-                    if(done)return <div style={{padding:'7px 14px',fontSize:11,color:'var(--green)',borderTop:'1px solid var(--panel-border)'}}>✓ {done.summary}</div>;
-                    return null;
-                  })()}
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* LLM status bar */}
+        <div className="llm-status">
+          <div className={`llm-status-dot ${llmOnline===null?'':'llmOnline'===true?'ok':llmOnline?'ok':'err'}`}
+               style={{background: llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)', boxShadow: llmOnline?'0 0 6px var(--green)':'none'}}/>
+          {llmOnline===null ? 'Checking local LLM…' : llmOnline ? `Cherry LLM · Online` : 'LLM offline — run python3 llm_server.py'}
         </div>
 
-        {dialogue && (
-          <div className="dialogue-box">
-            <div className="dialogue-msg">{dialogue.message}</div>
-            <div className="dialogue-opts">
-              {dialogue.options?.map(opt=>(
-                <button key={opt.id} className={`dialogue-opt ${dialogue.type==='platform_selection'&&selectedPlatforms.includes(opt.id)?'selected':''}`}
-                  onClick={()=>handleDialogueSelect(opt,dialogue.type==='platform_selection')}>{opt.label}</button>
-              ))}
-            </div>
-            {dialogue.type==='platform_selection'&&dialogue.continueAction&&selectedPlatforms.length>0&&(
-              <button className="dialogue-confirm" onClick={()=>handleDialogueSelect({action:'confirm_platforms',data:{platforms:selectedPlatforms}},false)}>{dialogue.continueAction.label}</button>
+        <div className="chat-messages custom-scroll">
+          <div className="ai-thread">
+            {aiMessages.map(msg => (
+              <div key={msg.id} className={`ai-msg ai-msg-${msg.role}`}>
+                <div className="ai-role-label">
+                  {msg.role === 'assistant' && <span className="ai-cherry-dot"/>}
+                  {msg.role === 'assistant' ? 'Cherry' : 'You'}
+                </div>
+                {msg.content && (
+                  <div className="ai-bubble" style={msg.error?{borderColor:'rgba(229,57,53,.3)',color:'var(--red)'}:{}}>
+                    {msg.content}
+                  </div>
+                )}
+                {msg.task && (
+                  <div className="task-dispatched">✓ Task queued · {msg.task.id?.slice(-6)}</div>
+                )}
+                {msg.tool_call && msg.requiresConfirm && (
+                  <div className="tool-card">
+                    <div className="tool-card-header">
+                      <span style={{fontSize:16}}>🤖</span>
+                      <span className="tool-card-name">{msg.tool_call.tool?.replace(/_/g,' ')}</span>
+                      <span className={`tool-card-mode ${msg.tool_call.mode||'burst'}`}>{msg.tool_call.mode||'burst'}</span>
+                    </div>
+                    <div className="tool-card-params">
+                      {Object.entries(msg.tool_call.params||{}).map(([k,v])=>(
+                        <div key={k} className="tool-param">
+                          <span className="tool-param-key">{k}</span>
+                          <span className="tool-param-val">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="tool-card-actions">
+                      <button className="tool-run-btn approve" onClick={()=>confirmToolCall(msg.tool_call,true)}>▶ Run now</button>
+                      <button className="tool-run-btn dismiss" onClick={()=>confirmToolCall(msg.tool_call,false)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
+                {msg.tool_call && !msg.requiresConfirm && msg.task && (
+                  <div className="tool-card">
+                    <div className="tool-card-header">
+                      <span style={{fontSize:16}}>✅</span>
+                      <span className="tool-card-name">{msg.tool_call.tool?.replace(/_/g,' ')}</span>
+                      <span className="tool-card-mode burst">dispatched</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="ai-msg ai-msg-assistant">
+                <div className="ai-role-label"><span className="ai-cherry-dot"/>Cherry</div>
+                <div className="ai-typing"><span/><span/><span/></div>
+              </div>
             )}
+            <div ref={chatBottomRef}/>
           </div>
-        )}
+        </div>
 
         <div className="chat-input-wrap">
           <div className="chat-input-box">
             <textarea rows={1} placeholder="Talk to Cherry…" value={prompt}
               onChange={e=>{setPrompt(e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px'}}
-              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitConversation()}}}/>
-            <button className="chat-send-btn" onClick={submitConversation} disabled={!prompt.trim()||submitting}>
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAiMessage()}}}/>
+            <button className="chat-send-btn" onClick={()=>sendAiMessage()} disabled={!prompt.trim()||isTyping}>
               <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1 14L8 2l7 12H9.5L8 9.5 6.5 14H1z"/></svg>
             </button>
           </div>
           <div className="chat-quick-prompts">
-            {[['💰','More sales'],['📢','Grow brand'],['🔍','Research'],['👁️','Monitor']].map(([ic,lb])=>(
-              <button key={lb} className="quick-prompt-btn" onClick={()=>submitConversationText(`${lb} on ${selectedPlatformMeta.label}`)}>{ic} {lb}</button>
+            {[['💰','Get me more sales'],['📢','Grow my brand'],['🔍','Research competitors'],['👁️','Monitor my inbox']].map(([ic,lb])=>(
+              <button key={lb} className="quick-prompt-btn" onClick={()=>sendAiMessage(`${lb} on ${selectedPlatformMeta.label}`)}>{ic} {lb}</button>
             ))}
           </div>
         </div>
