@@ -307,9 +307,7 @@ function Workspace({ refreshTasks, tasks }) {
     if (!msg) return;
     setPrompt('');
     setIsTyping(true);
-
-    const userMsg = { role: 'user', content: msg, id: Date.now() + 'u' };
-    setAiMessages(prev => [...prev, userMsg]);
+    setAiMessages(prev => [...prev, { role: 'user', content: msg, id: Date.now() + 'u' }]);
 
     try {
       const res = await fetch(`${backendUrl}/ai/chat`, {
@@ -317,26 +315,20 @@ function Workspace({ refreshTasks, tasks }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 'default', message: msg }),
       });
-
       if (!res.ok) throw new Error('LLM offline');
       setLlmOnline(true);
-
       const data = await res.json();
-      const assistantMsg = {
+      setAiMessages(prev => [...prev, {
         role: 'assistant',
         content: data.reply || '',
-        tool_call: data.tool_call || null,
-        task: data.task || null,
-        requiresConfirm: data.requiresConfirm || false,
+        suggestions: data.suggestions || null,
         id: Date.now() + 'a',
-      };
-      setAiMessages(prev => [...prev, assistantMsg]);
-      if (data.task) await refreshTasks();
+      }]);
     } catch {
       setLlmOnline(false);
       setAiMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'The local LLM is offline. Start it with: `python3 llm_server.py`',
+        content: 'Local LLM is offline. Run: python3 llm_server.py',
         id: Date.now() + 'err',
         error: true,
       }]);
@@ -345,30 +337,25 @@ function Workspace({ refreshTasks, tasks }) {
     }
   }
 
-  async function confirmToolCall(toolCall, approved) {
-    if (!approved) {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Got it — skipped that action.', id: Date.now()+'skip' }]);
-      return;
-    }
+  async function executeSuggestion(suggestion) {
     try {
-      const res = await fetch(`${backendUrl}/ai/confirm`, {
+      const res = await fetch(`${backendUrl}/ai/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 'default', tool_call: toolCall, approved: true }),
+        body: JSON.stringify({ suggestion }),
       });
       const data = await res.json();
-      if (data.task || data.campaign) {
-        await refreshTasks();
-        setAiMessages(prev => [...prev, {
-          role: 'assistant',
-          content: data.campaign
-            ? `✅ Campaign created: "${data.campaign.name}" (${data.campaign.status})`
-            : `✅ Task queued — the agent is on it.`,
-          id: Date.now() + 'conf',
-        }]);
-      }
+      await refreshTasks();
+      const isContinuous = data.mode === 'continuous';
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: isContinuous
+          ? `✅ Campaign scheduled: "${data.campaign?.name}" — running every ${suggestion.cadenceMinutes} min in the background.`
+          : `✅ ${data.count} task${data.count !== 1 ? 's' : ''} queued — Cherry is on it.`,
+        id: Date.now() + 'ex',
+      }]);
     } catch (e) {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}`, id: Date.now()+'ce', error: true }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}`, id: Date.now() + 'ee', error: true }]);
     }
   }
 
@@ -595,7 +582,28 @@ function Workspace({ refreshTasks, tasks }) {
         prompt: `Map visible contacts and conversations from ${selectedPlatformMeta.label} into the dashboard.`,
         context: { ...baseContext, operation: 'map_contacts', destination: 'artifact' },
       },
-      // ChatGPT & Gemini specific — combine ALL panel inputs into a rich prompt
+      // ── Image pipeline ──────────────────────────────────────────────────────
+      download_image: {
+        prompt: `Download image/media from ${targetHandle || 'the post'} on ${selectedPlatformMeta.label}.`,
+        context: { ...baseContext, operation: 'download_image', username: targetHandle },
+      },
+      send_image_dm: {
+        prompt: `Send a DM with image to ${targetHandle || 'the user'} on ${selectedPlatformMeta.label}. Image: ${attachmentPath}. Goal: ${goal}. Tone: ${tone}.`,
+        context: { ...baseContext, operation: 'send_image_dm', username: targetHandle, attachmentPath: attachmentPath.trim() || undefined },
+      },
+      generate_and_post: {
+        prompt: `Generate an image of "${query}" via ${selectedPlatformMeta.label}, then post it on Instagram. Goal: ${goal}.`,
+        context: { ...baseContext, operation: 'generate_and_post', query, destination: 'instagram' },
+      },
+      generate_and_dm: {
+        prompt: `Generate an image of "${query}" via ${selectedPlatformMeta.label}, then DM it to ${targetHandle || 'the user'} on Instagram.`,
+        context: { ...baseContext, operation: 'generate_and_dm', query, username: targetHandle, destination: 'instagram' },
+      },
+      upload_to_ai: {
+        prompt: `Upload ${attachmentPath} to ${selectedPlatformMeta.label} and ${goal}.`,
+        context: { ...baseContext, operation: 'upload_to_ai', attachmentPath: attachmentPath.trim() || undefined, query: goal },
+      },
+      // ── ChatGPT & Gemini ────────────────────────────────────────────────────
       generate_image: (() => {
         const subject = query.trim() || 'A cinematic landscape';
         const parts = [`Create an image of: ${subject}.`];
@@ -604,21 +612,9 @@ function Workspace({ refreshTasks, tasks }) {
         if (tone && tone.trim()) parts.push(`Style/Tone: ${tone.trim()}.`);
         if (maxResults) parts.push(`Variations: ${maxResults}.`);
         if (attachmentPath.trim()) parts.push(`Reference asset: ${attachmentPath.trim()}.`);
-        const composedPrompt = parts.join(' ');
         return {
-          prompt: composedPrompt,
-          context: {
-            ...baseContext,
-            operation: 'generate_image',
-            messageGoal: subject,
-            query: subject,
-            imageSubject: subject,
-            imageTarget: targetUsername.trim() || undefined,
-            imageGoal: goal && goal.trim() ? goal.trim() : undefined,
-            imageTone: tone && tone.trim() ? tone.trim() : undefined,
-            imageVariations: Number(maxResults) || 1,
-            attachmentPath: attachmentPath.trim() || undefined,
-          },
+          prompt: parts.join(' '),
+          context: { ...baseContext, operation: 'generate_image', query: subject, imageSubject: subject, attachmentPath: attachmentPath.trim() || undefined },
         };
       })(),
       ask: (() => {
@@ -628,22 +624,13 @@ function Workspace({ refreshTasks, tasks }) {
         if (goal && goal.trim()) parts.push(`Goal: ${goal.trim()}.`);
         if (tone && tone.trim()) parts.push(`Tone: ${tone.trim()}.`);
         if (attachmentPath.trim()) parts.push(`Attached file: ${attachmentPath.trim()}.`);
-        const composedPrompt = parts.join(' ');
         return {
-          prompt: composedPrompt,
-          context: {
-            ...baseContext,
-            operation: 'ask',
-            messageGoal: question,
-            query: question,
-            askTarget: targetUsername.trim() || undefined,
-            askGoal: goal && goal.trim() ? goal.trim() : undefined,
-            askTone: tone && tone.trim() ? tone.trim() : undefined,
-            attachmentPath: attachmentPath.trim() || undefined,
-          },
+          prompt: parts.join(' '),
+          context: { ...baseContext, operation: 'ask', query: question, attachmentPath: attachmentPath.trim() || undefined },
         };
       })(),
     };
+
 
     const operationPayload = payloads[operation];
     console.log('[runPlatformAction] Operation payload:', operationPayload);
@@ -702,40 +689,39 @@ function Workspace({ refreshTasks, tasks }) {
                     {msg.content}
                   </div>
                 )}
-                {msg.task && (
-                  <div className="task-dispatched">✓ Task queued · {msg.task.id?.slice(-6)}</div>
-                )}
-                {msg.tool_call && msg.requiresConfirm && (
-                  <div className="tool-card">
-                    <div className="tool-card-header">
-                      <span style={{fontSize:16}}>🤖</span>
-                      <span className="tool-card-name">{msg.tool_call.tool?.replace(/_/g,' ')}</span>
-                      <span className={`tool-card-mode ${msg.tool_call.mode||'burst'}`}>{msg.tool_call.mode||'burst'}</span>
-                    </div>
-                    <div className="tool-card-params">
-                      {Object.entries(msg.tool_call.params||{}).map(([k,v])=>(
-                        <div key={k} className="tool-param">
-                          <span className="tool-param-key">{k}</span>
-                          <span className="tool-param-val">{String(v)}</span>
+                {/* Suggestion cards — multi-tool action options from LLM */}
+                {msg.suggestions && msg.suggestions.length > 0 && (
+                  <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:6}}>
+                    {msg.suggestions.map((sug, si) => (
+                      <div key={si} className="tool-card">
+                        <div className="tool-card-header">
+                          <span style={{fontSize:14}}>{sug.mode==='continuous'?'🔄':'▶'}</span>
+                          <span className="tool-card-name">{sug.label}</span>
+                          <span className={`tool-card-mode ${sug.mode||'burst'}`}>{sug.mode==='continuous'?`every ${sug.cadenceMinutes}m`:'one-time'}</span>
                         </div>
-                      ))}
-                    </div>
-                    <div className="tool-card-actions">
-                      <button className="tool-run-btn approve" onClick={()=>confirmToolCall(msg.tool_call,true)}>▶ Run now</button>
-                      <button className="tool-run-btn dismiss" onClick={()=>confirmToolCall(msg.tool_call,false)}>Dismiss</button>
-                    </div>
-                  </div>
-                )}
-                {msg.tool_call && !msg.requiresConfirm && msg.task && (
-                  <div className="tool-card">
-                    <div className="tool-card-header">
-                      <span style={{fontSize:16}}>✅</span>
-                      <span className="tool-card-name">{msg.tool_call.tool?.replace(/_/g,' ')}</span>
-                      <span className="tool-card-mode burst">dispatched</span>
-                    </div>
+                        <div className="tool-card-params">
+                          {(sug.tools||[]).map((t,ti)=>(
+                            <div key={ti} className="tool-param">
+                              <span className="tool-param-key">{String(ti+1)}.</span>
+                              <span className="tool-param-val">{t.tool?.replace(/_/g,' ')}
+                                {t.params?.platform&&<span style={{opacity:.5}}> · {t.params.platform}</span>}
+                                {t.params?.target&&<span style={{opacity:.5}}> → {t.params.target}</span>}
+                                {t.params?.query&&<span style={{opacity:.5}}> "{t.params.query}"</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="tool-card-actions">
+                          <button className="tool-run-btn approve" onClick={()=>executeSuggestion(sug)}>
+                            {sug.mode==='continuous'?'🔄 Schedule':'▶ Run now'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
+
             ))}
             {isTyping && (
               <div className="ai-msg ai-msg-assistant">

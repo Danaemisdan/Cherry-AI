@@ -9,6 +9,19 @@
       "online": false,
       "browserAttached": false,
       "tabs": 0
+    },
+    {
+      "id": "agent_s0talsp3",
+      "token": "token_jy1c3c3m",
+      "deviceName": "Sanjeevs-MacBook-Pro.local",
+      "os": "macos",
+      "agentVersion": "0.1.0",
+      "online": false,
+      "browserAttached": true,
+      "tabs": 3,
+      "profileDirectory": "Default",
+      "mode": "cdp",
+      "extensionLoaded": false
     }
   ],
   "tasks": [
@@ -17246,8 +17259,421 @@
       "createdAt": "2026-05-14T20:41:49.114Z",
       "assignedAgentId": "agent_8ln793ue",
       "dispatchedAt": "2026-05-14T20:41:49.127Z"
+    },
+    {
+      "id": "task_pu8bqph7",
+      "status": "completed",
+      "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+      "context": {
+        "platform": "instagram",
+        "operation": "auto_dm_contact",
+        "query": "founders in fintech",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "attachmentPath": "",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "attached",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_ivnsqtwu",
+          "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_pu8bqph7",
+            "objective": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+            "targetPlatforms": [
+              "instagram"
+            ],
+            "steps": [
+              {
+                "id": "instagram_0_azkzifew",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_workspace",
+                "args": {
+                  "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm_contact",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_workspace on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_1_57y4eo9y",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "open_target",
+                "args": {
+                  "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm_contact",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_target on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_2_3eowtytb",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "draft_message",
+                "args": {
+                  "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm_contact",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete draft_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "instagram_3_4swnkfl2",
+                "platform": "instagram",
+                "browserMode": "attached",
+                "action": "send_message",
+                "args": {
+                  "prompt": "Send an automated DM to contact Jagadeesh K on Instagram. Goal: Get a meeting. Tone: Casual and brief. Attachment: none.",
+                  "platform": "instagram",
+                  "query": "founders in fintech",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "attachmentPath": "",
+                  "operation": "auto_dm_contact",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete send_message on instagram",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_0_azkzifew",
+          "label": "instagram:open_workspace"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_0_azkzifew",
+          "message": "Opened instagram workspace",
+          "duration": 3742
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_1_57y4eo9y",
+          "label": "instagram:open_target"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_1_57y4eo9y",
+          "message": "Skipped profile load for direct messaging",
+          "duration": 135
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_2_3eowtytb",
+          "label": "instagram:draft_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_2_3eowtytb",
+          "message": "Prepared message draft @Jagadeesh K on instagram",
+          "duration": 7337
+        },
+        {
+          "type": "step.started",
+          "stepId": "instagram_3_4swnkfl2",
+          "label": "instagram:send_message"
+        },
+        {
+          "type": "step.progress",
+          "stepId": "instagram_3_4swnkfl2",
+          "message": "Sent message @Jagadeesh K on instagram",
+          "duration": 30627
+        },
+        {
+          "type": "artifact.ready",
+          "artifactId": "task_result_lom0jbxg",
+          "kind": "json",
+          "url": "/Users/sanjeevn/.cherry-agent/artifacts/task_result_lom0jbxg.json"
+        },
+        {
+          "type": "task.completed",
+          "summary": "Completed 4 steps"
+        }
+      ],
+      "createdAt": "2026-05-15T03:58:51.310Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-15T03:58:51.314Z"
+    },
+    {
+      "id": "task_pl34a51c",
+      "status": "failed",
+      "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+      "context": {
+        "platform": "research",
+        "operation": "execute_deep_scrape",
+        "query": "best fintech founders in india",
+        "username": "Jagadeesh K",
+        "usernames": [],
+        "messageGoal": "Get a meeting",
+        "tone": "Casual and brief",
+        "maxResults": 15,
+        "destination": "inbox",
+        "requireManualReview": false
+      },
+      "preferredBrowserMode": "managed",
+      "events": [
+        {
+          "type": "task.created",
+          "taskId": "event_dcsyw32q",
+          "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15."
+        },
+        {
+          "type": "plan.generated",
+          "plan": {
+            "taskId": "task_pl34a51c",
+            "objective": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+            "targetPlatforms": [
+              "research"
+            ],
+            "steps": [
+              {
+                "id": "research_0_fhokm50a",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "search",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete search on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "research_1_0osmfjt6",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "scroll_collect",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scroll_collect on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "research_2_pspmp4g5",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "scrape_results",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete scrape_results on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "research_3_scjp9ao3",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "open_result",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete open_result on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "research_4_hup3g5he",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "extract_context",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete extract_context on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              },
+              {
+                "id": "research_5_41mnlrkf",
+                "platform": "research",
+                "browserMode": "managed",
+                "action": "export_artifact",
+                "args": {
+                  "prompt": "Execute a deep scrape on Research for keyword \"best fintech founders in india\". Limit: 15.",
+                  "platform": "research",
+                  "query": "best fintech founders in india",
+                  "username": "Jagadeesh K",
+                  "usernames": [],
+                  "messageGoal": "Get a meeting",
+                  "tone": "Casual and brief",
+                  "operation": "execute_deep_scrape",
+                  "maxResults": 15,
+                  "destination": "inbox",
+                  "requireManualReview": false,
+                  "oneByOne": false
+                },
+                "successCriteria": "Complete export_artifact on research",
+                "retryPolicy": {
+                  "maxAttempts": 2,
+                  "replanOnFailure": true
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "step.started",
+          "stepId": "research_0_fhokm50a",
+          "label": "research:search"
+        },
+        {
+          "type": "step.failed",
+          "stepId": "research_0_fhokm50a",
+          "error": "page.goto: url: expected string, got undefined",
+          "retrying": false
+        },
+        {
+          "type": "task.failed",
+          "error": "page.goto: url: expected string, got undefined"
+        }
+      ],
+      "createdAt": "2026-05-15T04:08:52.106Z",
+      "assignedAgentId": "agent_s0talsp3",
+      "dispatchedAt": "2026-05-15T04:08:52.110Z"
     }
   ],
   "campaigns": [],
-  "pairingCodes": []
+  "pairingCodes": [
+    {
+      "code": "6JWD1N",
+      "expiresAt": "2026-05-15T03:04:05.826Z"
+    },
+    {
+      "code": "DTFJ5H",
+      "expiresAt": "2026-05-15T03:04:05.834Z"
+    }
+  ]
 }

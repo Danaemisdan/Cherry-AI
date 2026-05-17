@@ -142,6 +142,15 @@ export const TASK_OPERATIONS = [
   'like_post',
   'comment_post',
   'engage_post',
+  // Image pipeline
+  'download_image',
+  'send_image_dm',
+  'generate_and_post',
+  'generate_and_dm',
+  'upload_to_ai',
+  'get_context',
+  'get_profile_context',
+  'reply_to_email',
 ];
 
 export const CANONICAL_SKILL_ACTIONS = [
@@ -302,6 +311,16 @@ export const WORKFLOW_TEMPLATES = {
   delete_chat: ['open_workspace', 'open_target', 'delete_chat'],
   block_user: ['open_workspace', 'open_target', 'block_user'],
   report_user: ['open_workspace', 'open_target', 'report_user'],
+  // Image pipeline
+  download_image: ['open_workspace', 'open_target', 'download_image'],
+  send_image_dm: ['open_workspace', 'open_target', 'send_message'],
+  generate_and_post: ['open_workspace', 'generate_image', 'compose_post', 'publish_post'],
+  generate_and_dm: ['open_workspace', 'generate_image', 'open_target', 'send_message'],
+  upload_to_ai: ['open_workspace', 'upload_file', 'ask'],
+  gmail_search: ['open_workspace', 'search'],
+  gmail_get_context: ['open_workspace', 'get_context'],
+  gmail_get_profile: ['open_workspace', 'get_profile_context'],
+  gmail_reply: ['open_workspace', 'open_target', 'reply_to_email'],
 };
 
 export const WORKFLOW_PRESETS = [
