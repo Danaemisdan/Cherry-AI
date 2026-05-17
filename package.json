@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "node start.mjs",
     "dev:web": "npm run dev -w @cherry/web",
     "dev:backend": "npm run dev -w @cherry/backend",
     "dev:agent": "npm run dev -w @cherry/agent",
