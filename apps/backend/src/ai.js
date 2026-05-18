@@ -1,19 +1,31 @@
 /**
  * Cherry AI — streaming chat + intent-based suggestions
  *
- * Key design decision:
- * When an intent is matched (dm/monitor/leads/etc), we skip the LLM entirely
- * and send a canned confident reply. The LLM only runs for pure conversation.
- * This eliminates hallucinated limitations like "I don't have access to WhatsApp".
+ * Rules:
+ * 1. Intent matched → clarify missing params → show action cards. LLM never runs.
+ * 2. No intent → LLM runs with a strict system prompt: NEVER claim to do things, NEVER hallucinate actions.
+ * 3. Clarification state is stored per session so follow-ups fill in blanks.
  */
 
 const LLM_URL = process.env.CHERRY_LLM_URL || 'http://localhost:11434';
 
-// Per-user conversation sessions (server memory)
+const SYSTEM_PROMPT = `You are Cherry, an AI automation agent that controls a browser to do social media tasks.
+
+STRICT RULES — never break these:
+- You CANNOT and have NOT sent any messages, emails, DMs, or done anything on your own.
+- NEVER say "I sent", "I messaged", "I posted", "I did" — you haven't done anything until the user clicks a button.
+- If the user asks "did you send?" or "did you do X?" — always say: "No, I haven't done anything yet. Use the action card to run the task."
+- If the user wants to send a DM/message/email, ask: "What message should I send, and who should I send it to?"
+- Keep replies SHORT (1-2 sentences max). Be direct and confident.
+- You exist to HELP users set up automation tasks, not to pretend you've run them.`;
+
+// Per-user sessions
 const chatSessions = new Map();
 function getSession(userId) {
-  if (!chatSessions.has(userId)) chatSessions.set(userId, { history: [] });
-  return chatSessions.get(userId);
+  if (!chatSessions.has(userId)) chatSessions.set(userId, { history: [], pending: null });
+  const s = chatSessions.get(userId);
+  if (!s.pending) s.pending = null;
+  return s;
 }
 
 // ── Platform detection ────────────────────────────────────────────────────────
@@ -35,10 +47,17 @@ function detectPlatforms(text) {
   return found.length ? found : ['instagram'];
 }
 
-// ── Intent → key ─────────────────────────────────────────────────────────────
+function extractTarget(text) {
+  const m = text.match(/\bto\s+@?([A-Za-z0-9._]+)|@([A-Za-z0-9._]+)/i);
+  if (m) return (m[1] || m[2]).replace(/^(on|in|at)$/i, '');
+  return null;
+}
+
+// ── Intent detection ──────────────────────────────────────────────────────────
 function detectIntentKey(text) {
   if (/monitor|watch|auto.?reply|always.*reply|respond.*auto/i.test(text)) return 'monitor';
-  if (/send.*dm|dm\b|direct.*message|message.*people|outreach|reach out/i.test(text)) return 'dm';
+  // DM: broad match — "send a message", "send dm", "message Jagadeesh", "text someone", "reach out"
+  if (/send.*\b(dm|message|msg|text)\b|\bdm\b|direct.*message|message.*people|outreach|reach.?out|text.*\b(to|someone)\b/i.test(text)) return 'dm';
   if (/find.*lead|lead gen|get.*lead|prospect/i.test(text)) return 'leads';
   if (/like|comment|engage/i.test(text)) return 'engage';
   if (/\bfollow\b/i.test(text)) return 'follow';
@@ -50,55 +69,68 @@ function detectIntentKey(text) {
   return null;
 }
 
-// ── Canned replies — confident, never claim inability ────────────────────────
-const CANNED_REPLY = {
-  monitor: (p) => `On it — I'll watch your ${p} inbox and auto-reply to new messages. Pick how often:`,
-  dm:      (p) => `Yep, I can DM people on ${p}. Here's how you want to run it:`,
-  leads:   (p) => `I can find leads on ${p} for you. Pick an option:`,
-  engage:  (p) => `I can like and comment on ${p} posts. Here's what I can do:`,
-  follow:  (p) => `I can follow users on ${p}. Here's the plan:`,
-  post:    (p) => `I can post on ${p} for you. Here's the option:`,
-  image:   ()  => `I can generate images with ChatGPT or Gemini. Pick an option:`,
-  download:(p) => `I can download images from ${p}. Here's how:`,
-  scrape:  (p) => `I can scrape the audience from ${p}. Here's the plan:`,
-  inbox:   (p) => `I'll read your ${p} inbox. Here's what I can do:`,
-};
+// ── Clarification: what info is missing for each intent ───────────────────────
+function getMissingParams(intentKey, accumulated) {
+  const missing = [];
+  if (intentKey === 'dm') {
+    if (!accumulated.target) missing.push({ key: 'target', question: `Who should I send the message to? (name or @username)` });
+    if (!accumulated.message) missing.push({ key: 'message', question: `What message should I send them?` });
+  }
+  if (intentKey === 'leads') {
+    if (!accumulated.query) missing.push({ key: 'query', question: `What kind of leads? (e.g. "fintech founders in India")` });
+  }
+  if (intentKey === 'engage') {
+    if (!accumulated.target) missing.push({ key: 'target', question: `Whose post should I like/comment on? (@username)` });
+  }
+  return missing;
+}
 
-// ── Suggestion builder ────────────────────────────────────────────────────────
-const INTENT_SUGGESTIONS = {
-  monitor: (platforms) => [
-    { label: `Monitor ${platforms[0]} & auto-reply (every 30s)`, tools: [{ tool: 'get_inbox', params: { platform: platforms[0] } }, { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply', cadenceSeconds: 30 } }], mode: 'continuous', cadenceSeconds: 30 },
-    { label: `Monitor ${platforms[0]} & auto-reply (every 5 min)`, tools: [{ tool: 'get_inbox', params: { platform: platforms[0] } }, { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply', cadenceSeconds: 300 } }], mode: 'continuous', cadenceSeconds: 300 },
-  ],
-  dm: (platforms) => [
-    { label: `Send DMs on ${platforms[0]}`, tools: [{ tool: 'send_dm', params: { platform: platforms[0], goal: 'Connect and introduce', tone: 'Casual and brief' } }], mode: 'burst' },
-    { label: `Send DMs on ${platforms[0]} continuously`, tools: [{ tool: 'bulk_dm', params: { platform: platforms[0], goal: 'Connect and introduce', tone: 'Casual and brief' } }], mode: 'continuous', cadenceMinutes: 60 },
-  ],
-  leads: (platforms) => [
-    { label: `Find leads on ${platforms[0]}`, tools: [{ tool: 'find_leads', params: { platform: platforms[0], query: 'founders', maxResults: 25 } }], mode: 'burst' },
-    { label: `Find leads + DM them on ${platforms[0]}`, tools: [{ tool: 'find_leads', params: { platform: platforms[0], query: 'founders', maxResults: 25 } }, { tool: 'bulk_dm', params: { platform: platforms[0], goal: 'Introduce and connect', tone: 'Casual and brief' } }], mode: 'burst' },
-  ],
-  engage: (platforms) => [{ label: `Like & comment on ${platforms[0]} posts`, tools: [{ tool: 'like_post', params: { platform: platforms[0] } }, { tool: 'comment_post', params: { platform: platforms[0], tone: 'Friendly and genuine' } }], mode: 'burst' }],
-  follow: (platforms) => [{ label: `Follow users on ${platforms[0]}`, tools: [{ tool: 'follow_user', params: { platform: platforms[0] } }], mode: 'burst' }],
-  post:   (platforms) => [{ label: `Auto-post on ${platforms[0]}`, tools: [{ tool: 'auto_post', params: { platform: platforms[0], goal: 'Share valuable content', tone: 'Professional' } }], mode: 'burst' }],
-  image:  ()          => [
-    { label: 'Generate image with ChatGPT', tools: [{ tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject' } }], mode: 'burst' },
-    { label: 'Generate image → Post to Instagram', tools: [{ tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject' } }, { tool: 'auto_post', params: { platform: 'instagram' } }], mode: 'burst' },
-  ],
-  download: (platforms) => [{ label: `Download images from ${platforms[0]}`, tools: [{ tool: 'download_image', params: { platform: platforms[0] } }], mode: 'burst' }],
-  scrape:   (platforms) => [{ label: `Scrape audience from ${platforms[0]}`, tools: [{ tool: 'scrape_followers', params: { platform: platforms[0], maxResults: 50 } }], mode: 'burst' }],
-  inbox:    (platforms) => [{ label: `Read ${platforms[0]} inbox`, tools: [{ tool: 'get_inbox', params: { platform: platforms[0] } }], mode: 'burst' }],
-};
-
-function detectIntent(text) {
-  const key = detectIntentKey(text);
-  if (!key) return { key: null, suggestions: null, reply: null };
-  const platforms = detectPlatforms(text);
-  return {
-    key,
-    suggestions: INTENT_SUGGESTIONS[key]?.(platforms) || null,
-    reply: CANNED_REPLY[key]?.(platforms[0]) || null,
+// ── Canned final replies (after all params collected) ─────────────────────────
+function buildFinalReply(intentKey, platform, acc) {
+  const replies = {
+    monitor: () => `Got it — I'll watch your ${platform} inbox and auto-reply to new messages. Pick how often:`,
+    dm:      () => `Perfect — I'll send "${acc.message}" to ${acc.target} on ${platform}. Pick how to run it:`,
+    leads:   () => `On it — finding "${acc.query}" leads on ${platform}. Pick an option:`,
+    engage:  () => `I'll like and comment on @${acc.target}'s ${platform} posts. Here's what I can do:`,
+    follow:  () => `I'll follow users on ${platform}. Here's the plan:`,
+    post:    () => `I can post on ${platform} for you. Here's the option:`,
+    image:   () => `I can generate images with ChatGPT or Gemini. Pick an option:`,
+    download:() => `I can download images from ${platform}. Here's how:`,
+    scrape:  () => `I can scrape the ${platform} audience. Here's the plan:`,
+    inbox:   () => `I'll read your ${platform} inbox. Here's what I can do:`,
   };
+  return replies[intentKey]?.() || `Got it — here's what I can do:`;
+}
+
+// ── Suggestion cards ──────────────────────────────────────────────────────────
+function buildSuggestions(intentKey, platforms, acc) {
+  const p = platforms[0];
+  const { target = '', message = '', query = 'founders' } = acc;
+  const S = {
+    monitor: () => [
+      { label: `Monitor ${p} & auto-reply (every 30s)`, tools: [{ tool: 'get_inbox', params: { platform: p } }, { tool: 'run_continuous', params: { platform: p, objective: 'Monitor inbox and auto-reply', cadenceSeconds: 30 } }], mode: 'continuous', cadenceSeconds: 30 },
+      { label: `Monitor ${p} & auto-reply (every 5 min)`, tools: [{ tool: 'get_inbox', params: { platform: p } }, { tool: 'run_continuous', params: { platform: p, objective: 'Monitor inbox and auto-reply', cadenceSeconds: 300 } }], mode: 'continuous', cadenceSeconds: 300 },
+    ],
+    dm: () => [
+      { label: `Send message to ${target} on ${p}`, tools: [{ tool: 'send_dm', params: { platform: p, target, message, goal: message, tone: 'Casual and brief' } }], mode: 'burst' },
+      { label: `Send to ${target} on ${p} + run continuously`, tools: [{ tool: 'bulk_dm', params: { platform: p, target, message, goal: message, tone: 'Casual and brief' } }], mode: 'continuous', cadenceMinutes: 60 },
+    ],
+    leads: () => [
+      { label: `Find "${query}" leads on ${p}`, tools: [{ tool: 'find_leads', params: { platform: p, query, maxResults: 25 } }], mode: 'burst' },
+      { label: `Find + DM "${query}" leads on ${p}`, tools: [{ tool: 'find_leads', params: { platform: p, query, maxResults: 25 } }, { tool: 'bulk_dm', params: { platform: p, goal: 'Introduce and connect', tone: 'Casual and brief' } }], mode: 'burst' },
+    ],
+    engage:  () => [{ label: `Like & comment on @${target}'s ${p} posts`, tools: [{ tool: 'like_post', params: { platform: p, target } }, { tool: 'comment_post', params: { platform: p, target, tone: 'Friendly and genuine' } }], mode: 'burst' }],
+    follow:  () => [{ label: `Follow users on ${p}`, tools: [{ tool: 'follow_user', params: { platform: p } }], mode: 'burst' }],
+    post:    () => [{ label: `Auto-post on ${p}`, tools: [{ tool: 'auto_post', params: { platform: p, goal: 'Share valuable content', tone: 'Professional' } }], mode: 'burst' }],
+    image:   () => [
+      { label: 'Generate image with ChatGPT', tools: [{ tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject' } }], mode: 'burst' },
+      { label: 'Generate image → Post to Instagram', tools: [{ tool: 'generate_image', params: { aiPlatform: 'chatgpt', subject: 'your subject' } }, { tool: 'auto_post', params: { platform: 'instagram' } }], mode: 'burst' },
+    ],
+    download:() => [{ label: `Download images from ${p}`, tools: [{ tool: 'download_image', params: { platform: p } }], mode: 'burst' }],
+    scrape:  () => [{ label: `Scrape audience from ${p}`, tools: [{ tool: 'scrape_followers', params: { platform: p, maxResults: 50 } }], mode: 'burst' }],
+    inbox:   () => [{ label: `Read ${p} inbox`, tools: [{ tool: 'get_inbox', params: { platform: p } }], mode: 'burst' }],
+  };
+  return S[intentKey]?.() || null;
 }
 
 // ── Tool → Task payload ───────────────────────────────────────────────────────
@@ -106,7 +138,8 @@ function toolToTaskPayload(toolDef) {
   const { tool, params = {} } = toolDef;
   const platform   = params.platform || params.aiPlatform || 'instagram';
   const target     = params.target || params.username || '';
-  const goal       = params.goal || 'Get a meeting';
+  const message    = params.message || params.goal || 'Hello, reaching out!';
+  const goal       = params.goal || message;
   const tone       = params.tone || 'Casual and brief';
   const query      = params.query || '';
   const maxResults = Number(params.maxResults) || 15;
@@ -114,22 +147,20 @@ function toolToTaskPayload(toolDef) {
   const aiPlatform = params.aiPlatform || 'chatgpt';
 
   const MAP = {
-    send_dm:            { op: platform === 'gmail' ? 'auto_dm' : 'auto_dm_contact', prompt: `Send a DM to ${target || 'the user'} on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
-    send_image_dm:      { op: 'send_image_dm', prompt: `Send a DM with image to ${target || 'the user'} on ${platform}. Image: ${imagePath}. Goal: ${goal}.` },
-    bulk_dm:            { op: 'bulk_dm_csv', prompt: `Bulk DM campaign on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
-    find_leads:         { op: 'find_leads', prompt: `Find ${maxResults} leads on ${platform} for "${query || goal}" and export.` },
-    scrape_followers:   { op: 'scrape_followers', prompt: `Scrape ${maxResults} followers from ${target || query} on ${platform}.` },
-    like_post:          { op: 'like_post', prompt: `Like ${target || 'the user'}'s most recent post on ${platform}.` },
-    comment_post:       { op: 'engage_post', prompt: `AI comment on ${target || 'the user'}'s post on ${platform}. Tone: ${tone}.` },
-    follow_user:        { op: 'follow_user', prompt: `Follow ${target || 'the user'} on ${platform}.` },
-    auto_post:          { op: 'auto_post', prompt: `Post on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
-    generate_image:     { op: 'generate_image', prompt: `Generate image via ${aiPlatform}: "${query || goal}". Style: ${params.style || 'professional'}.`, platform: aiPlatform },
+    send_dm:            { op: 'auto_dm_contact', prompt: `Send this exact message to ${target || 'the contact'} on ${platform}: "${message}". Tone: ${tone}.` },
+    send_image_dm:      { op: 'send_image_dm',   prompt: `Send a DM with image to ${target || 'the contact'} on ${platform}. Message: "${message}". Image: ${imagePath}.` },
+    bulk_dm:            { op: 'bulk_dm_csv',      prompt: `Bulk DM on ${platform}. Message: "${message}". Tone: ${tone}.` },
+    find_leads:         { op: 'find_leads',        prompt: `Find ${maxResults} leads on ${platform} for "${query || goal}" and export.` },
+    scrape_followers:   { op: 'scrape_followers',  prompt: `Scrape ${maxResults} followers from ${target || query} on ${platform}.` },
+    like_post:          { op: 'like_post',         prompt: `Like ${target || 'the user'}'s most recent post on ${platform}.` },
+    comment_post:       { op: 'engage_post',       prompt: `Leave an AI-generated comment on ${target || 'the user'}'s post on ${platform}. Tone: ${tone}.` },
+    follow_user:        { op: 'follow_user',       prompt: `Follow ${target || 'the user'} on ${platform}.` },
+    auto_post:          { op: 'auto_post',         prompt: `Post on ${platform}. Goal: ${goal}. Tone: ${tone}.` },
+    generate_image:     { op: 'generate_image',    prompt: `Generate image via ${aiPlatform}: "${query || goal}". Style: ${params.style || 'professional'}.`, platform: aiPlatform },
     generate_and_post:  { op: 'generate_and_post', prompt: `Generate image via ${aiPlatform} of "${query}", then post to ${params.socialPlatform || 'instagram'}.`, platform: aiPlatform },
-    generate_and_dm:    { op: 'generate_and_dm', prompt: `Generate image via ${aiPlatform} of "${query}", then DM to ${target}.`, platform: aiPlatform },
-    download_image:     { op: 'download_image', prompt: `Download image from ${target || 'the post'} on ${platform}.` },
-    upload_image_to_ai: { op: 'upload_to_ai', prompt: `Upload ${imagePath} to ${aiPlatform} and ${params.instruction || goal}.`, platform: aiPlatform },
+    download_image:     { op: 'download_image',    prompt: `Download image from ${target || 'the post'} on ${platform}.` },
     get_inbox:          { op: platform === 'gmail' ? 'gmail_get_context' : 'get_context', prompt: `Read and summarize ${platform} inbox.` },
-    run_continuous:     { op: 'run_campaign', prompt: `Run always-on campaign on ${platform}. Objective: ${params.objective || goal}.` },
+    run_continuous:     { op: 'run_campaign',      prompt: `Run always-on campaign on ${platform}. Objective: ${params.objective || goal}.` },
     deep_scrape:        { op: 'execute_deep_scrape', prompt: `Deep scrape ${platform} for "${query}". Limit: ${maxResults}.` },
   };
 
@@ -137,17 +168,15 @@ function toolToTaskPayload(toolDef) {
   if (!m) return null;
   return {
     prompt: m.prompt,
-    context: { operation: m.op, platform: m.platform || platform, messageGoal: goal, tone, query, maxResults, attachmentPath: imagePath || undefined, username: target || undefined },
+    context: { operation: m.op, platform: m.platform || platform, messageGoal: message, tone, query, maxResults, attachmentPath: imagePath || undefined, username: target || undefined },
     preferredBrowserMode: (m.platform || platform) === 'research' ? 'managed' : 'attached',
   };
 }
 
 function dispatchTask(payload, { upsertTask, broadcast, createId }) {
   const task = upsertTask({
-    id: createId('task'),
-    status: 'queued',
-    prompt: payload.prompt,
-    context: payload.context,
+    id: createId('task'), status: 'queued',
+    prompt: payload.prompt, context: payload.context,
     preferredBrowserMode: payload.preferredBrowserMode,
     events: [{ type: 'task.created', taskId: createId('event'), prompt: payload.prompt }],
     createdAt: new Date().toISOString(),
@@ -181,9 +210,8 @@ function createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSc
   return campaign;
 }
 
-// ── SSE helper ───────────────────────────────────────────────────────────────
+// ── SSE streaming helper ──────────────────────────────────────────────────────
 function sseReply(res, reply, suggestions) {
-  // Stream canned reply token-by-token (word chunks feel natural)
   const words = reply.split(' ');
   let i = 0;
   const iv = setInterval(() => {
@@ -193,8 +221,7 @@ function sseReply(res, reply, suggestions) {
       res.end();
       return;
     }
-    const token = (i === 0 ? '' : ' ') + words[i++];
-    res.write(`data: ${JSON.stringify({ token })}\n\n`);
+    res.write(`data: ${JSON.stringify({ token: (i === 0 ? '' : ' ') + words[i++] })}\n\n`);
   }, 30);
 }
 
@@ -207,18 +234,16 @@ export function setupAiRoutes(app, deps) {
     try {
       const r = await fetch(`${LLM_URL}/health`, { signal: AbortSignal.timeout(3000) });
       res.json({ llm: 'online', ...(await r.json()) });
-    } catch {
-      res.json({ llm: 'offline', url: LLM_URL });
-    }
+    } catch { res.json({ llm: 'offline', url: LLM_URL }); }
   });
 
-  // ── Main chat endpoint (SSE) ─────────────────────────────────────────────
+  // ── Main chat endpoint ────────────────────────────────────────────────────
   app.post('/ai/chat', async (req, res) => {
     const { userId = 'default', message, reset } = req.body || {};
     if (!message?.trim()) return res.status(400).json({ error: 'message required' });
 
     const session = getSession(userId);
-    if (reset) session.history = [];
+    if (reset) { session.history = []; session.pending = null; }
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -226,30 +251,67 @@ export function setupAiRoutes(app, deps) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.flushHeaders();
 
-    // Intent check — if matched, skip LLM and stream a canned reply
-    const { reply: cannedReply, suggestions } = detectIntent(message);
+    session.history.push({ role: 'user', content: message });
 
-    if (cannedReply) {
-      session.history.push({ role: 'user', content: message });
-      session.history.push({ role: 'assistant', content: cannedReply });
-      return sseReply(res, cannedReply, suggestions);
+    // ── CASE 1: In the middle of a clarification flow ─────────────────────
+    if (session.pending) {
+      const { intentKey, platforms, accumulated, missingQueue } = session.pending;
+      // Fill the current missing param with this message
+      accumulated[missingQueue[0].key] = message.trim();
+      const remaining = missingQueue.slice(1).filter(m => !accumulated[m.key]);
+
+      if (remaining.length > 0) {
+        session.pending = { intentKey, platforms, accumulated, missingQueue: remaining };
+        const q = remaining[0].question;
+        session.history.push({ role: 'assistant', content: q });
+        return sseReply(res, q, null);
+      }
+
+      // All collected — show action cards
+      session.pending = null;
+      const finalReply = buildFinalReply(intentKey, platforms[0], accumulated);
+      const suggestions = buildSuggestions(intentKey, platforms, accumulated);
+      session.history.push({ role: 'assistant', content: finalReply });
+      return sseReply(res, finalReply, suggestions);
     }
 
-    // No intent — call LLM for real conversation
+    // ── CASE 2: Fresh intent detection ───────────────────────────────────
+    const intentKey = detectIntentKey(message);
+    if (intentKey) {
+      const platforms = detectPlatforms(message);
+      const accumulated = {};
+      const target = extractTarget(message);
+      if (target) accumulated.target = target;
+
+      const missing = getMissingParams(intentKey, accumulated);
+      if (missing.length > 0) {
+        session.pending = { intentKey, platforms, accumulated, missingQueue: missing };
+        const q = missing[0].question;
+        session.history.push({ role: 'assistant', content: q });
+        return sseReply(res, q, null);
+      }
+
+      // All info present — go straight to cards
+      const reply = buildFinalReply(intentKey, platforms[0], accumulated);
+      const suggestions = buildSuggestions(intentKey, platforms, accumulated);
+      session.history.push({ role: 'assistant', content: reply });
+      return sseReply(res, reply, suggestions);
+    }
+
+    // ── CASE 3: No intent — LLM with strict system prompt ────────────────
     let fullReply = '';
     try {
       const llmRes = await fetch(`${LLM_URL}/chat/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history: session.history }),
-        signal: AbortSignal.timeout(45000),
+        body: JSON.stringify({ message, history: session.history, system: SYSTEM_PROMPT }),
+        signal: AbortSignal.timeout(30000),
       });
       if (!llmRes.ok) throw new Error('offline');
 
       const reader = llmRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -267,12 +329,11 @@ export function setupAiRoutes(app, deps) {
         }
       }
     } catch {
-      const fallback = 'LLM is offline. Run: python3 llm_server.py';
-      fullReply = fallback;
-      res.write(`data: ${JSON.stringify({ token: fallback })}\n\n`);
+      // LLM offline or error — give a helpful nudge instead of hallucinating
+      fullReply = `I can help with social media automation. Try: "Send a DM to @username on Instagram" or "Monitor my WhatsApp and auto-reply".`;
+      res.write(`data: ${JSON.stringify({ token: fullReply })}\n\n`);
     }
 
-    session.history.push({ role: 'user', content: message });
     session.history.push({ role: 'assistant', content: fullReply });
     res.write(`data: ${JSON.stringify({ done: true, suggestions: null })}\n\n`);
     res.end();
@@ -287,9 +348,7 @@ export function setupAiRoutes(app, deps) {
       try {
         const campaign = createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSchema });
         return res.json({ mode: 'continuous', campaign: { id: campaign.id, name: campaign.name, status: campaign.status } });
-      } catch (e) {
-        return res.status(500).json({ error: e.message });
-      }
+      } catch (e) { return res.status(500).json({ error: e.message }); }
     }
 
     const dispatched = [];
@@ -301,7 +360,7 @@ export function setupAiRoutes(app, deps) {
     res.json({ mode: 'burst', tasks: dispatched.map(t => ({ id: t.id, prompt: t.prompt })), count: dispatched.length });
   });
 
-  // ── Clear session (new chat) ──────────────────────────────────────────────
+  // ── Clear session ─────────────────────────────────────────────────────────
   app.delete('/ai/chat/:userId', (req, res) => {
     chatSessions.delete(req.params.userId);
     res.json({ cleared: true });
