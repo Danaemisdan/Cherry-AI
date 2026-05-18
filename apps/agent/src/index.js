@@ -33,7 +33,6 @@ async function pairIfNeeded() {
   const pairingCode = process.env.CHERRY_PAIRING_CODE;
   const existing = loadConfig();
 
-  // If the user provides a fresh pairing code, prefer it over stale local config.
   if (!pairingCode && existing?.agentToken) {
     const response = await fetch(`${backendUrl}/agent/session/restore`, {
       method: 'POST',
@@ -45,12 +44,8 @@ async function pairIfNeeded() {
         os: process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux',
         agentVersion: '0.1.0',
       }),
-    }).catch((error) => {
-      throw new Error(`Failed to restore agent session: ${error.message}`);
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to restore agent session: ${response.status}. Pair again from the web UI.`);
-    }
+    }).catch((error) => { throw new Error(`Failed to restore agent session: ${error.message}`); });
+    if (!response.ok) throw new Error(`Failed to restore agent session: ${response.status}. Pair again from the web UI.`);
     return existing;
   }
 
@@ -70,10 +65,7 @@ async function pairIfNeeded() {
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to pair agent: ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`Failed to pair agent: ${response.status}`);
   const config = await response.json();
   saveConfig(config);
   return config;
@@ -87,101 +79,77 @@ async function runTask(task, socket) {
     preferredBrowserMode: task.preferredBrowserMode,
   });
 
-  socket.send(JSON.stringify({
-    type: 'task.event',
-    taskId: task.id,
-    payload: { type: 'plan.generated', plan },
-  }));
+  socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'plan.generated', plan } }));
 
   const results = [];
   try {
     for (const step of plan.steps) {
       const stepStart = Date.now();
       console.log(`[TIME] Step ${step.id} starting: ${step.platform}:${step.action}`);
-      
-      socket.send(JSON.stringify({
-        type: 'task.event',
-        taskId: task.id,
-        payload: { type: 'step.started', stepId: step.id, label: `${step.platform}:${step.action}` },
-      }));
+      socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'step.started', stepId: step.id, label: `${step.platform}:${step.action}` } }));
 
       try {
         const result = await executeSkill({ step, attachedBrowser, managedBrowser });
         const stepDuration = Date.now() - stepStart;
         console.log(`[TIME] Step ${step.id} completed in ${stepDuration}ms`);
         results.push({ step, result, duration: stepDuration });
-        socket.send(JSON.stringify({
-          type: 'task.event',
-          taskId: task.id,
-          payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete', duration: stepDuration },
-        }));
+        socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'step.progress', stepId: step.id, message: result.summary || 'Step complete', duration: stepDuration } }));
       } catch (error) {
-        // Login wall detected — pause task and ask user to log in, don't hard-fail
         if (error.name === 'LoginWallError') {
-          socket.send(JSON.stringify({
-            type: 'task.event',
-            taskId: task.id,
-            payload: {
-              type: 'hitl.required',
-              stepId: step.id,
-              platform: error.platform,
-              reason: 'login_wall',
-              message: error.message,
-            },
-          }));
-          // Don't mark the whole task as failed — just stop here so user can log in
+          socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'hitl.required', stepId: step.id, platform: error.platform, reason: 'login_wall', message: error.message } }));
           return;
         }
-
-        socket.send(JSON.stringify({
-          type: 'task.event',
-          taskId: task.id,
-          payload: { type: 'step.failed', stepId: step.id, error: error.message, retrying: false },
-        }));
-        socket.send(JSON.stringify({
-          type: 'task.event',
-          taskId: task.id,
-          payload: { type: 'task.failed', error: error.message },
-        }));
+        socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'step.failed', stepId: step.id, error: error.message, retrying: false } }));
+        socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'task.failed', error: error.message } }));
         return;
       }
     }
 
-    const stateAndMemory = {
-      scrapedLeads: [],
-      profileSnapshots: [],
-      messagesSent: [],
-      followStatus: [],
-      failures: [],
-    };
-
+    const stateAndMemory = { scrapedLeads: [], profileSnapshots: [], messagesSent: [], followStatus: [], failures: [] };
     for (const { step, result } of results) {
       if (!result) continue;
       if (result.data?.profiles) stateAndMemory.scrapedLeads.push(...result.data.profiles);
       if (result.data?.page) stateAndMemory.profileSnapshots.push({ platform: step.platform, snapshot: result.data.page });
-      if (step.action === 'send_message' || step.action === 'message_batch') {
-        stateAndMemory.messagesSent.push({ platform: step.platform, status: result.status });
-      }
-      if (step.action === 'follow' || step.action === 'follow_user') {
-        stateAndMemory.followStatus.push({ platform: step.platform, status: result.status });
-      }
+      if (step.action === 'send_message' || step.action === 'message_batch') stateAndMemory.messagesSent.push({ platform: step.platform, status: result.status });
+      if (step.action === 'follow' || step.action === 'follow_user') stateAndMemory.followStatus.push({ platform: step.platform, status: result.status });
       if (result.status === 'failed') stateAndMemory.failures.push({ step: step.id, error: result.error });
     }
 
     const artifact = artifacts.writeJson({ plan, results, stateAndMemory }, 'task_result');
-    socket.send(JSON.stringify({
-      type: 'task.event',
-      taskId: task.id,
-      payload: { type: 'artifact.ready', artifactId: artifact.artifactId, kind: artifact.kind, url: artifact.filePath },
-    }));
-    socket.send(JSON.stringify({
-      type: 'task.event',
-      taskId: task.id,
-      payload: { type: 'task.completed', summary: `Completed ${plan.steps.length} steps` },
-    }));
+    socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'artifact.ready', artifactId: artifact.artifactId, kind: artifact.kind, url: artifact.filePath } }));
+    socket.send(JSON.stringify({ type: 'task.event', taskId: task.id, payload: { type: 'task.completed', summary: `Completed ${plan.steps.length} steps` } }));
   } finally {
     await managedBrowser.closeAll().catch(() => {});
     await publishAgentStatus(socket).catch(() => {});
+  }
+}
+
+// ── Campaign runner ───────────────────────────────────────────────────────────
+// POST a task to the backend for each campaign tick.
+// The backend will then dispatch it back via task.dispatch.
+async function runCampaignTick(campaign) {
+  const platform = campaign.platforms?.[0] || 'instagram';
+  const objective = campaign.contentPolicy?.outreachGoal || campaign.objective || 'Monitor inbox and auto-reply';
+  try {
+    const res = await fetch(`${backendUrl}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `[Campaign: ${campaign.name}] ${objective}. Platform: ${platform}.`,
+        context: {
+          operation: 'get_context',
+          platform,
+          messageGoal: objective,
+          tone: campaign.contentPolicy?.tone || 'Casual and brief',
+          campaignId: campaign.id,
+        },
+        preferredBrowserMode: 'attached',
+      }),
+    });
+    if (!res.ok) console.error(`[Campaign] Failed to queue tick for ${campaign.id}: ${res.status}`);
+    else console.log(`[Campaign] Tick dispatched for "${campaign.name}" on ${platform}`);
+  } catch (e) {
+    console.error(`[Campaign] Tick error for ${campaign.id}:`, e.message);
   }
 }
 
@@ -217,29 +185,59 @@ async function main() {
   if (!config?.agentToken) return;
 
   const campaignEngine = new CampaignEngine({
-    onEvent: (event) => console.log('campaign event', event),
+    onEvent: (event) => console.log('[Campaign]', event.type, event.campaignId || '', event.status || ''),
   });
   console.log('Campaign engine ready', campaignEngine.listCampaigns().length);
 
   const socket = new WebSocket(`${backendWsUrl}/ws?role=agent&token=${encodeURIComponent(config.agentToken)}`);
   let statusInterval = null;
+
   socket.on('open', async () => {
     console.log('Cherry agent connected');
     const attached = await ensureAttachedBrowser();
-    if (!attached) {
-      console.error('Cherry browser attach failed', lastBrowserAttachError);
-    }
+    if (!attached) console.error('Cherry browser attach failed', lastBrowserAttachError);
     publishAgentStatus(socket).catch((error) => console.error('Failed to publish agent status', error.message));
-    statusInterval = setInterval(() => {
-      publishAgentStatus(socket).catch(() => {});
-    }, 15000);
+    statusInterval = setInterval(() => { publishAgentStatus(socket).catch(() => {}); }, 15000);
   });
+
   socket.on('message', async (raw) => {
     const message = JSON.parse(String(raw));
+
     if (message.type === 'task.dispatch') {
       await runTask(message.task, socket);
     }
+
+    // ── Campaign lifecycle messages ─────────────────────────────────────────
+    if (message.type === 'campaign.dispatch') {
+      const campaign = message.campaign;
+      const cadenceSecs = (() => {
+        const sched = campaign.schedules?.[0];
+        if (!sched) return 300;
+        return Math.round((sched.cadenceMinutes || 5) * 60);
+      })();
+      console.log(`[Campaign] Starting "${campaign.name}" — every ${cadenceSecs}s`);
+      // Run first tick immediately, then on interval
+      runCampaignTick(campaign).catch(() => {});
+      campaignEngine.upsertCampaign({ ...campaign, status: 'active' });
+      campaignEngine.startCampaign(campaign.id, () => runCampaignTick(campaign));
+      // The campaignEngine uses cadenceMinutes — override with seconds-based interval
+      // (campaignEngine.startCampaign already set it, but it uses cadenceMinutes*60*1000)
+      // For sub-minute cadence, set our own interval
+      if (cadenceSecs < 60) {
+        const timer = setInterval(() => runCampaignTick(campaign), cadenceSecs * 1000);
+        // Store so we can clear on stop
+        campaignEngine.timers.set(campaign.id + '_override', timer);
+      }
+    }
+
+    if (message.type === 'campaign.stop') {
+      console.log(`[Campaign] Stopping ${message.campaignId}`);
+      campaignEngine.stopCampaign(message.campaignId);
+      const overrideTimer = campaignEngine.timers.get(message.campaignId + '_override');
+      if (overrideTimer) { clearInterval(overrideTimer); campaignEngine.timers.delete(message.campaignId + '_override'); }
+    }
   });
+
   socket.on('close', () => {
     if (statusInterval) clearInterval(statusInterval);
     console.log('Cherry agent disconnected');

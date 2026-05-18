@@ -119,6 +119,16 @@ function dispatchQueuedTasks(agent) {
   }
 }
 
+// Send an active campaign to the agent so it can schedule recurring tasks
+function dispatchActiveCampaign(campaign) {
+  for (const agent of agents.values()) {
+    if (agent.online && agent.socket?.readyState === 1) {
+      agent.socket.send(JSON.stringify({ type: 'campaign.dispatch', campaign }));
+      return; // send to first available agent
+    }
+  }
+}
+
 function requeueAgentTasks(agentId) {
   for (const task of tasks.values()) {
     if ((task.status === 'dispatched' || task.status === 'running') && task.assignedAgentId === agentId) {
@@ -262,27 +272,31 @@ app.get('/tasks/:id', (req, res) => {
 });
 
 app.post('/campaigns', (req, res) => {
-  const campaign = CampaignSchema.parse({
-    id: createId('campaign'),
-    ...req.body,
-  });
+  const campaign = CampaignSchema.parse({ id: createId('campaign'), ...req.body });
   campaigns.set(campaign.id, campaign);
   persistState();
   broadcast({ type: 'campaign.updated', campaignId: campaign.id, status: campaign.status });
+  if (campaign.status === 'active') dispatchActiveCampaign(campaign);
   res.status(201).json(campaign);
 });
 
 app.patch('/campaigns/:id', (req, res) => {
   const existing = campaigns.get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Campaign not found' });
-  const campaign = CampaignSchema.parse({
-    ...existing,
-    ...req.body,
-    id: existing.id,
-  });
+  const campaign = CampaignSchema.parse({ ...existing, ...req.body, id: existing.id });
   campaigns.set(campaign.id, campaign);
   persistState();
   broadcast({ type: 'campaign.updated', campaignId: campaign.id, status: campaign.status });
+  // If being activated, tell the agent to start running it
+  if (campaign.status === 'active' && existing.status !== 'active') dispatchActiveCampaign(campaign);
+  // If being cancelled/paused, tell the agent to stop it
+  if (['cancelled','paused'].includes(campaign.status)) {
+    for (const agent of agents.values()) {
+      if (agent.online && agent.socket?.readyState === 1) {
+        agent.socket.send(JSON.stringify({ type: 'campaign.stop', campaignId: campaign.id }));
+      }
+    }
+  }
   res.json(campaign);
 });
 

@@ -174,7 +174,7 @@ function createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSc
     leadSources: [],
     stopRules: [{ type: 'daily_cap_reached' }, { type: 'consecutive_failures', count: 5 }],
     contentPolicy: { tone: 'Casual and brief', outreachGoal: suggestion.label, allowAutonomousReplies: false },
-    status: 'draft',
+    status: 'active',
   });
   campaigns.set(campaign.id, campaign);
   broadcast({ type: 'campaign.updated', campaignId: campaign.id, status: campaign.status });
