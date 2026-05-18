@@ -48,8 +48,16 @@ function detectPlatforms(text) {
 }
 
 function extractTarget(text) {
-  const m = text.match(/\bto\s+@?([A-Za-z0-9._]+)|@([A-Za-z0-9._]+)/i);
-  if (m) return (m[1] || m[2]).replace(/^(on|in|at)$/i, '');
+  // Match: "to Jagadeesh", "@jagadeesh", "message Jagadeesh", "dm Jagadeesh", "text Jagadeesh", "whatsapp Jagadeesh"
+  const m = text.match(
+    /\bto\s+@?([A-Za-z0-9._]{2,})|@([A-Za-z0-9._]{2,})|(?:message|msg|dm|text|whatsapp|contact)\s+@?([A-Za-z0-9._]{2,})/i
+  );
+  if (m) {
+    const name = m[1] || m[2] || m[3];
+    // filter out platform words that aren't names
+    if (/^(on|in|at|the|a|an|my|whatsapp|instagram|twitter|linkedin|facebook|gmail)$/i.test(name)) return null;
+    return name;
+  }
   return null;
 }
 

@@ -237,7 +237,7 @@ function DialogueBox({ dialogue, onSelect, selectedPlatforms }) {
   );
 }
 
-function Workspace({ refreshTasks, tasks }) {
+function Workspace({ refreshTasks, refreshCampaigns, tasks }) {
   const [prompt, setPrompt] = useState('');
   const [dialogue, setDialogue] = useState(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
@@ -1695,7 +1695,7 @@ export function App() {
   return (
     <Shell agentOnline={agentOnline} agentState={agentState}>
       <Routes>
-        <Route path="/" element={<Workspace agentOnline={agentOnline} events={events} refreshTasks={refreshTasks} tasks={tasks} />} />
+        <Route path="/" element={<Workspace agentOnline={agentOnline} events={events} refreshTasks={refreshTasks} refreshCampaigns={refreshCampaigns} tasks={tasks} />} />
         <Route path="/dashboard" element={<Dashboard contactMetrics={contactMetrics} refreshContactMetrics={refreshContactMetrics} />} />
         <Route path="/campaigns" element={<Campaigns campaigns={campaigns} refreshCampaigns={refreshCampaigns} />} />
         <Route path="/tasks" element={<Tasks tasks={tasks} campaigns={campaigns} refreshTasks={refreshTasks} refreshCampaigns={refreshCampaigns} />} />
