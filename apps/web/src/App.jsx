@@ -182,6 +182,9 @@ function Shell({ agentOnline, agentState, children }) {
             <NavLink to="/campaigns" className={({isActive})=>isActive?'active':''}>
               <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v2H2zm0 3h12v2H2zm0 3h8v2H2z"/></svg>Campaigns
             </NavLink>
+            <NavLink to="/tasks" className={({isActive})=>isActive?'active':''}>
+              <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M1 3h14v2H1zm0 4h14v2H1zm0 4h14v2H1z"/></svg>Tasks
+            </NavLink>
             <NavLink to="/history" className={({isActive})=>isActive?'active':''}>
               <svg className="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM7 4h2v4.414l2.293 2.293-1.414 1.414L7 9.414V4z"/></svg>History
             </NavLink>
@@ -456,14 +459,18 @@ function Workspace({ refreshTasks, tasks }) {
       });
       const data = await res.json();
       await refreshTasks();
+      await refreshCampaigns();
       const isContinuous = data.mode === 'continuous';
-      setAiMessages(prev => [...prev, {
-        role: 'assistant',
-        content: isContinuous
-          ? `✅ Campaign scheduled: "${data.campaign?.name}" — running every ${suggestion.cadenceMinutes} min in the background.`
-          : `✅ ${data.count} task${data.count !== 1 ? 's' : ''} queued — Cherry is on it.`,
-        id: Date.now() + 'ex',
-      }]);
+      let confirmMsg;
+      if (isContinuous) {
+        const secs = suggestion.cadenceSeconds || (suggestion.cadenceMinutes ? suggestion.cadenceMinutes * 60 : null);
+        const cadenceLabel = secs ? (secs < 60 ? `every ${secs}s` : `every ${Math.round(secs/60)}m`) : 'continuously';
+        confirmMsg = `✅ Campaign scheduled — watching ${suggestion.tools?.[0]?.params?.platform || 'your platform'} ${cadenceLabel}. Check Tasks to manage it.`;
+      } else {
+        const n = data.count || data.tasks?.length || 1;
+        confirmMsg = `✅ ${n} task${n !== 1 ? 's' : ''} queued — Cherry is on it. Check Tasks for live status.`;
+      }
+      setAiMessages(prev => [...prev, { role: 'assistant', content: confirmMsg, id: Date.now() + 'ex' }]);
     } catch (e) {
       setAiMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}`, id: Date.now() + 'ee', error: true }]);
     }
@@ -1037,6 +1044,105 @@ function Workspace({ refreshTasks, tasks }) {
 
 
       {/* 1. Full-Height AI Chat Section (The "Home Screen") */}
+// ── Tasks Page ─────────────────────────────────────────────────────────────────
+function Tasks({ tasks, campaigns, refreshTasks, refreshCampaigns }) {
+  const [stopping, setStopping] = useState({});
+
+  const burstTasks = tasks; // all dispatched one-time tasks
+  const contTasks  = campaigns;
+
+  const STATUS_COLOR = { queued:'#888', running:'var(--green)', completed:'var(--green)', failed:'var(--red)', draft:'#888', active:'var(--green)', paused:'#f59e0b', cancelled:'var(--red)' };
+  const STATUS_BG    = { queued:'rgba(255,255,255,0.04)', running:'rgba(0,200,100,0.07)', completed:'rgba(0,200,100,0.05)', failed:'rgba(229,57,53,0.07)', draft:'rgba(255,255,255,0.04)', active:'rgba(0,200,100,0.07)', paused:'rgba(245,158,11,0.07)', cancelled:'rgba(229,57,53,0.07)' };
+
+  async function stopCampaign(id) {
+    setStopping(s => ({...s, [id]: true}));
+    try {
+      await fetch(`${backendUrl}/campaigns/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: 'cancelled' }) });
+      await refreshCampaigns();
+    } catch {}
+    setStopping(s => ({...s, [id]: false}));
+  }
+
+  async function deleteTask(id) {
+    try { await fetch(`${backendUrl}/tasks/${id}`, { method: 'DELETE' }); await refreshTasks(); } catch {}
+  }
+
+  const fmtTime = (iso) => { if (!iso) return ''; const d = new Date(iso); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+d.toLocaleDateString([],{month:'short',day:'numeric'}); };
+
+  function TaskCard({ t, isCampaign }) {
+    const status   = t.status || 'queued';
+    const label    = isCampaign ? (t.name || t.objective || 'Campaign') : (t.prompt || t.context?.operation || 'Task');
+    const platform = isCampaign ? (t.platforms?.[0] || '') : (t.context?.platform || '');
+    const cadence  = isCampaign ? t.schedules?.[0]?.label : null;
+    const col = STATUS_COLOR[status] || '#888';
+    return (
+      <div style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 16px',borderRadius:8,background:STATUS_BG[status]||'rgba(255,255,255,0.03)',border:`1px solid ${col}22`,marginBottom:8}}>
+        <div style={{width:8,height:8,borderRadius:'50%',background:col,flexShrink:0,marginTop:5,boxShadow:['running','active'].includes(status)?`0 0 6px ${col}`:'none'}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:3}}>{label}</div>
+          <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+            {platform && <span style={{fontSize:10,color:'var(--text-3)',background:'rgba(255,255,255,0.06)',padding:'1px 6px',borderRadius:4,textTransform:'capitalize'}}>{platform}</span>}
+            {cadence  && <span style={{fontSize:10,color:'var(--red)',background:'rgba(229,57,53,0.12)',padding:'1px 6px',borderRadius:4}}>{cadence}</span>}
+            <span style={{fontSize:10,color:'var(--text-3)'}}>{fmtTime(t.createdAt)}</span>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:6,flexShrink:0,alignItems:'center'}}>
+          <span style={{fontSize:10,fontWeight:700,color:col,textTransform:'uppercase',letterSpacing:'0.05em',padding:'2px 7px',border:`1px solid ${col}44`,borderRadius:10}}>{status}</span>
+          {isCampaign && !['cancelled','paused'].includes(status) && (
+            <button onClick={()=>stopCampaign(t.id)} disabled={stopping[t.id]}
+              style={{background:'rgba(229,57,53,0.15)',border:'1px solid rgba(229,57,53,0.3)',color:'var(--red)',cursor:'pointer',fontSize:10,padding:'2px 8px',borderRadius:4,fontWeight:600,opacity:stopping[t.id]?0.5:1}}>
+              {stopping[t.id]?'…':'Stop'}
+            </button>
+          )}
+          {!isCampaign && ['completed','failed'].includes(status) && (
+            <button onClick={()=>deleteTask(t.id)}
+              style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'var(--text-3)',cursor:'pointer',fontSize:10,padding:'2px 7px',borderRadius:4}}>✕</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:28,maxWidth:820,margin:'0 auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}}>
+        <div>
+          <h1 style={{fontSize:20,fontWeight:800,color:'var(--text)',margin:0}}>Tasks</h1>
+          <p style={{fontSize:12,color:'var(--text-3)',margin:'4px 0 0'}}>All queued, running, and scheduled automation tasks</p>
+        </div>
+        <button onClick={async()=>{await refreshTasks();await refreshCampaigns();}}
+          style={{background:'rgba(255,255,255,0.06)',border:'1px solid var(--panel-border)',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'5px 12px',borderRadius:6}}
+          onMouseEnter={e=>e.currentTarget.style.color='var(--text)'} onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}>
+          ↻ Refresh
+        </button>
+      </div>
+
+      {/* Continuous */}
+      <div style={{marginBottom:28}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+          <span style={{fontSize:11,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:'0.08em'}}>🔄 Continuous</span>
+          <span style={{fontSize:10,background:'rgba(229,57,53,0.15)',color:'var(--red)',padding:'1px 7px',borderRadius:10,fontWeight:600}}>{contTasks.filter(c=>c.status==='active').length} active</span>
+        </div>
+        {contTasks.length===0
+          ? <div style={{color:'var(--text-3)',fontSize:12,padding:20,textAlign:'center',border:'1px dashed rgba(255,255,255,0.08)',borderRadius:8}}>No continuous tasks. Schedule one from Workspace chat.</div>
+          : contTasks.map(c=><TaskCard key={c.id} t={c} isCampaign={true}/>)}
+      </div>
+
+      {/* One-time */}
+      <div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+          <span style={{fontSize:11,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:'0.08em'}}>▶ One-time tasks</span>
+          <span style={{fontSize:10,background:'rgba(255,255,255,0.08)',color:'var(--text-3)',padding:'1px 7px',borderRadius:10,fontWeight:600}}>{burstTasks.length}</span>
+        </div>
+        {burstTasks.length===0
+          ? <div style={{color:'var(--text-3)',fontSize:12,padding:20,textAlign:'center',border:'1px dashed rgba(255,255,255,0.08)',borderRadius:8}}>No one-time tasks. Run one from Workspace chat.</div>
+          : burstTasks.map(t=><TaskCard key={t.id} t={t} isCampaign={false}/>)}
+      </div>
+    </div>
+  );
+}
+
+
 function Campaigns({ campaigns, refreshCampaigns }) {
   const [name, setName] = useState('Always-on social outreach');
   const [objective, setObjective] = useState('Monitor inboxes, continue outreach follow-ups, refresh lead pools, and push approved messages one by one.');
@@ -1592,6 +1698,7 @@ export function App() {
         <Route path="/" element={<Workspace agentOnline={agentOnline} events={events} refreshTasks={refreshTasks} tasks={tasks} />} />
         <Route path="/dashboard" element={<Dashboard contactMetrics={contactMetrics} refreshContactMetrics={refreshContactMetrics} />} />
         <Route path="/campaigns" element={<Campaigns campaigns={campaigns} refreshCampaigns={refreshCampaigns} />} />
+        <Route path="/tasks" element={<Tasks tasks={tasks} campaigns={campaigns} refreshTasks={refreshTasks} refreshCampaigns={refreshCampaigns} />} />
         <Route path="/pairing" element={<Pairing />} />
         <Route path="/history" element={<History events={events} tasks={tasks} />} />
       </Routes>
