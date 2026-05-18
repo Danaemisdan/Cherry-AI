@@ -38,15 +38,26 @@ function detectPlatforms(text) {
 const INTENTS = [
   {
     re: /monitor|watch|auto.?reply|respond|auto.*inbox|always.*reply/i,
-    build: (platforms) => [{
-      label: `Monitor ${platforms[0]} & auto-reply to messages`,
-      tools: [
-        { tool: 'get_inbox', params: { platform: platforms[0] } },
-        { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply', cadenceMinutes: 30 } },
-      ],
-      mode: 'continuous',
-      cadenceMinutes: 30,
-    }],
+    build: (platforms) => [
+      {
+        label: `Monitor ${platforms[0]} & auto-reply (every 30s)`,
+        tools: [
+          { tool: 'get_inbox', params: { platform: platforms[0] } },
+          { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply to new messages', cadenceSeconds: 30 } },
+        ],
+        mode: 'continuous',
+        cadenceSeconds: 30,
+      },
+      {
+        label: `Monitor ${platforms[0]} & auto-reply (every 5 min)`,
+        tools: [
+          { tool: 'get_inbox', params: { platform: platforms[0] } },
+          { tool: 'run_continuous', params: { platform: platforms[0], objective: 'Monitor inbox and auto-reply to new messages', cadenceSeconds: 300 } },
+        ],
+        mode: 'continuous',
+        cadenceSeconds: 300,
+      },
+    ],
   },
   {
     re: /send.*dm|dm\b|direct.*message|message.*people|outreach|reach out/i,
@@ -220,13 +231,17 @@ function dispatchTask(payload, { upsertTask, broadcast, createId }) {
 
 function createCampaign(suggestion, { campaigns, broadcast, createId, CampaignSchema }) {
   const platform = suggestion.tools?.[0]?.params?.platform || 'instagram';
+  // Support both cadenceSeconds and cadenceMinutes
+  const cadenceSecs = suggestion.cadenceSeconds || (suggestion.cadenceMinutes ? suggestion.cadenceMinutes * 60 : 1800);
+  const cadenceMins = Math.max(cadenceSecs / 60, 0.016); // minimum ~1 second expressed as fractional minutes
+  const cadenceLabel = cadenceSecs < 60 ? `Every ${cadenceSecs}s` : cadenceSecs < 3600 ? `Every ${Math.round(cadenceSecs/60)}m` : `Every ${Math.round(cadenceSecs/3600)}h`;
   const campaign = CampaignSchema.parse({
     id: createId('campaign'),
     name: `🍒 ${suggestion.label.slice(0, 60)}`,
     objective: suggestion.label,
     platforms: [platform],
     browserStrategy: { defaultMode: 'attached', perPlatform: {} },
-    schedules: [{ id: 'primary', label: `Every ${suggestion.cadenceMinutes || 60}m`, cadenceMinutes: suggestion.cadenceMinutes || 60 }],
+    schedules: [{ id: 'primary', label: cadenceLabel, cadenceMinutes: cadenceMins }],
     caps: { perPlatformDailyActions: {}, perPlatformDailyMessages: {}, maxConcurrentTabs: 2, maxConcurrentConversations: 1 },
     quietHours: { timezone: 'Asia/Kolkata', windows: [{ start: '23:00', end: '07:00' }] },
     targets: { usernames: [], emails: [], keywords: [], notes: '' },

@@ -18,7 +18,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 3,
+      "tabs": 4,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false
@@ -17665,7 +17665,64 @@
       "dispatchedAt": "2026-05-15T04:08:52.110Z"
     }
   ],
-  "campaigns": [],
+  "campaigns": [
+    {
+      "id": "campaign_xs12ne2n",
+      "name": "🍒 Monitor instagram & auto-reply to messages",
+      "objective": "Monitor instagram & auto-reply to messages",
+      "platforms": [
+        "instagram"
+      ],
+      "browserStrategy": {
+        "defaultMode": "attached",
+        "perPlatform": {}
+      },
+      "schedules": [
+        {
+          "id": "primary",
+          "label": "Every 30m",
+          "cadenceMinutes": 30
+        }
+      ],
+      "caps": {
+        "perPlatformDailyActions": {},
+        "perPlatformDailyMessages": {},
+        "maxConcurrentTabs": 2,
+        "maxConcurrentConversations": 1
+      },
+      "quietHours": {
+        "timezone": "Asia/Kolkata",
+        "windows": [
+          {
+            "start": "23:00",
+            "end": "07:00"
+          }
+        ]
+      },
+      "targets": {
+        "usernames": [],
+        "emails": [],
+        "keywords": [],
+        "notes": ""
+      },
+      "leadSources": [],
+      "stopRules": [
+        {
+          "type": "daily_cap_reached"
+        },
+        {
+          "type": "consecutive_failures",
+          "count": 5
+        }
+      ],
+      "contentPolicy": {
+        "tone": "Casual and brief",
+        "outreachGoal": "Monitor instagram & auto-reply to messages",
+        "allowAutonomousReplies": false
+      },
+      "status": "draft"
+    }
+  ],
   "pairingCodes": [
     {
       "code": "6JWD1N",

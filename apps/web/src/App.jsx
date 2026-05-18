@@ -257,13 +257,34 @@ function Workspace({ refreshTasks, tasks }) {
   const [emailSignature, setEmailSignature] = useState('');
   const [gmailSearchQuery, setGmailSearchQuery] = useState('');
 
-  // AI Chat state
-  const [aiMessages, setAiMessages] = useState([{
-    role: 'assistant',
-    content: "Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.",
-    id: 'welcome',
-  }]);
-  const [llmOnline, setLlmOnline] = useState(null); // null=checking, true=ok, false=err
+  // AI Chat state — persisted in sessionStorage so navigation doesn't wipe it
+  const CHAT_KEY = 'cherry_ai_messages';
+  const [aiMessages, _setAiMessages] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(CHAT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Clear any stuck streaming state from a previous session
+        return parsed.map(m => ({ ...m, streaming: false }));
+      }
+    } catch {}
+    return [{
+      role: 'assistant',
+      content: "Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.",
+      id: 'welcome',
+    }];
+  });
+
+  // Wrap setter to always mirror to sessionStorage
+  const setAiMessages = (updater) => {
+    _setAiMessages(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const [llmOnline, setLlmOnline] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -729,7 +750,7 @@ function Workspace({ refreshTasks, tasks }) {
                         <div className="tool-card-header">
                           <span style={{fontSize:14}}>{sug.mode==='continuous'?'🔄':'▶'}</span>
                           <span className="tool-card-name">{sug.label}</span>
-                          <span className={`tool-card-mode ${sug.mode||'burst'}`}>{sug.mode==='continuous'?`every ${sug.cadenceMinutes}m`:'one-time'}</span>
+                          <span className={`tool-card-mode ${sug.mode||'burst'}`}>{sug.mode==='continuous'?(()=>{const s=sug.cadenceSeconds,m=sug.cadenceMinutes;return s?s<60?`every ${s}s`:`every ${Math.round(s/60)}m`:m?`every ${m}m`:'continuous'})():'one-time'}</span>
                         </div>
                         <div className="tool-card-params">
                           {(sug.tools||[]).map((t,ti)=>(
