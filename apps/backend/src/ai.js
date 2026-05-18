@@ -56,8 +56,8 @@ function extractTarget(text) {
 // ── Intent detection ──────────────────────────────────────────────────────────
 function detectIntentKey(text) {
   if (/monitor|watch|auto.?reply|always.*reply|respond.*auto/i.test(text)) return 'monitor';
-  // DM: broad match — "send a message", "send dm", "message Jagadeesh", "text someone", "reach out"
-  if (/send.*\b(dm|message|msg|text)\b|\bdm\b|direct.*message|message.*people|outreach|reach.?out|text.*\b(to|someone)\b/i.test(text)) return 'dm';
+  // DM: catches "send a message", "message X", "text X", "dm X", "whatsapp X", "reach out", "outreach"
+  if (/send.*\b(dm|message|msg|text)\b|\bdm\b|direct.*message|message.*people|outreach|reach.?out|text.*\b(to|someone)\b|\bmessage\s+\w|\bwhatsapp\s+\w|\btext\s+\w/i.test(text)) return 'dm';
   if (/find.*lead|lead gen|get.*lead|prospect/i.test(text)) return 'leads';
   if (/like|comment|engage/i.test(text)) return 'engage';
   if (/\bfollow\b/i.test(text)) return 'follow';
