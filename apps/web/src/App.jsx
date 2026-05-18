@@ -749,7 +749,6 @@ function Workspace({ refreshTasks, tasks }) {
     });
   }
 
-
   const isAI = selectedPlatform==='chatgpt'||selectedPlatform==='gemini';
   const isGmail = selectedPlatform==='gmail';
   const isWA = selectedPlatform==='whatsapp';
@@ -767,72 +766,76 @@ function Workspace({ refreshTasks, tasks }) {
             <div className="chat-header-title">Cherry AI — {selectedPlatformMeta.label}</div>
             <div className="chat-header-sub">Agentic task feed</div>
           </div>
-          <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
-        </div>
-
-        {/* ── Status bar: LLM dot · History · New Chat ──────────────────── */}
-        <div className="llm-status" style={{justifyContent:'space-between',position:'relative'}}>
-          <div style={{display:'flex',alignItems:'center',gap:6}}>
-            <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
-              background: llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)',
-              boxShadow: llmOnline?'0 0 5px var(--green)':'none'}}/>
-            <span style={{fontSize:10,color:'var(--text-3)'}}>
-              {llmOnline===null ? 'Checking…' : llmOnline ? 'Cherry LLM · Online' : 'LLM offline'}
-            </span>
-          </div>
-          <div style={{display:'flex',gap:4,alignItems:'center'}}>
-            {/* History button */}
-            <button onClick={()=>setShowHistory(h=>!h)} style={{background:showHistory?'var(--bg-soft2)':'none',border:showHistory?'1px solid var(--panel-border)':'none',color:showHistory?'var(--text)':'var(--text-3)',cursor:'pointer',fontSize:11,padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4,transition:'all .15s'}}
-              onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
-              onMouseLeave={e=>!showHistory&&(e.currentTarget.style.color='var(--text-3)')}>
-              ☰ History {sessionIndex.filter(s=>s.title!=='New chat').length > 0 && <span style={{background:'var(--red)',color:'#fff',borderRadius:10,padding:'0 5px',fontSize:9}}>{sessionIndex.filter(s=>s.title!=='New chat').length}</span>}
+          {/* ── Controls in header ── */}
+          <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
+            <button
+              onClick={()=>setShowHistory(h=>!h)}
+              style={{background:showHistory?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',cursor:'pointer',fontSize:11,padding:'5px 10px',borderRadius:6,display:'flex',alignItems:'center',gap:5,fontWeight:500,transition:'all .15s'}}>
+              🕐 History
+              {sessionIndex.filter(s=>s.title!=='New chat').length > 0 &&
+                <span style={{background:'var(--red)',color:'#fff',borderRadius:10,padding:'0 5px',fontSize:9,marginLeft:2}}>
+                  {sessionIndex.filter(s=>s.title!=='New chat').length}
+                </span>}
             </button>
-            {/* New Chat button */}
-            <button onClick={startNewChat} style={{background:'var(--red)',border:'none',color:'#fff',cursor:'pointer',fontSize:11,padding:'2px 10px',borderRadius:4,display:'flex',alignItems:'center',gap:4,fontWeight:600,opacity:isTyping?.5:1,transition:'opacity .15s'}}>
+            <button
+              onClick={startNewChat}
+              style={{background:'var(--red)',border:'none',color:'#fff',cursor:'pointer',fontSize:11,padding:'5px 12px',borderRadius:6,fontWeight:700,opacity:isTyping?0.5:1,transition:'opacity .15s'}}>
               + New chat
             </button>
           </div>
         </div>
 
-        {/* ── History slide-in panel ────────────────────────────────────────── */}
-        {showHistory && (
-          <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:50,display:'flex',flexDirection:'column',background:'var(--bg)',borderRight:'1px solid var(--panel-border)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',borderBottom:'1px solid var(--panel-border)',flexShrink:0}}>
-              <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>Chat history</span>
-              <div style={{display:'flex',gap:6}}>
-                <button onClick={startNewChat} style={{background:'var(--red)',border:'none',color:'#fff',cursor:'pointer',fontSize:11,padding:'3px 10px',borderRadius:4,fontWeight:600}}>+ New chat</button>
-                <button onClick={()=>setShowHistory(false)} style={{background:'none',border:'1px solid var(--panel-border)',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'3px 8px',borderRadius:4}}>✕</button>
-              </div>
+        {/* LLM status bar */}
+        <div className="llm-status">
+          <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
+            background:llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)',
+            boxShadow:llmOnline?'0 0 5px var(--green)':'none'}}/>
+          <span style={{fontSize:10}}>
+            {llmOnline===null?'Checking LLM…':llmOnline?'Cherry LLM · Online':'LLM offline — run python3 llm_server.py'}
+          </span>
+        </div>
+
+        {/* ── History panel (inline, toggles chat area) ─────────────────── */}
+        {showHistory ? (
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:'1px solid var(--panel-border)',flexShrink:0}}>
+              <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>
+                Chat history <span style={{color:'var(--text-3)',fontWeight:400}}>({sessionIndex.length} chats)</span>
+              </span>
+              <button onClick={()=>setShowHistory(false)} style={{background:'none',border:'1px solid var(--panel-border)',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'3px 8px',borderRadius:4}}>✕ Close</button>
             </div>
             <div className="custom-scroll" style={{flex:1,overflowY:'auto',padding:8,display:'flex',flexDirection:'column',gap:4}}>
               {sessionIndex.length === 0 && (
-                <div style={{textAlign:'center',color:'var(--text-3)',fontSize:12,marginTop:40}}>No past chats yet</div>
+                <div style={{textAlign:'center',color:'var(--text-3)',fontSize:12,marginTop:60,lineHeight:1.8}}>
+                  No past chats yet.<br/>Start chatting to save history.
+                </div>
               )}
               {sessionIndex.map(s => (
                 <div key={s.id} onClick={()=>switchSession(s.id)}
-                  style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 10px',borderRadius:6,cursor:'pointer',background:s.id===sessionId?'var(--bg-soft2)':'transparent',border:s.id===sessionId?'1px solid var(--panel-border)':'1px solid transparent',transition:'background .1s'}}
-                  onMouseEnter={e=>s.id!==sessionId&&(e.currentTarget.style.background='var(--bg-soft)')}
-                  onMouseLeave={e=>s.id!==sessionId&&(e.currentTarget.style.background='transparent')}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',borderRadius:7,cursor:'pointer',
+                    background:s.id===sessionId?'rgba(229,57,53,0.1)':'rgba(255,255,255,0.03)',
+                    border:s.id===sessionId?'1px solid rgba(229,57,53,0.3)':'1px solid rgba(255,255,255,0.05)',transition:'all .1s'}}
+                  onMouseEnter={e=>{if(s.id!==sessionId)e.currentTarget.style.background='rgba(255,255,255,0.06)'}}
+                  onMouseLeave={e=>{if(s.id!==sessionId)e.currentTarget.style.background='rgba(255,255,255,0.03)'}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:12,color:'var(--text)',fontWeight:s.id===sessionId?600:400,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    <div style={{fontSize:12,color:s.id===sessionId?'var(--red)':'var(--text)',fontWeight:s.id===sessionId?600:400,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                       {s.id===sessionId && '● '}{s.title}
                     </div>
-                    <div style={{fontSize:10,color:'var(--text-3)',marginTop:1}}>
+                    <div style={{fontSize:10,color:'var(--text-3)',marginTop:2}}>
                       {new Date(s.timestamp).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
                     </div>
                   </div>
                   <button onClick={(e)=>deleteSession(s.id,e)}
-                    style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',padding:'4px 6px',borderRadius:4,fontSize:12,flexShrink:0,opacity:.5,transition:'opacity .15s'}}
+                    style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',padding:'4px 7px',borderRadius:4,fontSize:14,flexShrink:0,opacity:.4,transition:'all .15s'}}
                     onMouseEnter={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.color='var(--red)'}}
-                    onMouseLeave={e=>{e.currentTarget.style.opacity='.5';e.currentTarget.style.color='var(--text-3)'}}>
+                    onMouseLeave={e=>{e.currentTarget.style.opacity='.4';e.currentTarget.style.color='var(--text-3)'}}>
                     🗑
                   </button>
                 </div>
               ))}
             </div>
           </div>
-        )}
-
+        ) : (
         <div className="chat-messages custom-scroll">
           <div className="ai-thread">
             {aiMessages.map(msg => (
@@ -887,6 +890,7 @@ function Workspace({ refreshTasks, tasks }) {
             <div ref={chatBottomRef}/>
           </div>
         </div>
+        )}
 
         <div className="chat-input-wrap">
           <div className="chat-input-box">
