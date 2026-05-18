@@ -18,7 +18,7 @@
       "agentVersion": "0.1.0",
       "online": false,
       "browserAttached": true,
-      "tabs": 4,
+      "tabs": 3,
       "profileDirectory": "Default",
       "mode": "cdp",
       "extensionLoaded": false

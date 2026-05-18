@@ -721,11 +721,33 @@ function Workspace({ refreshTasks, tasks }) {
           <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
         </div>
 
-        {/* LLM status bar */}
-        <div className="llm-status">
-          <div className={`llm-status-dot ${llmOnline===null?'':'llmOnline'===true?'ok':llmOnline?'ok':'err'}`}
-               style={{background: llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)', boxShadow: llmOnline?'0 0 6px var(--green)':'none'}}/>
-          {llmOnline===null ? 'Checking local LLM…' : llmOnline ? `Cherry LLM · Online` : 'LLM offline — run python3 llm_server.py'}
+        {/* LLM status bar + New Chat */}
+        <div className="llm-status" style={{justifyContent:'space-between'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
+              background: llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)',
+              boxShadow: llmOnline?'0 0 6px var(--green)':'none'}}/>
+            <span>{llmOnline===null ? 'Checking LLM…' : llmOnline ? 'Cherry LLM · Online' : 'LLM offline — run python3 llm_server.py'}</span>
+            {aiMessages.length > 1 && (
+              <span style={{opacity:.4,fontSize:10,marginLeft:4}}>
+                {Math.floor((aiMessages.length - 1) / 2)} message{Math.floor((aiMessages.length-1)/2)!==1?'s':''}
+              </span>
+            )}
+          </div>
+          <button
+            title="New chat"
+            style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'2px 6px',borderRadius:4,display:'flex',alignItems:'center',gap:4,transition:'color .15s'}}
+            onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+            onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}
+            onClick={async () => {
+              if (isTyping) return;
+              const welcome = { role:'assistant', content:"Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.", id:'welcome' };
+              setAiMessages([welcome]);
+              try { await fetch(`${backendUrl}/ai/chat/default`, { method:'DELETE' }); } catch {}
+            }}
+          >
+            ✦ New chat
+          </button>
         </div>
 
         <div className="chat-messages custom-scroll">
