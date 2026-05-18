@@ -257,31 +257,80 @@ function Workspace({ refreshTasks, tasks }) {
   const [emailSignature, setEmailSignature] = useState('');
   const [gmailSearchQuery, setGmailSearchQuery] = useState('');
 
-  // AI Chat state — persisted in sessionStorage so navigation doesn't wipe it
-  const CHAT_KEY = 'cherry_ai_messages';
+  // ── Multi-session Chat History ─────────────────────────────────────────────
+  const SESSIONS_INDEX_KEY = 'cherry_sessions';
+  const sessionMsgKey = (id) => `cherry_session_${id}`;
+  const WELCOME_MSG = { role: 'assistant', content: "Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.", id: 'welcome' };
+
+  const genSessionId = () => `s_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+
+  const loadSessionIndex = () => { try { return JSON.parse(localStorage.getItem(SESSIONS_INDEX_KEY) || '[]'); } catch { return []; } };
+  const saveSessionIndex = (idx) => { try { localStorage.setItem(SESSIONS_INDEX_KEY, JSON.stringify(idx.slice(0, 50))); } catch {} };
+  const loadSessionMsgs  = (id)  => { try { const s = localStorage.getItem(sessionMsgKey(id)); return s ? JSON.parse(s).map(m => ({...m, streaming: false})) : null; } catch { return null; } };
+  const saveSessionMsgs  = (id, msgs) => { try { localStorage.setItem(sessionMsgKey(id), JSON.stringify(msgs)); } catch {} };
+  const deleteSessionData= (id)  => { try { localStorage.removeItem(sessionMsgKey(id)); } catch {} };
+
+  // Init session
+  const [sessionId,      setSessionId]      = useState(() => { const idx = loadSessionIndex(); return idx[0]?.id || genSessionId(); });
+  const [sessionIndex,   setSessionIndex]   = useState(() => loadSessionIndex());
+  const [showHistory,    setShowHistory]    = useState(false);
+
   const [aiMessages, _setAiMessages] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem(CHAT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Clear any stuck streaming state from a previous session
-        return parsed.map(m => ({ ...m, streaming: false }));
-      }
-    } catch {}
-    return [{
-      role: 'assistant',
-      content: "Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.",
-      id: 'welcome',
-    }];
+    const idx = loadSessionIndex();
+    if (idx[0]) { const msgs = loadSessionMsgs(idx[0].id); if (msgs?.length) return msgs; }
+    return [WELCOME_MSG];
   });
 
-  // Wrap setter to always mirror to sessionStorage
   const setAiMessages = (updater) => {
     _setAiMessages(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(next)); } catch {}
+      // Save messages to localStorage for current session
+      saveSessionMsgs(sessionId, next);
+      // Update session index with latest title
+      const title = next.find(m => m.role === 'user')?.content?.slice(0, 55) || 'New chat';
+      const idx = loadSessionIndex();
+      const ei = idx.findIndex(s => s.id === sessionId);
+      const meta = { id: sessionId, title, timestamp: Date.now() };
+      const newIdx = ei >= 0 ? idx.map((s,i) => i === ei ? meta : s) : [meta, ...idx];
+      saveSessionIndex(newIdx);
+      setSessionIndex(newIdx);
       return next;
     });
+  };
+
+  // Start a brand-new chat session
+  const startNewChat = async () => {
+    if (isTyping) return;
+    const newId = genSessionId();
+    setSessionId(newId);
+    const welcome = {...WELCOME_MSG, id: `welcome_${newId}`};
+    _setAiMessages([welcome]);
+    saveSessionMsgs(newId, [welcome]);
+    const meta = { id: newId, title: 'New chat', timestamp: Date.now() };
+    const newIdx = [meta, ...loadSessionIndex()];
+    saveSessionIndex(newIdx);
+    setSessionIndex(newIdx);
+    setShowHistory(false);
+    try { await fetch(`${backendUrl}/ai/chat/default`, { method: 'DELETE' }); } catch {}
+  };
+
+  // Switch to a past session
+  const switchSession = (id) => {
+    if (id === sessionId) { setShowHistory(false); return; }
+    const msgs = loadSessionMsgs(id);
+    setSessionId(id);
+    _setAiMessages(msgs?.length ? msgs : [WELCOME_MSG]);
+    setShowHistory(false);
+  };
+
+  // Delete a session
+  const deleteSession = (id, e) => {
+    e.stopPropagation();
+    deleteSessionData(id);
+    const newIdx = loadSessionIndex().filter(s => s.id !== id);
+    saveSessionIndex(newIdx);
+    setSessionIndex(newIdx);
+    if (id === sessionId) startNewChat();
   };
 
   const [llmOnline, setLlmOnline] = useState(null);
@@ -721,34 +770,68 @@ function Workspace({ refreshTasks, tasks }) {
           <span className={`pill ${automationMode==='auto'?'red':'muted'}`} style={{marginLeft:'auto'}}>{automationMode==='auto'?'Auto-pilot':'Manual'}</span>
         </div>
 
-        {/* LLM status bar + New Chat */}
-        <div className="llm-status" style={{justifyContent:'space-between'}}>
+        {/* ── Status bar: LLM dot · History · New Chat ──────────────────── */}
+        <div className="llm-status" style={{justifyContent:'space-between',position:'relative'}}>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <div style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
               background: llmOnline===null?'var(--text-3)':llmOnline?'var(--green)':'var(--red)',
-              boxShadow: llmOnline?'0 0 6px var(--green)':'none'}}/>
-            <span>{llmOnline===null ? 'Checking LLM…' : llmOnline ? 'Cherry LLM · Online' : 'LLM offline — run python3 llm_server.py'}</span>
-            {aiMessages.length > 1 && (
-              <span style={{opacity:.4,fontSize:10,marginLeft:4}}>
-                {Math.floor((aiMessages.length - 1) / 2)} message{Math.floor((aiMessages.length-1)/2)!==1?'s':''}
-              </span>
-            )}
+              boxShadow: llmOnline?'0 0 5px var(--green)':'none'}}/>
+            <span style={{fontSize:10,color:'var(--text-3)'}}>
+              {llmOnline===null ? 'Checking…' : llmOnline ? 'Cherry LLM · Online' : 'LLM offline'}
+            </span>
           </div>
-          <button
-            title="New chat"
-            style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'2px 6px',borderRadius:4,display:'flex',alignItems:'center',gap:4,transition:'color .15s'}}
-            onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
-            onMouseLeave={e=>e.currentTarget.style.color='var(--text-3)'}
-            onClick={async () => {
-              if (isTyping) return;
-              const welcome = { role:'assistant', content:"Hey! I'm Cherry — your AI automation agent. Tell me what you want to do and I'll figure out the best way to make it happen.", id:'welcome' };
-              setAiMessages([welcome]);
-              try { await fetch(`${backendUrl}/ai/chat/default`, { method:'DELETE' }); } catch {}
-            }}
-          >
-            ✦ New chat
-          </button>
+          <div style={{display:'flex',gap:4,alignItems:'center'}}>
+            {/* History button */}
+            <button onClick={()=>setShowHistory(h=>!h)} style={{background:showHistory?'var(--bg-soft2)':'none',border:showHistory?'1px solid var(--panel-border)':'none',color:showHistory?'var(--text)':'var(--text-3)',cursor:'pointer',fontSize:11,padding:'2px 8px',borderRadius:4,display:'flex',alignItems:'center',gap:4,transition:'all .15s'}}
+              onMouseEnter={e=>e.currentTarget.style.color='var(--text)'}
+              onMouseLeave={e=>!showHistory&&(e.currentTarget.style.color='var(--text-3)')}>
+              ☰ History {sessionIndex.filter(s=>s.title!=='New chat').length > 0 && <span style={{background:'var(--red)',color:'#fff',borderRadius:10,padding:'0 5px',fontSize:9}}>{sessionIndex.filter(s=>s.title!=='New chat').length}</span>}
+            </button>
+            {/* New Chat button */}
+            <button onClick={startNewChat} style={{background:'var(--red)',border:'none',color:'#fff',cursor:'pointer',fontSize:11,padding:'2px 10px',borderRadius:4,display:'flex',alignItems:'center',gap:4,fontWeight:600,opacity:isTyping?.5:1,transition:'opacity .15s'}}>
+              + New chat
+            </button>
+          </div>
         </div>
+
+        {/* ── History slide-in panel ────────────────────────────────────────── */}
+        {showHistory && (
+          <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:50,display:'flex',flexDirection:'column',background:'var(--bg)',borderRight:'1px solid var(--panel-border)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',borderBottom:'1px solid var(--panel-border)',flexShrink:0}}>
+              <span style={{fontSize:12,fontWeight:700,color:'var(--text)'}}>Chat history</span>
+              <div style={{display:'flex',gap:6}}>
+                <button onClick={startNewChat} style={{background:'var(--red)',border:'none',color:'#fff',cursor:'pointer',fontSize:11,padding:'3px 10px',borderRadius:4,fontWeight:600}}>+ New chat</button>
+                <button onClick={()=>setShowHistory(false)} style={{background:'none',border:'1px solid var(--panel-border)',color:'var(--text-3)',cursor:'pointer',fontSize:11,padding:'3px 8px',borderRadius:4}}>✕</button>
+              </div>
+            </div>
+            <div className="custom-scroll" style={{flex:1,overflowY:'auto',padding:8,display:'flex',flexDirection:'column',gap:4}}>
+              {sessionIndex.length === 0 && (
+                <div style={{textAlign:'center',color:'var(--text-3)',fontSize:12,marginTop:40}}>No past chats yet</div>
+              )}
+              {sessionIndex.map(s => (
+                <div key={s.id} onClick={()=>switchSession(s.id)}
+                  style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 10px',borderRadius:6,cursor:'pointer',background:s.id===sessionId?'var(--bg-soft2)':'transparent',border:s.id===sessionId?'1px solid var(--panel-border)':'1px solid transparent',transition:'background .1s'}}
+                  onMouseEnter={e=>s.id!==sessionId&&(e.currentTarget.style.background='var(--bg-soft)')}
+                  onMouseLeave={e=>s.id!==sessionId&&(e.currentTarget.style.background='transparent')}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,color:'var(--text)',fontWeight:s.id===sessionId?600:400,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                      {s.id===sessionId && '● '}{s.title}
+                    </div>
+                    <div style={{fontSize:10,color:'var(--text-3)',marginTop:1}}>
+                      {new Date(s.timestamp).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+                    </div>
+                  </div>
+                  <button onClick={(e)=>deleteSession(s.id,e)}
+                    style={{background:'none',border:'none',color:'var(--text-3)',cursor:'pointer',padding:'4px 6px',borderRadius:4,fontSize:12,flexShrink:0,opacity:.5,transition:'opacity .15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.opacity='1';e.currentTarget.style.color='var(--red)'}}
+                    onMouseLeave={e=>{e.currentTarget.style.opacity='.5';e.currentTarget.style.color='var(--text-3)'}}>
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="chat-messages custom-scroll">
           <div className="ai-thread">
