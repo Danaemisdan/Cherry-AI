@@ -60,13 +60,12 @@ SYSTEM_PROMPT = (
     "Never list steps or number things."
 )
 
-def build_prompt(history, message):
-    lines = [f"<|system|>\n{SYSTEM_PROMPT}\n</s>"]
-    for msg in history[-4:]:  # only last 4 turns — keep context tight
-        tag = "<|user|>" if msg["role"] == "user" else "<|assistant|>"
-        lines.append(f"{tag}\n{msg['content']}\n</s>")
-    lines.append(f"<|user|>\n{message}\n</s>\n<|assistant|>")
-    return "\n".join(lines)
+def build_messages(history, message):
+    msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for msg in history[-4:]:
+        msgs.append({"role": msg["role"], "content": msg["content"]})
+    msgs.append({"role": "user", "content": message})
+    return msgs
 
 # ── Flask ────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -89,25 +88,27 @@ def chat_stream():
     if not message:
         return jsonify({"error": "message required"}), 400
 
-    prompt = build_prompt(history, message)
+    messages = build_messages(history, message)
 
     def generate():
         with lock:
-            stream = llm(
-                prompt,
-                max_tokens=90,       # hard cap — keeps replies SHORT
-                temperature=0.65,
-                top_p=0.9,
-                repeat_penalty=1.1,
-                stop=["</s>", "<|user|>", "<|system|>", "\n\n", "1.", "Step"],
-                stream=True,
-                echo=False,
-            )
-            for chunk in stream:
-                token = chunk["choices"][0]["text"]
-                if token:
-                    payload = json.dumps({"token": token})
-                    yield f"data: {payload}\n\n"
+            try:
+                stream = llm.create_chat_completion(
+                    messages=messages,
+                    max_tokens=90,
+                    temperature=0.65,
+                    top_p=0.9,
+                    repeat_penalty=1.1,
+                    stop=["1.", "Step ", "\n\n"],
+                    stream=True,
+                )
+                for chunk in stream:
+                    delta = chunk["choices"][0].get("delta", {})
+                    token = delta.get("content", "")
+                    if token:
+                        yield f"data: {json.dumps({'token': token})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'token': f'Error: {str(e)}'})}\n\n"
 
         yield "data: [DONE]\n\n"
 

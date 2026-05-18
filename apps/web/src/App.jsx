@@ -736,12 +736,15 @@ function Workspace({ refreshTasks, tasks }) {
                   {msg.role === 'assistant' && <span className="ai-cherry-dot"/>}
                   {msg.role === 'assistant' ? 'Cherry' : 'You'}
                 </div>
-                {msg.content !== undefined && (
+                {/* Show typing dots while connecting, streamed text once tokens arrive */}
+                {msg.streaming && !msg.content ? (
+                  <div className="ai-typing"><span/><span/><span/></div>
+                ) : msg.content !== undefined && msg.content !== '' ? (
                   <div className="ai-bubble" style={msg.error?{borderColor:'rgba(229,57,53,.3)',color:'var(--red)'}:{}}>
-                    {msg.content || (msg.streaming ? '\u00a0' : '')}
+                    {msg.content}
                     {msg.streaming && <span className="stream-cursor"/>}
                   </div>
-                )}
+                ) : null}
                 {/* Suggestion cards — multi-tool action options from LLM */}
                 {msg.suggestions && msg.suggestions.length > 0 && (
                   <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:6}}>
